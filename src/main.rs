@@ -1,30 +1,9 @@
-#[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate log;
-extern crate hex;
-extern crate parity_codec;
-extern crate redis;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_json;
-extern crate crossbeam;
-extern crate reqwest;
+extern crate chainx_sub_parse;
 
-extern crate substrate_metadata;
-
-mod error;
-mod parse;
-mod subscribe;
-
-use crossbeam::queue::MsQueue;
-
-use subscribe::RedisClient;
+use chainx_sub_parse::{MsQueue, RedisClient, Result};
 
 const REDIS_URL: &str = "redis://127.0.0.1";
-const RPC_HTTP_URL: &str = "http://127.0.0.1:8081";
+//const RPC_HTTP_URL: &str = "http://127.0.0.1:8081";
 
 fn main() {
     env_logger::init();
@@ -33,9 +12,9 @@ fn main() {
     //    let modules = parse::get_runtime_modules_metadata(RPC_HTTP_URL).unwrap();
     //    println!("Modules Metadata: {:#?}", modules);
 
-    let mut msg_queue: MsQueue<serde_json::Value> = MsQueue::new();
+    let msg_queue: MsQueue<serde_json::Value> = MsQueue::new();
 
-    let client = RedisClient::new(REDIS_URL).expect("Create redis connection failed");
+    let client = RedisClient::open(REDIS_URL).expect("Create redis connection failed");
     let subscribe_thread = client.start_subscription();
 
     while let Ok(key) = client.rx.recv() {

@@ -1,10 +1,9 @@
 use parity_codec::Decode;
-
 use substrate_metadata::{
     DecodeDifferent, ModuleMetadata, RuntimeMetadata, RuntimeModuleMetadata, StorageMetadata,
 };
 
-use super::Result;
+use error::Result;
 
 #[derive(Deserialize, Debug)]
 struct RpcResponseContent<T> {

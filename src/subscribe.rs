@@ -15,7 +15,7 @@ pub struct RedisClient {
 }
 
 impl RedisClient {
-    pub fn new<I: IntoConnectionInfo>(info: I) -> Result<Self> {
+    pub fn open<I: IntoConnectionInfo>(info: I) -> Result<Self> {
         let client = redis::Client::open(info)?;
         let conn = client.get_connection()?;
         let (tx, rx) = mpsc::channel();
