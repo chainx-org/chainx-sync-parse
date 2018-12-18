@@ -13,14 +13,15 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 
+// substrate runtime metadata module.
 extern crate substrate_metadata;
-
-pub use crossbeam::queue::MsQueue;
 
 pub mod error;
 pub mod parse;
 pub mod subscribe;
 
-pub use error::Result;
-pub use parse::get_runtime_modules_metadata;
-pub use subscribe::RedisClient;
+pub use crossbeam::queue::MsQueue;
+
+pub use self::error::Result;
+pub use self::parse::{get_runtime_modules_metadata, parse_metadata};
+pub use self::subscribe::RedisClient;
