@@ -18,29 +18,30 @@ fn main() -> Result<()> {
     //    println!("Modules Metadata: {:#?}", modules);
     //    parse_metadata(modules)?;
 
-    //    let msg_queue: MsQueue<serde_json::Value> = MsQueue::new();
+    let msg_queue: MsQueue<serde_json::Value> = MsQueue::new();
 
-    let transmit_thread = TransmitClient::start(REGISTER_SERVER_URL)?;
+    let transmit = TransmitClient::new(REGISTER_SERVER_URL.to_string(), msg_queue);
+    let transmit_thread = transmit.start()?;
 
-    let client = RedisClient::connect(REDIS_SERVER_URL)?;
-    let subscribe_thread = client.start_subscription()?;
-
-    while let Ok(key) = client.recv_key() {
-        match client.query_value(key) {
-            Ok(value) => {
-                println!("value: {:?}", value);
-            }
-            Err(err) => {
-                warn!("{}", err);
-                break;
-            }
-        }
-    }
-
-    subscribe_thread
-        .join()
-        .expect("Couldn't join on the subscribe thread")
-        .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
+    //    let client = RedisClient::connect(REDIS_SERVER_URL)?;
+    //    let subscribe_thread = client.start_subscription()?;
+    //
+    //    while let Ok(key) = client.recv_key() {
+    //        match client.query_value(key) {
+    //            Ok(value) => {
+    //                println!("value: {:?}", value);
+    //            }
+    //            Err(err) => {
+    //                warn!("{}", err);
+    //                break;
+    //            }
+    //        }
+    //    }
+    //
+    //    subscribe_thread
+    //        .join()
+    //        .expect("Couldn't join on the subscribe thread")
+    //        .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
 
     transmit_thread
         .join()

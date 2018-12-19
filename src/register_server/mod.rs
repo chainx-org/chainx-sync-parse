@@ -1,10 +1,3 @@
-extern crate jsonrpc_core;
-pub extern crate jsonrpc_http_server;
-#[macro_use]
-extern crate jsonrpc_macros;
-#[macro_use]
-extern crate serde_derive;
-
 use jsonrpc_core::Result;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
@@ -51,8 +44,8 @@ impl Rpc for RpcImpl {
 }
 
 impl Info {
-    pub fn new(prifix: Vec<String>, version: String) -> Info {
-        Info {
+    pub fn new(prifix: Vec<String>, version: String) -> Self {
+        Self {
             prifix: prifix,
             version: version,
         }
@@ -60,8 +53,8 @@ impl Info {
 }
 
 impl Status {
-    pub fn new() -> Status {
-        Status {
+    pub fn new() -> Self {
+        Self {
             offset: 0,
             down: false,
         }
@@ -69,8 +62,8 @@ impl Status {
 }
 
 impl Registrant {
-    pub fn new(prifix: Vec<String>, version: String) -> Registrant {
-        Registrant {
+    pub fn new(prifix: Vec<String>, version: String) -> Self {
+        Self {
             info: Info::new(prifix, version),
             status: Status::new(),
         }
@@ -78,7 +71,9 @@ impl Registrant {
 }
 
 pub trait StartRPC {
-    fn start_rpc(rpc_http: &'static str) -> (Server, Arc<RwLock<HashMap<String, Arc<Mutex<Registrant>>>>>) {
+    fn start_rpc(
+        rpc_http: String,
+    ) -> (Server, Arc<RwLock<HashMap<String, Arc<Mutex<Registrant>>>>>) {
         let mut io = jsonrpc_core::IoHandler::new();
         let rpc = RpcImpl::default();
         let registrant_map = rpc.registrant_map.clone();
