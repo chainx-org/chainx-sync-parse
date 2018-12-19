@@ -1,11 +1,11 @@
-use std::thread;
 use error::Result;
-use register_server::{StartRPC, Registrant};
 use register_server::jsonrpc_http_server::Server;
-use std::sync::{Arc, Mutex, RwLock};
+use register_server::{Registrant, StartRPC};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
+use std::thread;
 
-pub struct TransmitClient{
+pub struct TransmitClient {
     register_server: RegisterServer,
 }
 
@@ -14,7 +14,7 @@ pub struct RegisterServer {
     registrant: Arc<RwLock<HashMap<String, Arc<Mutex<Registrant>>>>>,
 }
 
-impl StartRPC for RegisterServer{}
+impl StartRPC for RegisterServer {}
 
 impl RegisterServer {
     pub fn new(url: &'static str) -> RegisterServer {

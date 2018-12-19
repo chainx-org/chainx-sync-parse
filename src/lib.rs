@@ -14,8 +14,8 @@ extern crate serde_derive;
 extern crate serde_json;
 
 // substrate runtime metadata module.
-extern crate substrate_metadata;
 extern crate register_server;
+extern crate substrate_metadata;
 
 pub mod error;
 pub mod parse;

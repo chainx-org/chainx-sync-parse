@@ -22,31 +22,30 @@ fn main() -> Result<()> {
 
     let transmit_thread = TransmitClient::start(REGISTER_SERVER_URL)?;
 
-//    let client = RedisClient::connect(REDIS_SERVER_URL)?;
-//    let subscribe_thread = client.start_subscription()?;
-//
-//
-//    while let Ok(key) = client.recv_key() {
-//        match client.query_value(key) {
-//            Ok(value) => {
-//                println!("value: {:?}", value);
-//            }
-//            Err(err) => {
-//                warn!("{}", err);
-//                break;
-//            }
-//        }
-//    }
-//
-//    subscribe_thread
-//        .join()
-//        .expect("Couldn't join on the subscribe thread")
-//        .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
+    let client = RedisClient::connect(REDIS_SERVER_URL)?;
+    let subscribe_thread = client.start_subscription()?;
 
-    transmit_thread
+    while let Ok(key) = client.recv_key() {
+        match client.query_value(key) {
+            Ok(value) => {
+                println!("value: {:?}", value);
+            }
+            Err(err) => {
+                warn!("{}", err);
+                break;
+            }
+        }
+    }
+
+    subscribe_thread
         .join()
         .expect("Couldn't join on the subscribe thread")
         .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
+
+    transmit_thread
+        .join()
+        .expect("Couldn't join on the transmit thread")
+        .unwrap_or_else(|e| println!("The detail of transmit error: {:?}", e));
 
     Ok(())
 }
