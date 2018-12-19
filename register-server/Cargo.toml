@@ -1,0 +1,12 @@
+[package]
+name = "register-server"
+version = "0.1.0"
+authors = ["ChainX <https://chainx.org>"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0", features = ["rc"] }
+serde_derive = "1.0"
+jsonrpc-core = { git="https://github.com/paritytech/jsonrpc.git" }
+jsonrpc-macros = { git="https://github.com/paritytech/jsonrpc.git" }
+jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git" }

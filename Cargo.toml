@@ -18,3 +18,4 @@ serde_derive = "1.0"
 reqwest = "0.9"
 
 substrate-metadata = { git = "https://github.com/paritytech/substrate", rev = "4b34e0f2" }
+register-server = {path = "./register-server"}

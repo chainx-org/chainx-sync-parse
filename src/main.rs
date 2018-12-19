@@ -3,10 +3,11 @@ extern crate log;
 extern crate chainx_sub_parse;
 
 use chainx_sub_parse::{
-    get_runtime_modules_metadata, parse_metadata, MsQueue, RedisClient, Result,
+    get_runtime_modules_metadata, parse_metadata, MsQueue, RedisClient, Result, TransmitClient,
 };
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
+const REGISTER_SERVER_URL: &str = "127.0.0.1:3030";
 const RPC_HTTP_URL: &str = "http://127.0.0.1:8081";
 
 fn main() -> Result<()> {
@@ -19,22 +20,30 @@ fn main() -> Result<()> {
 
     //    let msg_queue: MsQueue<serde_json::Value> = MsQueue::new();
 
-    let client = RedisClient::connect(REDIS_SERVER_URL)?;
-    let subscribe_thread = client.start_subscription()?;
+    let transmit_thread = TransmitClient::start(REGISTER_SERVER_URL)?;
 
-    while let Ok(key) = client.recv_key() {
-        match client.query_value(key) {
-            Ok(value) => {
-                println!("value: {:?}", value);
-            }
-            Err(err) => {
-                warn!("{}", err);
-                break;
-            }
-        }
-    }
+//    let client = RedisClient::connect(REDIS_SERVER_URL)?;
+//    let subscribe_thread = client.start_subscription()?;
+//
+//
+//    while let Ok(key) = client.recv_key() {
+//        match client.query_value(key) {
+//            Ok(value) => {
+//                println!("value: {:?}", value);
+//            }
+//            Err(err) => {
+//                warn!("{}", err);
+//                break;
+//            }
+//        }
+//    }
+//
+//    subscribe_thread
+//        .join()
+//        .expect("Couldn't join on the subscribe thread")
+//        .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
 
-    subscribe_thread
+    transmit_thread
         .join()
         .expect("Couldn't join on the subscribe thread")
         .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
