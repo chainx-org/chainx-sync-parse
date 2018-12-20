@@ -97,7 +97,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "chainx-sub-parse"
 version = "0.1.0"
 dependencies = [
- "crossbeam 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -106,6 +105,7 @@ dependencies = [
  "jsonrpc-macros 9.0.0 (git+https://github.com/paritytech/jsonrpc.git)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 2.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "redis 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -157,33 +157,6 @@ version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "crossbeam"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "crossbeam-channel 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "crossbeam-deque 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "crossbeam-epoch 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "crossbeam-utils 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "num_cpus 1.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "crossbeam-channel"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "crossbeam-epoch 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "crossbeam-utils 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1534,8 +1507,6 @@ dependencies = [
 "checksum core-foundation 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "286e0b41c3a20da26536c6000a280585d519fd07b3956b43aed8a79e9edce980"
 "checksum core-foundation-sys 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "716c271e8613ace48344f723b60b900a93150271e5be206212d052bbc0883efa"
 "checksum crc32fast 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e91d5240c6975ef33aeb5f148f35275c25eda8e8a5f95abe421978b05b8bf192"
-"checksum crossbeam 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d1c92ff2d7a202d592f5a412d75cf421495c913817781c1cb383bf12a77e185f"
-"checksum crossbeam-channel 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8b7d034925ce9668a9a19539a82a2ae75660fa65c1a3a5ddbfce333aafcceb55"
 "checksum crossbeam-deque 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4fe1b6f945f824c7a25afe44f62e25d714c0cc523f8e99d8db5cd1026e1269d3"
 "checksum crossbeam-epoch 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2449aaa4ec7ef96e5fb24db16024b935df718e9ae1cec0a1e68feeca2efca7b8"
 "checksum crossbeam-utils 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "41ee4864f4797060e52044376f7d107429ce1fb43460021b126424b7180ee21a"
