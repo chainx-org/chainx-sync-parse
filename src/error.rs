@@ -1,3 +1,5 @@
+//use serde::{de, ser};
+
 error_chain! {
     // The type defined for this error. These are the conventional
     // and recommended names, but they can be arbitrarily chosen.
@@ -60,3 +62,15 @@ error_chain! {
 //        }
     }
 }
+
+//impl ser::Error for Error {
+//    fn custom<T: std::fmt::Display>(msg: T) -> Self {
+//        ErrorKind::Msg(msg.to_string()).into()
+//    }
+//}
+
+//impl de::Error for Error {
+//    fn custom<T: std::fmt::Display>(msg: T) -> Self {
+//        ErrorKind::Msg(msg.to_string()).into()
+//    }
+//}

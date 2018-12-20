@@ -1,10 +1,10 @@
-extern crate crossbeam;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
 extern crate log;
 extern crate hex;
 extern crate parity_codec;
+extern crate parking_lot;
 extern crate redis;
 extern crate reqwest;
 extern crate serde;
@@ -18,10 +18,17 @@ extern crate substrate_metadata;
 
 pub mod error;
 pub mod parse;
+pub mod serde_ext;
 pub mod subscribe;
 
-pub use crossbeam::queue::MsQueue;
+pub use std::collections::BTreeMap;
+pub use std::sync::Arc;
 
-pub use self::error::Result;
-pub use self::parse::{get_runtime_modules_metadata, parse_metadata};
+pub use parking_lot::RwLock;
+
+pub type BlockQueue = Arc<RwLock<BTreeMap<u64, serde_json::Value>>>;
+
+pub use self::error::{Error, Result};
+pub use self::parse::{get_runtime_metadata, parse_metadata};
+pub use self::serde_ext::Bytes;
 pub use self::subscribe::RedisClient;

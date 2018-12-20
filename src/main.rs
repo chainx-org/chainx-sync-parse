@@ -2,22 +2,21 @@
 extern crate log;
 extern crate chainx_sub_parse;
 
-use chainx_sub_parse::{
-    get_runtime_modules_metadata, parse_metadata, MsQueue, RedisClient, Result,
-};
+use chainx_sub_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
-const RPC_HTTP_URL: &str = "http://127.0.0.1:8081";
+//const RPC_HTTP_URL: &str = "http://127.0.0.1:8081";
 
 fn main() -> Result<()> {
     env_logger::init();
 
     // parse module metadata, create mapping table.
-    //    let modules = get_runtime_modules_metadata(RPC_HTTP_URL)?;
-    //    println!("Modules Metadata: {:#?}", modules);
-    //    parse_metadata(modules)?;
+    //        let runtime_metadata = get_runtime_metadata(RPC_HTTP_URL)?;
+    //        println!("Modules Metadata: {:#?}", modules);
+    //        parse_metadata(runtime_metadata)?;
 
-    //    let msg_queue: MsQueue<serde_json::Value> = MsQueue::new();
+    //    let block_queue: Arc<RwLock<BTreeMap<u64, serde_json::Value>>> =
+    //        Arc::new(RwLock::new(BTreeMap::new()));
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
