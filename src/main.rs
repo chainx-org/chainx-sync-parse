@@ -31,8 +31,11 @@ fn main() -> Result<()> {
                     continue;
                 }
                 cur_block_height = height;
-
-                specific_logic(cur_block_height, value);
+                // specific logic
+                println!(
+                    "cur_block_height: {:?}, value: {:?}",
+                    cur_block_height, value
+                );
             }
             Err(err) => {
                 warn!("{}", err);
@@ -47,11 +50,4 @@ fn main() -> Result<()> {
         .unwrap_or_else(|e| println!("The detail of redis subscribe error: {:?}", e));
 
     Ok(())
-}
-
-fn specific_logic(cur_block_height: u64, value: String) {
-    println!(
-        "cur_block_height: {:?}, value: {:?}",
-        cur_block_height, value
-    );
 }
