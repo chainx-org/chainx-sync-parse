@@ -22,16 +22,16 @@ extern crate jsonrpc_macros;
 extern crate substrate_metadata;
 
 pub mod error;
+pub mod json_manage;
 pub mod parse;
+pub mod register_server;
 pub mod serde_ext;
 pub mod subscribe;
-pub mod register_server;
+pub mod transmit;
 
-pub use std::collections::BTreeMap;
-pub use std::sync::Arc;
-
-
-pub use parking_lot::RwLock;
+pub use parking_lot::{Mutex, RwLock};
+pub use std::collections::{BTreeMap, HashMap};
+pub use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 
 pub type BlockQueue = Arc<RwLock<BTreeMap<u64, serde_json::Value>>>;
 
@@ -39,5 +39,4 @@ pub use self::error::{Error, Result};
 pub use self::parse::{get_runtime_metadata, parse_metadata};
 pub use self::serde_ext::Bytes;
 pub use self::subscribe::RedisClient;
-pub use self::transmit::file_io;
-pub use self::transmit::TransmitClient;
+pub use self::transmit::Client;

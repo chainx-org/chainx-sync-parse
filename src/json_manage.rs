@@ -18,7 +18,7 @@ pub fn write(json: String) -> Result<()> {
     Ok(())
 }
 
-pub fn read_string() -> Result<String> {
+pub fn read() -> Result<String> {
     let p = Path::new("./target/reg.json");
     let mut file = File::open(p)?;
     let mut string = String::new();
@@ -26,7 +26,22 @@ pub fn read_string() -> Result<String> {
     Ok(string)
 }
 
-pub fn deserialize<T: Debug + DeserializeOwned>(string: String) -> Result<T> {
-    let resp: T = serde_json::from_str(string.as_str())?;
-    Ok(resp)
+#[derive(Deserialize, Debug)]
+struct JsonRpcResponse<T> {
+    id: u64,
+    jsonrpc: String,
+    result: T,
+}
+
+pub fn post(url: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+    Ok(reqwest::Client::new()
+        .post(url)
+        .json(&body)
+        .send()?
+        .json::<serde_json::Value>()?)
+}
+
+pub fn deserialize<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
+    let resp: JsonRpcResponse<T> = serde_json::from_value(post(url, &body)?)?;
+    Ok(resp.result)
 }

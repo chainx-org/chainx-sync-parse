@@ -1,21 +1,21 @@
-pub mod file_io;
+mod push;
 
 use error::Result;
 use jsonrpc_http_server::Server;
-use register_server::{Registrant, StartRPC};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use register_server::{RegistrantData, RegistrantList, StartRPC};
 use std::thread;
-use MsQueue;
+use std::time::Duration;
+use {json_manage, BlockQueue, HashMap};
 
-pub struct TransmitClient {
-    msg_queue: MsQueue<serde_json::Value>,
+#[derive(Debug)]
+pub struct Client {
+    block_queue: BlockQueue,
     server_url: String,
 }
 
 pub struct RegisterServer {
     server: Server,
-    registrant: Arc<RwLock<HashMap<String, Arc<Mutex<Registrant>>>>>,
+    registrant: RegistrantList,
 }
 
 impl StartRPC for RegisterServer {}
@@ -23,16 +23,12 @@ impl StartRPC for RegisterServer {}
 impl RegisterServer {
     pub fn new(url: String) -> Self {
         let (server, registrant) = RegisterServer::start_rpc(url);
-        Self {
-            server: server,
-            registrant: registrant,
-        }
+        Self { server, registrant }
     }
 
     pub fn load(&self) -> Result<()> {
-        let string = file_io::read_string()?;
-        let map: HashMap<String, Arc<Mutex<Registrant>>> = file_io::deserialize(string)?;
-
+        let string = json_manage::read()?;
+        let map: HashMap<String, RegistrantData> = serde_json::from_str(string.as_str())?;
         for iter in map {
             self.registrant.write().unwrap().insert(iter.0, iter.1);
         }
@@ -40,20 +36,29 @@ impl RegisterServer {
     }
 }
 
-impl TransmitClient {
-    pub fn new(url: String, queue: MsQueue<serde_json::Value>) -> Self {
+impl Client {
+    pub fn new(server_url: String, block_queue: BlockQueue) -> Self {
         Self {
-            server_url: url,
-            msg_queue: queue,
+            server_url,
+            block_queue,
         }
     }
 
     pub fn start(&self) -> Result<thread::JoinHandle<Result<()>>> {
         let url = self.server_url.clone();
+        let block_queue = self.block_queue.clone();
         let thread = thread::spawn(move || {
-            let reg_server = RegisterServer::new(url);
-            reg_server.load()?;
-            reg_server.server.wait();
+            let register_server = RegisterServer::new(url);
+            register_server.load()?;
+
+            let push = push::Client::new(
+                register_server.registrant,
+                block_queue,
+                push::Config::new(10, Duration::new(10, 0)),
+            );
+            push.start()?;
+
+            register_server.server.wait();
             Ok(())
         });
         Ok(thread)
