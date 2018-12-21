@@ -25,9 +25,11 @@ impl RedisClient {
         })
     }
 
-    pub fn query_value(&self, key: String) -> Result<String> {
+    pub fn query_value(&self, key: String) -> Result<(u64, String)> {
         let (key, score): (String, String) = self.get_with_block_height(key)?;
-        self.get(format!("{}#{}", key, score))
+        let height = score.parse::<u64>()?;
+        let value = self.get(format!("{}#{}", key, score))?;
+        Ok((height, value))
     }
 
     #[rustfmt::skip]

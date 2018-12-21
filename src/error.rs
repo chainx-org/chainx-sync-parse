@@ -39,6 +39,7 @@ error_chain! {
     foreign_links {
         Fmt(::std::fmt::Error);
         Io(::std::io::Error) #[cfg(unix)];
+        NumParseInt(::std::num::ParseIntError);
         SendKey(::std::sync::mpsc::SendError<String>);
         RecvValue(::std::sync::mpsc::RecvError);
         Redis(redis::RedisError);
