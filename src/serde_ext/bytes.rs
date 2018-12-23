@@ -7,8 +7,8 @@ use serde::ser::{Serialize, Serializer};
 pub struct Bytes(pub Vec<u8>);
 
 impl<T: Into<Vec<u8>>> From<T> for Bytes {
-    fn from(data: T) -> Self {
-        Self(data.into())
+    fn from(data: T) -> Bytes {
+        Bytes(data.into())
     }
 }
 

@@ -38,7 +38,7 @@ fn main() -> Result<()> {
                 );
             }
             Err(err) => {
-                warn!("{}", err);
+                println!("{}", err);
                 break;
             }
         }
