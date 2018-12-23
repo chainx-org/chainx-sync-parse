@@ -2,7 +2,7 @@ mod push;
 
 use error::Result;
 use jsonrpc_http_server::Server;
-use register_server::{RegistrantData, RegistrantList, StartRPC};
+use register_server::{start_rpc, RegisterData, RegisterList};
 use std::thread;
 use std::time::Duration;
 use {json_manage, BlockQueue, HashMap};
@@ -15,22 +15,23 @@ pub struct Client {
 
 pub struct RegisterServer {
     server: Server,
-    registrant: RegistrantList,
+    registrant: RegisterList,
 }
 
-impl StartRPC for RegisterServer {}
+//impl StartRPC for RegisterServer {}
 
 impl RegisterServer {
     pub fn new(url: String) -> Self {
-        let (server, registrant) = RegisterServer::start_rpc(url);
+        let (server, registrant) = start_rpc(url);
         Self { server, registrant }
     }
 
     pub fn load(&self) -> Result<()> {
-        let string = json_manage::read()?;
-        let map: HashMap<String, RegistrantData> = serde_json::from_str(string.as_str())?;
-        for iter in map {
-            self.registrant.write().unwrap().insert(iter.0, iter.1);
+        if let Ok(Some(string)) = json_manage::read() {
+            let map: HashMap<String, RegisterData> = serde_json::from_str(string.as_str())?;
+            for iter in map {
+                self.registrant.write().unwrap().insert(iter.0, iter.1);
+            }
         }
         Ok(())
     }

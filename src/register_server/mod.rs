@@ -1,22 +1,29 @@
+use json_manage;
 use jsonrpc_core::Result;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use {Arc, HashMap, StdMutex, StdRwLock};
 
-pub type RegistrantData = Arc<StdMutex<Registrant>>;
-pub type RegistrantList = Arc<StdRwLock<HashMap<String, RegistrantData>>>;
+pub type RegisterData = Arc<StdMutex<RegisterInfo>>;
+pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterData>>>;
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Registrant {
-    pub info: Info,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterInfo {
+    pub prefix: Vec<String>,
+    pub version: String,
     pub status: Status,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Info {
-    pub prifix: Vec<String>,
-    pub version: String,
+impl RegisterInfo {
+    pub fn new(prefix: Vec<String>, version: String) -> Self {
+        Self {
+            prefix,
+            version,
+            status: Status::default(),
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -34,57 +41,45 @@ build_rpc_trait! {
 
 #[derive(Default)]
 pub struct RpcImpl {
-    registrant_list: RegistrantList,
+    register_list: RegisterList,
 }
 
 impl Rpc for RpcImpl {
-    fn register(&self, prifix: String, url: String, version: String) -> Result<String> {
-        let reg: RegistrantData = Arc::new(StdMutex::new(Registrant::new(vec![prifix], version)));
-        self.registrant_list.write().unwrap().insert(url, reg);
-        println!("{:?}", self.registrant_list.read().unwrap());
+    fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
+        match self.register_list.write().unwrap().entry(url) {
+            Vacant(reg) => {
+                reg.insert(Arc::new(StdMutex::new(RegisterInfo::new(
+                    vec![prefix],
+                    version,
+                ))));
+            }
+            Occupied(reg) => {
+                let mut reg = reg.into_mut().lock().unwrap();
+                if let None = reg.prefix.iter().find(|&x| x == &prefix) {
+                    reg.prefix.push(prefix);
+                } else {
+                    return Ok("null".to_string());
+                }
+            }
+        };
+        json_manage::write(json!(self.register_list).to_string());
         Ok("OK".to_string())
     }
 }
 
-impl Info {
-    pub fn new(prifix: Vec<String>, version: String) -> Self {
-        Self { prifix, version }
-    }
-}
+pub fn start_rpc(rpc_http: String) -> (Server, RegisterList) {
+    let mut io = jsonrpc_core::IoHandler::new();
+    let rpc = RpcImpl::default();
+    let registrant_list = rpc.register_list.clone();
+    io.extend_with(rpc.to_delegate());
 
-impl Status {
-    pub fn new() -> Self {
-        Self {
-            offset: 0,
-            down: false,
-        }
-    }
-}
-
-impl Registrant {
-    pub fn new(prifix: Vec<String>, version: String) -> Self {
-        Self {
-            info: Info::new(prifix, version),
-            status: Status::new(),
-        }
-    }
-}
-
-pub trait StartRPC {
-    fn start_rpc(rpc_http: String) -> (Server, RegistrantList) {
-        let mut io = jsonrpc_core::IoHandler::new();
-        let rpc = RpcImpl::default();
-        let registrant_list = rpc.registrant_list.clone();
-        io.extend_with(rpc.to_delegate());
-
-        let server = ServerBuilder::new(io)
-            .threads(3)
-            .rest_api(RestApi::Unsecure)
-            .cors(DomainsValidation::AllowOnly(vec![
-                AccessControlAllowOrigin::Any,
-            ]))
-            .start_http(&rpc_http.parse().unwrap())
-            .expect("Unable to start RPC server");
-        (server, registrant_list)
-    }
+    let server = ServerBuilder::new(io)
+        .threads(3)
+        .rest_api(RestApi::Unsecure)
+        .cors(DomainsValidation::AllowOnly(vec![
+            AccessControlAllowOrigin::Any,
+        ]))
+        .start_http(&rpc_http.parse().unwrap())
+        .expect("Unable to start RPC server");
+    (server, registrant_list)
 }

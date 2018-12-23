@@ -1,5 +1,5 @@
 use error::Result;
-use register_server::RegistrantList;
+use register_server::RegisterList;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -21,7 +21,7 @@ pub struct PushMessage {
 
 #[derive(Debug)]
 pub struct Client {
-    registrant_list: RegistrantList,
+    register_list: RegisterList,
     block_queue: BlockQueue,
     config: Config,
 }
@@ -33,60 +33,64 @@ pub struct Config {
 }
 
 impl Client {
-    pub fn new(registrant_list: RegistrantList, block_queue: BlockQueue, config: Config) -> Self {
-        Self { registrant_list, block_queue, config }
+    pub fn new(register_list: RegisterList, block_queue: BlockQueue, config: Config) -> Self {
+        Self {
+            register_list,
+            block_queue,
+            config,
+        }
     }
 
     //pub fn get(&self, num: u64) {}
 
     pub fn start(&self) -> Result<()> {
-//        let msg = vec![
-//            r#"{
-//                    "msg_type": "value",
-//                    "key": "test1",
-//                    "value": ["arg0","arg1"]
-//                }"#,
-//            r#"{
-//                    "msg_type": "map",
-//                    "prefix": "p",
-//                    "key": "test2",
-//                    "value": ["arg2","arg3"]
-//                }"#,
-//        ];
-//        //let mut block_num = 0_u64;
-//        let msg_a = msg.clone();
-//        let queue = self.block_queue.clone();
-//        thread::spawn(move || {
-//            let mut num = 0_u64;
-//            for i in 0..100 {
-//                //let aaa = num.c
-//                println!("add");
-//                let m = msg_a.get(i % 2).unwrap();
-//                let j = json!(m);
-//                queue.write().insert(num, j);
-//                num += 1;
-//                std::thread::sleep(Duration::new(1, 0));
-//            }
-//        });
+        //        let msg = vec![
+        //            r#"{
+        //                    "msg_type": "value",
+        //                    "key": "test1",
+        //                    "value": ["arg0","arg1"]
+        //                }"#,
+        //            r#"{
+        //                    "msg_type": "map",
+        //                    "prefix": "p",
+        //                    "key": "test2",
+        //                    "value": ["arg2","arg3"]
+        //                }"#,
+        //        ];
+        //        //let mut block_num = 0_u64;
+        //        let msg_a = msg.clone();
+        //        let queue = self.block_queue.clone();
+        //        thread::spawn(move || {
+        //            let mut num = 0_u64;
+        //            for i in 0..100 {
+        //                //let aaa = num.c
+        //                println!("add");
+        //                let m = msg_a.get(i % 2).unwrap();
+        //                let j = json!(m);
+        //                queue.write().insert(num, j);
+        //                num += 1;
+        //                std::thread::sleep(Duration::new(1, 0));
+        //            }
+        //        });
 
         loop {
             if self.block_queue.read().len() > 0 {
                 let (tx, rx) = mpsc::channel();
-                let registrant_list = self.registrant_list.read().unwrap();
+                let register_list = self.register_list.read().unwrap();
                 //let block_queue = self.block_queue.clone();
                 //let config = self.config.clone();
                 //println!("{:?}", map.len());
-                for registrant in registrant_list.iter() {
-                    let url = registrant.0.clone();
-                    let reg = registrant.1.clone();
+                for register in register_list.iter() {
+                    let url = register.0.clone();
+                    let reg = register.1.clone();
                     let tx = tx.clone();
                     let config = self.config.clone();
                     println!("{:?}, {:?}", url, reg.lock().unwrap());
                     thread::spawn(move || {
                         let mut reg = reg.lock().unwrap();
                         if !reg.status.down {
-                            let prifixs = reg.info.prifix.clone();
-                            for prifix in prifixs {
+                            let prefixs = reg.prefix.clone();
+                            for prefix in prefixs {
                                 //if *prifix == msg.key {
                                 //println!("{:?}", msg.value);
                                 reg.status.offset += 1;
@@ -115,7 +119,7 @@ impl Client {
                     });
                 }
 
-                let map3 = registrant_list.clone();
+                let map3 = register_list.clone();
                 thread::spawn(move || {
                     for rx in rx {
                         if rx {

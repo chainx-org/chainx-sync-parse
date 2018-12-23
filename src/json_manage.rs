@@ -18,12 +18,16 @@ pub fn write(json: String) -> Result<()> {
     Ok(())
 }
 
-pub fn read() -> Result<String> {
+pub fn read() -> Result<Option<String>> {
     let p = Path::new("./target/reg.json");
-    let mut file = File::open(p)?;
-    let mut string = String::new();
-    file.read_to_string(&mut string)?;
-    Ok(string)
+    match File::open(p) {
+        Ok(mut file) => {
+            let mut string = String::new();
+            file.read_to_string(&mut string)?;
+            Ok(Some(string))
+        }
+        Err(_) => Ok(None),
+    }
 }
 
 #[derive(Deserialize, Debug)]
