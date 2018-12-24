@@ -1,6 +1,7 @@
 use error::Result;
-use register_server::RegisterList;
+use register_server::{RegisterData, RegisterList};
 use std::sync::mpsc;
+use std::sync::mpsc::Sender;
 use std::thread;
 use std::time::Duration;
 use {json_manage, BlockQueue};
@@ -8,9 +9,15 @@ use {json_manage, BlockQueue};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     msg_type: String,
-    prefix: Option<String>,
-    key: String,
+    prefix: String,
     value: Vec<String>,
+}
+
+impl Message {
+    pub fn new(json: serde_json::Value) -> Result<Self> {
+        let msg: Message = serde_json::from_value(json)?;
+        Ok(msg)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,17 +26,39 @@ pub struct PushMessage {
     data: Vec<Message>,
 }
 
-#[derive(Debug)]
-pub struct Client {
-    register_list: RegisterList,
-    block_queue: BlockQueue,
-    config: Config,
+impl PushMessage {
+    pub fn new(num: u64) -> Self {
+        Self {
+            height: num,
+            data: Default::default(),
+        }
+    }
+
+    pub fn add(&mut self, data: Message) {
+        self.data.push(data);
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Config {
     retry_count: u32,
     retry_interval: Duration,
+}
+
+impl Config {
+    pub fn new(retry_count: u32, retry_interval: Duration) -> Self {
+        Self {
+            retry_count,
+            retry_interval,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Client {
+    register_list: RegisterList,
+    block_queue: BlockQueue,
+    config: Config,
 }
 
 impl Client {
@@ -41,7 +70,12 @@ impl Client {
         }
     }
 
-    //pub fn get(&self, num: u64) {}
+    pub fn get_block_height(&self) -> u64 {
+        match self.block_queue.read().keys().next_back() {
+            Some(s) => s.clone(),
+            None => 0,
+        }
+    }
 
     pub fn start(&self) -> Result<()> {
         //        let msg = vec![
@@ -72,106 +106,122 @@ impl Client {
         //                std::thread::sleep(Duration::new(1, 0));
         //            }
         //        });
-
         loop {
-            if self.block_queue.read().len() > 0 {
+            if let Ok(register_list) = self.register_list.read() {
                 let (tx, rx) = mpsc::channel();
-                let register_list = self.register_list.read().unwrap();
-                //let block_queue = self.block_queue.clone();
-                //let config = self.config.clone();
-                //println!("{:?}", map.len());
+                let cur_block_height = self.get_block_height();
                 for register in register_list.iter() {
-                    let url = register.0.clone();
-                    let reg = register.1.clone();
-                    let tx = tx.clone();
-                    let config = self.config.clone();
-                    println!("{:?}, {:?}", url, reg.lock().unwrap());
-                    thread::spawn(move || {
-                        let mut reg = reg.lock().unwrap();
-                        if !reg.status.down {
-                            let prefixs = reg.prefix.clone();
-                            for prefix in prefixs {
-                                //if *prifix == msg.key {
-                                //println!("{:?}", msg.value);
-                                reg.status.offset += 1;
-                                //}
-                            }
-                            let json = json!("asd");
-                            let asd = Message::new(json);
-                            match asd {
-                                Ok(asd) => {
-                                    let mut msg = PushMessage::new(10);
-                                    msg.add(asd);
-                                    let json = json!(msg);
-                                    let aa: Result<String> =
-                                        json_manage::deserialize(url.as_str(), &json);
+                    //let block_height = self.get_block_height();
+                    //println!("{:?}", block_height);
+                    let push_height = register.1.lock().unwrap().status.height;
 
-                                    if post(url, msg, config) {
-                                        tx.send(true).unwrap();
-                                    } else {
-                                        reg.status.down = true;
-                                        tx.send(false).unwrap();
-                                    }
-                                }
-                                _ => (),
-                            };
-                        }
-                    });
+                    if cur_block_height > push_height {
+                        let url = register.0.clone();
+                        let reg_data = register.1.clone();
+                        let tx = tx.clone();
+                        self.push_msg(cur_block_height, url, reg_data, tx);
+                    }
                 }
-
-                let map3 = register_list.clone();
+                let list = register_list.clone();
+                let queue = self.block_queue.clone();
                 thread::spawn(move || {
+                    let mut num = 0;
                     for rx in rx {
                         if rx {
-                            let j = json![map3];
-                            json_manage::write(j.to_string());
+                            json_manage::write(json![list].to_string());
+                            num += 1;
                         }
+                    }
+                    if num == list.len() {
+                        queue.write().remove(&cur_block_height);
                     }
                 });
             }
         }
         Ok(())
     }
+
+    pub fn push_msg(
+        &self,
+        cur_push_height: u64,
+        url: String,
+        reg_data: RegisterData,
+        tx: Sender<bool>,
+    ) {
+        let queue = self.block_queue.clone();
+        let config = self.config.clone();
+        thread::spawn(move || {
+            if let Ok(mut reg) = reg_data.lock() {
+                while reg.status.height < cur_push_height && !reg.status.down {
+                    if let Some(value) = queue.read().get(&reg.status.height) {
+                        let msg = Message::new(value.clone()).unwrap();
+                        let mut push_msg = PushMessage::new(reg.status.height);
+                        for prefix in &reg.prefix {
+                            if *prefix == msg.prefix {
+                                println!("{:?}", msg.value);
+                                push_msg.add(msg.clone());
+                            }
+                        }
+                        if post(url.clone(), push_msg, config.clone()) {
+                            tx.send(true).unwrap();
+                            reg.status.height += 1;
+                        } else {
+                            reg.status.down = true;
+                            tx.send(false).unwrap();
+                        }
+                    }
+                }
+            };
+        });
+    }
 }
 
-impl Config {
-    pub fn new(retry_count: u32, retry_interval: Duration) -> Self {
-        Self {
-            retry_count,
-            retry_interval,
+pub fn slice(msg: PushMessage) -> Vec<PushMessage> {
+    if msg.data.len() > 10 {
+        let mut v = Vec::new();
+        for i in 0..msg.data.len() / 10 {
+            let mut m = PushMessage::new(msg.height);
+            for j in 0..10 {
+                match msg.data.get(i * 10 + j) {
+                    Some(s) => m.add(s.clone()),
+                    None => break,
+                }
+            }
+            v.push(m);
         }
-    }
-}
-
-impl Message {
-    pub fn new(json: serde_json::Value) -> Result<Self> {
-        let msg: Message = serde_json::from_value(json)?;
-        Ok(msg)
-    }
-}
-
-impl PushMessage {
-    pub fn new(num: u64) -> Self {
-        Self {
-            height: num,
-            data: Default::default(),
-        }
-    }
-
-    pub fn add(&mut self, data: Message) {
-        self.data.push(data);
+        v
+    } else {
+        vec![msg]
     }
 }
 
 pub fn post(url: String, msg: PushMessage, config: Config) -> bool {
-    let json = json!(msg);
-    for i in 0..config.retry_count {
-        match reqwest::Client::new().post(url.as_str()).json(&json).send() {
-            Ok(_) => return true,
-            Err(_) => {
-                std::thread::sleep(config.retry_interval);
+    let slice_msg = slice(msg);
+    for msg in slice_msg {
+        let json = json!(msg);
+        let mut flag = true;
+        for i in 0..config.retry_count {
+            let res: Result<String> = json_manage::deserialize(url.as_str(), &json);
+            flag = match res {
+                Ok(ok) => {
+                    if ok == "OK" {
+                        break;
+                    } else {
+                        println!("retry: {:?}", i);
+                        std::thread::sleep(config.retry_interval);
+                        false
+                    }
+                }
+                Err(_) => {
+                    println!("retry: {:?}", i);
+                    std::thread::sleep(config.retry_interval);
+                    false
+                }
             }
         }
+        if !flag {
+            return false;
+        }
     }
-    false
+    true
 }

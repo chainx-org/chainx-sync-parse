@@ -28,7 +28,7 @@ impl RegisterInfo {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Status {
-    pub offset: u64,
+    pub height: u64,
     pub down: bool,
 }
 
@@ -46,22 +46,26 @@ pub struct RpcImpl {
 
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
-        match self.register_list.write().unwrap().entry(url) {
-            Vacant(reg) => {
-                reg.insert(Arc::new(StdMutex::new(RegisterInfo::new(
-                    vec![prefix],
-                    version,
-                ))));
-            }
-            Occupied(reg) => {
-                let mut reg = reg.into_mut().lock().unwrap();
-                if let None = reg.prefix.iter().find(|&x| x == &prefix) {
-                    reg.prefix.push(prefix);
-                } else {
-                    return Ok("null".to_string());
+        if let Ok(mut list) = self.register_list.write() {
+            match list.entry(url) {
+                Vacant(reg) => {
+                    reg.insert(Arc::new(StdMutex::new(RegisterInfo::new(
+                        vec![prefix],
+                        version,
+                    ))));
                 }
-            }
-        };
+                Occupied(reg) => {
+                    if let Ok(mut reg) = reg.into_mut().lock() {
+                        if let None = reg.prefix.iter().find(|&x| x == &prefix) {
+                            reg.prefix.push(prefix);
+                        } else {
+                            return Ok("null".to_string());
+                        }
+                    }
+                }
+            };
+        }
+
         json_manage::write(json!(self.register_list).to_string());
         Ok("OK".to_string())
     }
