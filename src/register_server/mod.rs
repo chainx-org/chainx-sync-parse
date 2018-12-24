@@ -58,8 +58,13 @@ impl Rpc for RpcImpl {
                     if let Ok(mut reg) = reg.into_mut().lock() {
                         if let None = reg.prefix.iter().find(|&x| x == &prefix) {
                             reg.prefix.push(prefix);
+                            reg.status.down = false;
                         } else {
-                            return Ok("null".to_string());
+                            if reg.status.down {
+                                reg.status.down = false;
+                            } else {
+                                return Ok("null".to_string());
+                            }
                         }
                     }
                 }

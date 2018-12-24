@@ -107,32 +107,41 @@ impl Client {
         //            }
         //        });
         loop {
-            if let Ok(register_list) = self.register_list.read() {
-                let (tx, rx) = mpsc::channel();
-                let cur_block_height = self.get_block_height();
-                for register in register_list.iter() {
-                    //let block_height = self.get_block_height();
-                    //println!("{:?}", block_height);
-                    let push_height = register.1.lock().unwrap().status.height;
-
-                    if cur_block_height > push_height {
-                        let url = register.0.clone();
-                        let reg_data = register.1.clone();
-                        let tx = tx.clone();
-                        self.push_msg(cur_block_height, url, reg_data, tx);
-                    }
+            let (tx, rx) = mpsc::channel();
+            let cur_block_height = self.get_block_height();
+            let mut is_push = false;
+            for register in self.register_list.read().unwrap().iter() {
+                let push_height = register.1.lock().unwrap().status.height;
+                let is_down = register.1.lock().unwrap().status.down;
+                println!("cur_block_height: {:?}, push_height: {:?}, is_down: {:?}", cur_block_height, push_height, is_down);
+                if cur_block_height > push_height && !is_down {
+                    is_push = true;
+                    self.push_msg(
+                        cur_block_height,
+                        register.0.clone(),
+                        register.1.clone(),
+                        tx.clone(),
+                    );
                 }
-                let list = register_list.clone();
+            }
+            if is_push {
+                let list = self.register_list.clone();
                 let queue = self.block_queue.clone();
                 thread::spawn(move || {
-                    let mut num = 0;
+                    let mut push_num = 0;
                     for rx in rx {
                         if rx {
                             json_manage::write(json![list].to_string());
-                            num += 1;
+                            push_num += 1;
                         }
                     }
-                    if num == list.len() {
+                    let mut reg_num = 0;
+                    for register in list.read().unwrap().values() {
+                        if !register.lock().unwrap().status.down {
+                            reg_num += 1;
+                        }
+                    }
+                    if push_num == reg_num {
                         queue.write().remove(&cur_block_height);
                     }
                 });
@@ -152,7 +161,7 @@ impl Client {
         let config = self.config.clone();
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
-                while reg.status.height < cur_push_height && !reg.status.down {
+                while reg.status.height < cur_push_height {
                     if let Some(value) = queue.read().get(&reg.status.height) {
                         let msg = Message::new(value.clone()).unwrap();
                         let mut push_msg = PushMessage::new(reg.status.height);
