@@ -25,16 +25,16 @@ fn main() -> Result<()> {
     let mut cur_block_height: u64 = u64::max_value();
 
     while let Ok(key) = client.recv_key() {
-        match client.query_value(key) {
-            Ok((height, value)) => {
+        match client.query(key) {
+            Ok((height, key, value)) => {
                 if height == cur_block_height {
                     continue;
                 }
                 cur_block_height = height;
                 // specific logic
                 println!(
-                    "cur_block_height: {:?}, value: {:?}",
-                    cur_block_height, value
+                    "cur_block_height: {:?}, key: {:?}, value: {:?}",
+                    cur_block_height, key, value
                 );
             }
             Err(err) => {

@@ -25,25 +25,25 @@ impl RedisClient {
         })
     }
 
-    pub fn query_value(&self, key: String) -> Result<(u64, Vec<u8>)> {
-        let (key, score): (String, u64) = self.get_with_block_height(key)?;
-        let value = self.get(format!("{}", key))?;
-        Ok((score, value))
+    pub fn query(&self, key: String) -> Result<(u64, String, Vec<u8>)> {
+        let (key, score): (String, u64) = self.query_key_and_score(key)?;
+        let value = self.query_value(format!("{}", key))?;
+        println!("score: {:?}, key: {:?}, value: {:?}", score, key, value);
+        Ok((score, key, value))
     }
 
     #[rustfmt::skip]
-    pub fn get_with_block_height(&self, key: String) -> Result<(String, u64)> {
+    pub fn query_key_and_score(&self, key: String) -> Result<(String, u64)> {
         let (key, score): (String, u64) = redis::cmd("ZREVRANGEBYSCORE")
             .arg(key)
             .arg("+inf").arg("-inf")
             .arg("WITHSCORES")
             .arg("LIMIT").arg(0).arg(1)
             .query(&self.conn)?;
-        println!("key = {:?}, block_height = {:?}", key, score);
         Ok((key, score))
     }
 
-    pub fn get(&self, key: String) -> Result<Vec<u8>> {
+    pub fn query_value(&self, key: String) -> Result<Vec<u8>> {
         let value: Vec<u8> = redis::cmd("GET").arg(key).query(&self.conn)?;
         Ok(value)
     }
