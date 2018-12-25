@@ -81,33 +81,33 @@ impl Client {
     }
 
     pub fn start(&self) {
-//        let msg = vec![
-//            json!({
-//            "msg_type": "value",
-//            "prefix": "test1",
-//            "key": "",
-//            "value": vec!["arg0","arg1"],
-//            }),
-//            json!({
-//            "msg_type": "map",
-//            "prefix": "test2",
-//            "key": "test3",
-//            "value": vec!["arg2","arg3"],
-//            })
-//        ];
-//
-//        let msg_a = msg.clone();
-//        let queue = self.block_queue.clone();
-//        thread::spawn(move || {
-//            let mut num = 0_u64;
-//            for i in 0..100 {
-//                println!("add");
-//                let m = msg_a.get(i % 2).unwrap();
-//                queue.write().insert(num, m.clone());
-//                num += 1;
-//                std::thread::sleep(Duration::new(1, 0));
-//            }
-//        });
+                let msg = vec![
+                    json!({
+                    "msg_type": "value",
+                    "prefix": "test1",
+                    "key": "",
+                    "value": vec!["arg0","arg1"],
+                    }),
+                    json!({
+                    "msg_type": "map",
+                    "prefix": "test2",
+                    "key": "test3",
+                    "value": vec!["arg2","arg3"],
+                    })
+                ];
+
+                let msg_a = msg.clone();
+                let queue = self.block_queue.clone();
+                thread::spawn(move || {
+                    let mut num = 0_u64;
+                    for i in 0..100 {
+                        println!("add");
+                        let m = msg_a.get(i % 2).unwrap();
+                        queue.write().insert(num, m.clone());
+                        num += 1;
+                        std::thread::sleep(Duration::new(1, 0));
+                    }
+                });
 
         loop {
             let (tx, rx) = mpsc::channel();
@@ -185,11 +185,9 @@ impl Client {
                                 tx.send(false).unwrap();
                                 break;
                             }
-                        }
-                        else {
+                        } else {
                             reg.status.height += 1;
                         }
-
                     }
                 }
             };

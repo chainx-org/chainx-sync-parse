@@ -46,32 +46,44 @@ pub struct RpcImpl {
 
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
-        println!("register");
+        println!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
+
         if let Ok(mut list) = self.register_list.write() {
             match list.entry(url) {
                 Vacant(reg) => {
-                    reg.insert(Arc::new(StdMutex::new(Info::new(
-                        vec![prefix],
-                        version,
-                    ))));
+                    reg.insert(Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
                 }
                 Occupied(reg) => {
                     if let Ok(mut reg) = reg.into_mut().lock() {
-                        if let None = reg.prefix.iter().find(|&x| x == &prefix) {
+                        println!(
+                            "version:{:?}, reg_version{:?}",
+                            version.parse::<f64>().unwrap(),
+                            reg.version.parse::<f64>().unwrap()
+                        );
+                        if version.parse::<f64>().unwrap() > reg.version.parse::<f64>().unwrap() {
+                            reg.version = version;
+                            reg.prefix.clear();
                             reg.prefix.push(prefix);
                             reg.status.down = false;
+                            reg.status.height = 0;
                         } else {
-                            if reg.status.down {
+                            if let None = reg.prefix.iter().find(|&x| x == &prefix) {
+                                reg.prefix.push(prefix);
                                 reg.status.down = false;
                             } else {
-                                return Ok("null".to_string());
+                                if reg.status.down {
+                                    reg.status.down = false;
+                                } else {
+                                    println!("register null");
+                                    return Ok("null".to_string());
+                                }
                             }
                         }
                     }
                 }
             };
         }
-
+        println!("register ok");
         json_manage::write(json!(self.register_list).to_string()).unwrap();
         Ok("OK".to_string())
     }

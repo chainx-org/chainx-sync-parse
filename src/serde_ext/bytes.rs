@@ -7,8 +7,8 @@ use serde::ser::{Serialize, Serializer};
 pub struct Bytes(Vec<u8>);
 
 impl From<Vec<u8>> for Bytes {
-    fn from(bytes: Vec<u8>) -> Self {
-        Self(bytes)
+    fn from(bytes: Vec<u8>) -> Bytes {
+        Bytes(bytes)
     }
 }
 
