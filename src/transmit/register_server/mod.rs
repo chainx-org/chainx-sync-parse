@@ -1,9 +1,9 @@
-use json_manage;
 use jsonrpc_core::Result;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use transmit::json_manage;
 use {Arc, HashMap, StdMutex, StdRwLock};
 
 pub type RegisterData = Arc<StdMutex<RegisterInfo>>;
@@ -71,7 +71,7 @@ impl Rpc for RpcImpl {
             };
         }
 
-        json_manage::write(json!(self.register_list).to_string());
+        json_manage::write(json!(self.register_list).to_string()).unwrap();
         Ok("OK".to_string())
     }
 }

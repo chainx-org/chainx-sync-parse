@@ -22,9 +22,7 @@ extern crate jsonrpc_macros;
 extern crate substrate_metadata;
 
 pub mod error;
-pub mod json_manage;
 pub mod parse;
-pub mod register_server;
 pub mod serde_ext;
 pub mod subscribe;
 pub mod transmit;

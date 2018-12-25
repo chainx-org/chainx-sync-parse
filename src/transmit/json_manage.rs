@@ -1,10 +1,12 @@
-use error::Result;
-use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::Path;
+
+use serde::de::DeserializeOwned;
+
+use error::Result;
 
 pub fn write(json: String) -> Result<()> {
     let p = Path::new("./target/reg.json");

@@ -1,11 +1,15 @@
+mod json_manage;
 mod push;
+mod register_server;
 
-use error::Result;
-use jsonrpc_http_server::Server;
-use register_server::{start_rpc, RegisterData, RegisterList};
 use std::thread;
 use std::time::Duration;
-use {json_manage, BlockQueue, HashMap};
+
+use jsonrpc_http_server::Server;
+
+use error::Result;
+use transmit::register_server::{start_rpc, RegisterData, RegisterList};
+use {BlockQueue, HashMap};
 
 #[derive(Debug)]
 pub struct Client {
@@ -53,9 +57,9 @@ impl Client {
             let push = push::Client::new(
                 register_server.list,
                 block_queue,
-                push::Config::new(10, Duration::new(10, 0)),
+                push::Config::new(3, Duration::new(3, 0)),
             );
-            push.start()?;
+            push.start();
 
             register_server.server.wait();
             Ok(())

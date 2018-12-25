@@ -1,15 +1,18 @@
-use error::Result;
-use register_server::{RegisterData, RegisterList};
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::thread;
 use std::time::Duration;
-use {json_manage, BlockQueue};
+
+use error::Result;
+use transmit::json_manage;
+use transmit::register_server::{RegisterData, RegisterList};
+use BlockQueue;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     msg_type: String,
     prefix: String,
+    key: String,
     value: Vec<String>,
 }
 
@@ -77,35 +80,35 @@ impl Client {
         }
     }
 
-    pub fn start(&self) -> Result<()> {
-        //        let msg = vec![
-        //            r#"{
-        //                    "msg_type": "value",
-        //                    "key": "test1",
-        //                    "value": ["arg0","arg1"]
-        //                }"#,
-        //            r#"{
-        //                    "msg_type": "map",
-        //                    "prefix": "p",
-        //                    "key": "test2",
-        //                    "value": ["arg2","arg3"]
-        //                }"#,
-        //        ];
-        //        //let mut block_num = 0_u64;
-        //        let msg_a = msg.clone();
-        //        let queue = self.block_queue.clone();
-        //        thread::spawn(move || {
-        //            let mut num = 0_u64;
-        //            for i in 0..100 {
-        //                //let aaa = num.c
-        //                println!("add");
-        //                let m = msg_a.get(i % 2).unwrap();
-        //                let j = json!(m);
-        //                queue.write().insert(num, j);
-        //                num += 1;
-        //                std::thread::sleep(Duration::new(1, 0));
-        //            }
-        //        });
+    pub fn start(&self) {
+        let msg = vec![
+            json!({
+            "msg_type": "value",
+            "prefix": "test1",
+            "key": "",
+            "value": vec!["arg0","arg1"],
+            }),
+            json!({
+            "msg_type": "map",
+            "prefix": "test2",
+            "key": "test3",
+            "value": vec!["arg2","arg3"],
+            })
+        ];
+
+        let msg_a = msg.clone();
+        let queue = self.block_queue.clone();
+        thread::spawn(move || {
+            let mut num = 0_u64;
+            for i in 0..100 {
+                println!("add");
+                let m = msg_a.get(i % 2).unwrap();
+                queue.write().insert(num, m.clone());
+                num += 1;
+                std::thread::sleep(Duration::new(1, 0));
+            }
+        });
+
         loop {
             let (tx, rx) = mpsc::channel();
             let cur_block_height = self.get_block_height();
@@ -113,8 +116,8 @@ impl Client {
             for register in self.register_list.read().unwrap().iter() {
                 let push_height = register.1.lock().unwrap().status.height;
                 let is_down = register.1.lock().unwrap().status.down;
-                println!("cur_block_height: {:?}, push_height: {:?}, is_down: {:?}", cur_block_height, push_height, is_down);
                 if cur_block_height > push_height && !is_down {
+                    println!("{:?}, {:?}", cur_block_height, is_down);
                     is_push = true;
                     self.push_msg(
                         cur_block_height,
@@ -131,9 +134,9 @@ impl Client {
                     let mut push_num = 0;
                     for rx in rx {
                         if rx {
-                            json_manage::write(json![list].to_string());
                             push_num += 1;
                         }
+                        json_manage::write(json![list].to_string()).unwrap();
                     }
                     let mut reg_num = 0;
                     for register in list.read().unwrap().values() {
@@ -147,7 +150,6 @@ impl Client {
                 });
             }
         }
-        Ok(())
     }
 
     pub fn push_msg(
@@ -161,23 +163,33 @@ impl Client {
         let config = self.config.clone();
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
+                println!("cur_push_height: {:?}", cur_push_height);
                 while reg.status.height < cur_push_height {
                     if let Some(value) = queue.read().get(&reg.status.height) {
                         let msg = Message::new(value.clone()).unwrap();
                         let mut push_msg = PushMessage::new(reg.status.height);
                         for prefix in &reg.prefix {
+                            println!("{:?}", msg.prefix);
                             if *prefix == msg.prefix {
                                 println!("{:?}", msg.value);
                                 push_msg.add(msg.clone());
+                                break;
                             }
                         }
-                        if post(url.clone(), push_msg, config.clone()) {
-                            tx.send(true).unwrap();
-                            reg.status.height += 1;
-                        } else {
-                            reg.status.down = true;
-                            tx.send(false).unwrap();
+                        if push_msg.data.len() > 0 {
+                            if post(url.clone(), push_msg, config.clone()) {
+                                tx.send(true).unwrap();
+                                reg.status.height += 1;
+                            } else {
+                                reg.status.down = true;
+                                tx.send(false).unwrap();
+                                break;
+                            }
                         }
+                        else {
+                            reg.status.height += 1;
+                        }
+
                     }
                 }
             };
