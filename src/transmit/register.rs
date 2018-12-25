@@ -6,17 +6,17 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use transmit::json_manage;
 use {Arc, HashMap, StdMutex, StdRwLock};
 
-pub type RegisterData = Arc<StdMutex<RegisterInfo>>;
-pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterData>>>;
+pub type RegisterInfo = Arc<StdMutex<Info>>;
+pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterInfo>>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisterInfo {
+pub struct Info {
     pub prefix: Vec<String>,
     pub version: String,
     pub status: Status,
 }
 
-impl RegisterInfo {
+impl Info {
     pub fn new(prefix: Vec<String>, version: String) -> Self {
         Self {
             prefix,
@@ -46,10 +46,11 @@ pub struct RpcImpl {
 
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
+        println!("register");
         if let Ok(mut list) = self.register_list.write() {
             match list.entry(url) {
                 Vacant(reg) => {
-                    reg.insert(Arc::new(StdMutex::new(RegisterInfo::new(
+                    reg.insert(Arc::new(StdMutex::new(Info::new(
                         vec![prefix],
                         version,
                     ))));

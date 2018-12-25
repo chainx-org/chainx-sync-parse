@@ -1,6 +1,6 @@
 mod json_manage;
 mod push;
-mod register_server;
+mod register;
 
 use std::thread;
 use std::time::Duration;
@@ -8,7 +8,7 @@ use std::time::Duration;
 use jsonrpc_http_server::Server;
 
 use error::Result;
-use transmit::register_server::{start_rpc, RegisterData, RegisterList};
+use transmit::register::{start_rpc, RegisterInfo, RegisterList};
 use {BlockQueue, HashMap};
 
 #[derive(Debug)]
@@ -30,7 +30,7 @@ impl RegisterServer {
 
     pub fn load(&self) -> Result<()> {
         if let Ok(Some(string)) = json_manage::read() {
-            let map: HashMap<String, RegisterData> = serde_json::from_str(string.as_str())?;
+            let map: HashMap<String, RegisterInfo> = serde_json::from_str(string.as_str())?;
             for iter in map {
                 self.list.write().unwrap().insert(iter.0, iter.1);
             }
