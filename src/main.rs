@@ -17,6 +17,8 @@ fn main() -> Result<()> {
     //        println!("Modules Metadata: {:#?}", modules);
     //        parse_metadata(runtime_metadata)?;
 
+    test_parse_match();
+
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
@@ -25,16 +27,16 @@ fn main() -> Result<()> {
     let mut cur_block_height: u64 = u64::max_value();
 
     while let Ok(key) = client.recv_key() {
-        match client.query(key) {
-            Ok((height, key, value)) => {
-                if height == cur_block_height {
-                    continue;
-                }
-                cur_block_height = height;
+        match client.query(&key) {
+            Ok((height, value)) => {
+                //                if height == cur_block_height {
+                //                    continue;
+                //                }
+                //                cur_block_height = height;
                 // specific logic
                 println!(
-                    "cur_block_height: {:?}, key: {:?}, value: {:?}",
-                    cur_block_height, key, value
+                    "cur_block_height: {:?}, prefix+key: {:?}, value: {:?}",
+                    height, key, value
                 );
             }
             Err(err) => {

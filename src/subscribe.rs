@@ -25,15 +25,14 @@ impl RedisClient {
         })
     }
 
-    pub fn query(&self, key: String) -> Result<(u64, String, Vec<u8>)> {
+    pub fn query(&self, key: &str) -> Result<(u64, Vec<u8>)> {
         let (key, score): (String, u64) = self.query_key_and_score(key)?;
         let value = self.query_value(format!("{}", key))?;
-        println!("score: {:?}, key: {:?}, value: {:?}", score, key, value);
-        Ok((score, key, value))
+        Ok((score, value))
     }
 
     #[rustfmt::skip]
-    pub fn query_key_and_score(&self, key: String) -> Result<(String, u64)> {
+    pub fn query_key_and_score(&self, key: &str) -> Result<(String, u64)> {
         let (key, score): (String, u64) = redis::cmd("ZREVRANGEBYSCORE")
             .arg(key)
             .arg("+inf").arg("-inf")
