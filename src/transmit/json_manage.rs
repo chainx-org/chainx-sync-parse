@@ -34,8 +34,6 @@ pub fn read() -> Result<Option<String>> {
 
 #[derive(Deserialize, Debug)]
 struct JsonRpcResponse<T> {
-    id: u64,
-    jsonrpc: String,
     result: T,
 }
 

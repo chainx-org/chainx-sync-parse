@@ -46,8 +46,8 @@ pub struct RpcImpl {
 
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
+        let prefix: String = serde_json::from_str(&prefix).unwrap();
         println!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
-
         if let Ok(mut list) = self.register_list.write() {
             match list.entry(url) {
                 Vacant(reg) => {
