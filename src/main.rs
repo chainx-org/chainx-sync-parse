@@ -17,8 +17,6 @@ fn main() -> Result<()> {
     //        println!("Modules Metadata: {:#?}", modules);
     //        parse_metadata(runtime_metadata)?;
 
-    test_parse_match();
-
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;

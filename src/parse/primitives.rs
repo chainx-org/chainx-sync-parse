@@ -109,3 +109,259 @@ impl CandidateReceipt {
         }
     }
 }
+
+// ChainX ---------------------------------------------------------------------
+
+/// Cert immutable properties
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct CertImmutableProps<BlockNumber: Default> {
+    pub issued_at: BlockNumber,
+    pub frozen_duration: u32,
+}
+
+/// Intention Immutable properties
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct IntentionImmutableProps {
+    pub name: Vec<u8>,
+    pub activator: Vec<u8>,
+    pub initial_shares: u32,
+}
+
+/// Intention mutable properties
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct IntentionProps {
+    pub url: Vec<u8>,
+    pub is_active: bool,
+}
+
+pub type Token = Vec<u8>;
+pub type Desc = Vec<u8>;
+pub type Precision = u16;
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum Chain {
+    PCX,
+    BTC,
+    ETH,
+}
+
+impl Default for Chain {
+    fn default() -> Self {
+        Chain::PCX
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct Asset {
+    token: Token,
+    chain: Chain,
+    precision: Precision,
+    desc: Desc,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum ReservedType {
+    Others,
+    Staking,
+    AssetsWithdrawal,
+    DexSpot,
+    DexFuture,
+}
+
+impl Default for ReservedType {
+    fn default() -> Self {
+        ReservedType::Others
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum DepositState {
+    Invalid,
+    Success,
+    Failed,
+}
+
+impl Default for DepositState {
+    fn default() -> Self {
+        DepositState::Invalid
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum WithdrawalState {
+    Invalid,
+    Locking,
+    Success,
+    Failed,
+}
+
+impl Default for WithdrawalState {
+    fn default() -> Self {
+        WithdrawalState::Invalid
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum Action {
+    Deposit(DepositState),
+    Withdrawal(WithdrawalState),
+}
+
+impl Default for Action {
+    /// default not use for Action enum, it's just for the trait
+    fn default() -> Self {
+        Action::Deposit(Default::default())
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct Record<Token, Balance, BlockNumber>
+where
+    Token: Clone,
+    Balance: Copy,
+    BlockNumber: Copy,
+{
+    action: Action,
+    token: Token,
+    balance: Balance,
+    init_blocknum: BlockNumber,
+    txid: Vec<u8>,
+    addr: Vec<u8>,
+    ext: Vec<u8>,
+}
+
+pub type Amount = u128;
+pub type Price = u128;
+pub type BidId = u128;
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct Bid<Amount, Price>
+where
+    Amount: Copy,
+    Price: Copy,
+{
+    nodeid: u128,
+    price: Price,
+    sum: Amount,
+    list: Vec<BidId>,
+}
+
+pub type BidT = Bid<Amount, Price>;
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct BidDetail<Pair, AccountId, Amount, Price, BlockNumber>
+where
+    Pair: Clone,
+    AccountId: Clone,
+    Amount: Copy,
+    Price: Copy,
+    BlockNumber: Copy,
+{
+    id: BidId,
+    pair: Pair,
+    order_type: OrderType,
+    user: AccountId,
+    order_index: u64,
+    price: Price,
+    amount: Amount,
+    time: BlockNumber,
+}
+
+pub type BidDetailT = BidDetail<OrderPair, AccountId, Amount, Price, BlockNumber>;
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum OrderType {
+    Buy,
+    Sell,
+}
+
+impl Default for OrderType {
+    fn default() -> Self {
+        OrderType::Buy
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum CommandType {
+    Match,
+    Cancel,
+}
+
+impl Default for CommandType {
+    fn default() -> Self {
+        CommandType::Match
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct OrderPair {
+    pub first: Token,
+    pub second: Token,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct OrderPairDetail {
+    pub precision: u32, //价格精度
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum OrderStatus {
+    FillNo,
+    FillPart,
+    FillAll,
+    FillPartAndCancel,
+    Cancel,
+}
+
+impl Default for OrderStatus {
+    fn default() -> Self {
+        OrderStatus::FillNo
+    }
+}
+
+pub type Channel = Vec<u8>;
+
+/// 用户的挂单记录 包含了成交历史的index
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
+//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct Order<Pair, AccountId, Amount, Price, BlockNumber>
+where
+    Pair: Clone,
+    AccountId: Clone,
+    Amount: Copy,
+    Price: Copy,
+    BlockNumber: Copy,
+{
+    pair: Pair,
+    index: u64,
+    class: OrderType,
+    user: AccountId,
+    amount: Amount,
+    channel: Channel,
+    hasfill_amount: Amount,
+    price: Price,
+    create_time: BlockNumber,
+    lastupdate_time: BlockNumber,
+    status: OrderStatus,
+    fill_index: Vec<u128>, // 填充历史记录的索引
+    reserve_last: Amount,  //未被交易 未被回退
+}
+
+pub type OrderT = Order<OrderPair, AccountId, Amount, Price, BlockNumber>;
