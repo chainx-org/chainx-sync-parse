@@ -39,6 +39,7 @@ impl RedisClient {
             .arg("WITHSCORES")
             .arg("LIMIT").arg(0).arg(1)
             .query(&self.conn)?;
+//        println!("key: {:?}, score: {:?}", key, score);
         Ok((key, score))
     }
 

@@ -1,8 +1,12 @@
 #[macro_use]
 extern crate log;
-extern crate chainx_sub_parse;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate serde_json;
 
-use std::u64;
+extern crate chainx_sub_parse;
 
 use chainx_sub_parse::*;
 
@@ -18,6 +22,7 @@ fn main() -> Result<()> {
     //        parse_metadata(runtime_metadata)?;
 
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
+    println!("Block queue initial len: {}", block_queue.read().len());
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
@@ -27,15 +32,25 @@ fn main() -> Result<()> {
     while let Ok(key) = client.recv_key() {
         match client.query(&key) {
             Ok((height, value)) => {
-                //                if height == cur_block_height {
-                //                    continue;
-                //                }
-                //                cur_block_height = height;
-                // specific logic
+                if height == cur_block_height {
+                    continue;
+                }
+                cur_block_height = height;
+
                 println!(
                     "cur_block_height: {:?}, prefix+key: {:?}, value: {:?}",
                     height, key, value
                 );
+                let block_value = RuntimeStorage::parse(&key, value)?;
+                if let Some(_) = block_queue.write().insert(cur_block_height, block_value) {
+                    println!("Insert block failed");
+                }
+                let queue_len = block_queue.read().len();
+                println!("queue len: {}", queue_len);
+                if queue_len == 10 {
+                    let values: Vec<serde_json::Value> = block_queue.read().values().cloned().collect();
+                    println!("queue: {:?}", values);
+                }
             }
             Err(err) => {
                 println!("{}", err);
