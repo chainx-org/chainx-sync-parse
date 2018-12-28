@@ -24,6 +24,28 @@ impl Info {
             status: Status::default(),
         }
     }
+
+    pub fn new_version(&mut self, version: String) {
+        self.prefix.clear();
+        self.status = Status::default();
+        self.version = version;
+        self.set_down(false);
+    }
+
+    pub fn add_prefix(&mut self, prefix: String) {
+        self.prefix.push(prefix);
+        self.set_down(false);
+    }
+
+    pub fn add_height(&mut self) {
+        self.status.height += 1;
+    }
+
+    pub fn set_down(&mut self, down: bool) {
+        if self.status.down != down {
+            self.status.down = down;
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -61,18 +83,14 @@ impl Rpc for RpcImpl {
                             reg.version.parse::<f64>().unwrap()
                         );
                         if version.parse::<f64>().unwrap() > reg.version.parse::<f64>().unwrap() {
-                            reg.version = version;
-                            reg.prefix.clear();
-                            reg.prefix.push(prefix);
-                            reg.status.down = false;
-                            reg.status.height = 0;
+                            reg.new_version(version);
+                            reg.add_prefix(prefix);
                         } else {
                             if let None = reg.prefix.iter().find(|&x| x == &prefix) {
-                                reg.prefix.push(prefix);
-                                reg.status.down = false;
+                                reg.add_prefix(prefix);
                             } else {
                                 if reg.status.down {
-                                    reg.status.down = false;
+                                    reg.set_down(false);
                                 } else {
                                     println!("register null");
                                     return Ok("null".to_string());

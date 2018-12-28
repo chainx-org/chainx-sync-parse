@@ -12,36 +12,21 @@ use transmit::register::{RegisterInfo, RegisterList};
 use {Arc, BlockQueue, RwLock};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Message {
-    msg_type: String,
-    prefix: String,
-    key: String,
-    value: Vec<String>,
-}
-
-impl Message {
-    pub fn new(json: serde_json::Value) -> Result<Self> {
-        let msg: Message = serde_json::from_value(json)?;
-        Ok(msg)
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PushMessage {
     height: u64,
-    data: Vec<Message>,
+    date: Vec<serde_json::Value>,
 }
 
 impl PushMessage {
     pub fn new(num: u64) -> Self {
         Self {
             height: num,
-            data: Default::default(),
+            date: Default::default(),
         }
     }
 
-    pub fn add(&mut self, data: Message) {
-        self.data.push(data);
+    pub fn add(&mut self, date: serde_json::Value) {
+        self.date.push(date);
     }
 }
 
@@ -112,26 +97,21 @@ impl Client {
             }
         });
 
-        let mut flag_map = Arc::new(RwLock::new(HashMap::<String, bool>::default()));
+        let push_flag = Arc::new(RwLock::new(HashMap::<String, bool>::default()));
         loop {
             if self.block_queue.read().len() > 0 {
                 let cur_block_height = self.get_block_height();
                 let (tx, rx) = mpsc::channel();
                 let mut is_push = false;
-                for register in self.register_list.read().unwrap().iter() {
-                    let push_height = register.1.lock().unwrap().status.height;
-                    let is_down = register.1.lock().unwrap().status.down;
+                for (url, info) in self.register_list.read().unwrap().iter() {
+                    let push_height = info.lock().unwrap().status.height;
+                    let is_down = info.lock().unwrap().status.down;
                     if cur_block_height > push_height && !is_down {
-                        if let Vacant(flag) = flag_map.write().entry(register.0.clone()) {
+                        if let Vacant(flag) = push_flag.write().entry(url.clone()) {
                             println!("{:?}, {:?}, {:?}", cur_block_height, push_height, is_down);
                             flag.insert(true);
                             is_push = true;
-                            self.push_msg(
-                                cur_block_height,
-                                register.0.clone(),
-                                register.1.clone(),
-                                tx.clone(),
-                            );
+                            self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
                         }
                     }
                 }
@@ -140,8 +120,7 @@ impl Client {
                     println!("push");
                     let list = self.register_list.clone();
                     let queue = self.block_queue.clone();
-                    let block_height = cur_block_height;
-                    let mut flag = flag_map.clone();
+                    let flag = push_flag.clone();
                     thread::spawn(move || {
                         for rx in rx {
                             let url = rx;
@@ -159,20 +138,18 @@ impl Client {
                                 }
                             }
                         }
-                        if min_block_height == u64::max_value() {
-                            min_block_height = 0;
-                        }
-
-                        let h = queue.read().keys().next().unwrap().clone();
-                        println!(
-                            "height: {:?}, min_block_height: {:?}, len: {:?}",
-                            h,
-                            min_block_height,
-                            queue.read().len()
-                        );
-                        for i in h..min_block_height {
-                            if let Occupied(msg) = queue.write().entry(i) {
-                                msg.remove();
+                        if min_block_height != u64::max_value() {
+                            let h = queue.read().keys().next().unwrap().clone();
+                            println!(
+                                "height: {:?}, min_block_height: {:?}, len: {:?}",
+                                h,
+                                min_block_height,
+                                queue.read().len()
+                            );
+                            for i in h..min_block_height {
+                                if let Occupied(msg) = queue.write().entry(i) {
+                                    msg.remove();
+                                }
                             }
                         }
                     });
@@ -195,24 +172,25 @@ impl Client {
                 println!("cur_push_height: {:?}", cur_push_height);
                 while reg.status.height < cur_push_height {
                     if let Some(value) = queue.read().get(&reg.status.height) {
-                        let msg = Message::new(value.clone()).unwrap();
+                        let msg_prefix: String =
+                            serde_json::from_str(&value["prefix"].to_string()).unwrap();
                         let mut push_msg = PushMessage::new(reg.status.height);
                         for prefix in &reg.prefix {
-                            if *prefix == msg.prefix {
-                                println!("{:?},{:?},{:?}", *prefix, msg.prefix, msg.value);
-                                push_msg.add(msg.clone());
+                            if *prefix == msg_prefix {
+                                println!("{:?},{:?}", *prefix, msg_prefix);
+                                push_msg.add(value.clone());
                             }
                         }
-                        if push_msg.data.len() > 0 {
+                        if push_msg.date.len() > 0 {
                             println!("post");
                             if post(url.clone(), push_msg, config.clone()) {
-                                reg.status.height += 1;
+                                reg.add_height();
                             } else {
-                                reg.status.down = true;
+                                reg.set_down(true);
                                 break;
                             }
                         } else {
-                            reg.status.height += 1;
+                            reg.add_height();
                         }
                     } else {
                         println!("can not find msg, height: {:?}", reg.status.height);
@@ -225,13 +203,13 @@ impl Client {
     }
 }
 
-pub fn slice(msg: PushMessage) -> Vec<PushMessage> {
-    if msg.data.len() > 10 {
+pub fn slice(msg: PushMessage, slice_num: usize) -> Vec<PushMessage> {
+    if msg.date.len() > slice_num {
         let mut v = Vec::new();
-        for i in 0..msg.data.len() / 10 {
+        for i in 0..msg.date.len() / slice_num {
             let mut m = PushMessage::new(msg.height);
-            for j in 0..10 {
-                match msg.data.get(i * 10 + j) {
+            for j in 0..slice_num {
+                match msg.date.get(i * slice_num + j) {
                     Some(s) => m.add(s.clone()),
                     None => break,
                 }
@@ -245,8 +223,9 @@ pub fn slice(msg: PushMessage) -> Vec<PushMessage> {
 }
 
 pub fn post(url: String, msg: PushMessage, config: Config) -> bool {
-    let slice_msg = slice(msg);
+    let slice_msg = slice(msg, 10);
     for msg in slice_msg {
+        println!("msg:{:?}", msg);
         let json = json!(msg);
         let mut flag = true;
         for i in 0..config.retry_count {

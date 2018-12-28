@@ -33,7 +33,7 @@ pub fn read() -> Result<Option<String>> {
 }
 
 #[derive(Deserialize, Debug)]
-struct JsonRpcResponse<T> {
+struct JsonResponse<T> {
     result: T,
 }
 
@@ -46,6 +46,6 @@ pub fn post(url: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
 }
 
 pub fn deserialize<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
-    let resp: JsonRpcResponse<T> = serde_json::from_value(post(url, &body)?)?;
+    let resp: JsonResponse<T> = serde_json::from_value(post(url, &body)?)?;
     Ok(resp.result)
 }
