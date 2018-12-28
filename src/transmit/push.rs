@@ -11,7 +11,7 @@ use transmit::json_manage;
 use transmit::register::{RegisterInfo, RegisterList};
 use {Arc, BlockQueue, RwLock};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PushMessage {
     height: u64,
     date: Vec<serde_json::Value>,
