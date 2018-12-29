@@ -28,14 +28,16 @@ impl RegisterServer {
         Self { server, list }
     }
 
-    pub fn load(&self) -> Result<()> {
+    pub fn load(&self) {
         if let Ok(Some(string)) = json_manage::read() {
-            let map: HashMap<String, RegisterInfo> = serde_json::from_str(string.as_str())?;
-            for iter in map {
-                self.list.write().unwrap().insert(iter.0, iter.1);
+            let res: serde_json::Result<HashMap<String, RegisterInfo>> =
+                serde_json::from_str(string.as_str());
+            if let Ok(map) = res {
+                for (k, v) in map {
+                    self.list.write().unwrap().insert(k, v);
+                }
             }
         }
-        Ok(())
     }
 }
 
@@ -52,7 +54,7 @@ impl Client {
         let block_queue = self.block_queue.clone();
         let thread = thread::spawn(move || {
             let register_server = RegisterServer::new(url);
-            register_server.load()?;
+            register_server.load();
 
             let push = push::Client::new(
                 register_server.list,
