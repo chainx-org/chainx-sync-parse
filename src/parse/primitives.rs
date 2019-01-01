@@ -56,7 +56,7 @@ pub type Timestamp = u64;
 /// for an eventual total of 10^27 units (27 significant decimal figures).
 /// We round denomination to 10^12 (12 sdf), and leave the other redundancy at the upper end so
 /// that 32 bits may be multiplied with a balance in 128 bits without worrying about overflow.
-pub type Balance = u64;
+pub type Balance = u128;
 
 /// "generic" block ID for the future-proof block type.
 // TODO: parameterize blockid only as necessary.

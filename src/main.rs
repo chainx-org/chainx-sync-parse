@@ -47,7 +47,7 @@ fn main() -> Result<()> {
                 }
                 let queue_len = block_queue.read().len();
                 println!("queue len: {}", queue_len);
-                if queue_len == 10 {
+                if queue_len % 10 == 0 {
                     let values: Vec<serde_json::Value> = block_queue.read().values().cloned().collect();
                     println!("queue: {:?}", values);
                 }
