@@ -37,4 +37,3 @@ pub use self::error::{Error, Result};
 pub use self::parse::{get_runtime_metadata, parse_metadata};
 pub use self::serde_ext::Bytes;
 pub use self::subscribe::RedisClient;
-pub use self::transmit::Client;

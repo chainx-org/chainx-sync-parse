@@ -12,12 +12,12 @@ use transmit::register::{RegisterInfo, RegisterList};
 use {Arc, BlockQueue, RwLock};
 
 #[derive(Debug, Clone, Serialize)]
-pub struct PushMessage {
+pub struct Message {
     height: u64,
     date: Vec<serde_json::Value>,
 }
 
-impl PushMessage {
+impl Message {
     pub fn new(num: u64) -> Self {
         Self {
             height: num,
@@ -72,44 +72,47 @@ impl Client {
         let push_flag = Arc::new(RwLock::new(HashMap::<String, bool>::default()));
         loop {
             if self.block_queue.read().len() > 0 {
-                let cur_block_height = self.get_block_height();
-                let (tx, rx) = mpsc::channel();
-                let mut is_push = false;
-                for (url, info) in self.register_list.read().unwrap().iter() {
-                    let push_height = info.lock().unwrap().status.height;
-                    let is_down = info.lock().unwrap().status.down;
-                    if cur_block_height > push_height && !is_down {
-                        if let Vacant(flag) = push_flag.write().entry(url.clone()) {
-                            println!("{:?}, {:?}, {:?}", cur_block_height, push_height, is_down);
-                            flag.insert(true);
-                            is_push = true;
-                            self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
-                        }
+                continue;
+            };
+            //if self.block_queue.read().len() > 0 {
+            let cur_block_height = self.get_block_height();
+            let (tx, rx) = mpsc::channel();
+            let mut is_push = false;
+            for (url, info) in self.register_list.read().unwrap().iter() {
+                let push_height = info.lock().unwrap().status.height;
+                let is_down = info.lock().unwrap().status.down;
+                if cur_block_height > push_height && !is_down {
+                    if let Vacant(flag) = push_flag.write().entry(url.clone()) {
+                        println!("{:?}, {:?}, {:?}", cur_block_height, push_height, is_down);
+                        flag.insert(true);
+                        is_push = true;
+                        self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
                     }
                 }
+            }
 
-                if is_push {
-                    println!("push");
-                    let list = self.register_list.clone();
-                    let queue = self.block_queue.clone();
-                    let flag = push_flag.clone();
-                    thread::spawn(move || {
-                        for rx in rx {
-                            let url = rx;
-                            println!("{:?}", url);
-                            flag.write().remove(&url);
-                            json_manage::write(json![list].to_string()).unwrap();
-                        }
+            if is_push {
+                println!("push");
+                let list = self.register_list.clone();
+                let queue = self.block_queue.clone();
+                let flag = push_flag.clone();
+                thread::spawn(move || {
+                    for rx in rx {
+                        let url = rx;
+                        println!("{:?}", url);
+                        flag.write().remove(&url);
+                        json_manage::write(json![list].to_string()).unwrap();
+                    }
 
-                        let mut min_block_height = u64::max_value();
-                        for register in list.read().unwrap().values() {
-                            let reg = register.lock().unwrap();
-                            if !reg.status.down {
-                                if reg.status.height < min_block_height {
-                                    min_block_height = reg.status.height;
-                                }
+                    let mut min_block_height = u64::max_value();
+                    for register in list.read().unwrap().values() {
+                        let reg = register.lock().unwrap();
+                        if !reg.status.down {
+                            if reg.status.height < min_block_height {
+                                min_block_height = reg.status.height;
                             }
                         }
+
                         if min_block_height != u64::max_value() {
                             let h = queue.read().keys().next().unwrap().clone();
                             println!(
@@ -125,8 +128,8 @@ impl Client {
                                 }
                             }
                         }
-                    });
-                }
+                    }
+                });
             }
         }
     }
@@ -144,31 +147,16 @@ impl Client {
             if let Ok(mut reg) = reg_data.lock() {
                 println!("cur_push_height: {:?}", cur_push_height);
                 while reg.status.height < cur_push_height {
-                    if let Some(value) = queue.read().get(&reg.status.height) {
-                        let msg_prefix: String =
-                            serde_json::from_str(&value["prefix"].to_string()).unwrap();
-                        let mut push_msg = PushMessage::new(reg.status.height);
-                        for prefix in &reg.prefix {
-                            if *prefix == msg_prefix {
-                                println!("{:?},{:?}", *prefix, msg_prefix);
-                                push_msg.add(value.clone());
-                            }
-                        }
-                        if push_msg.date.len() > 0 {
-                            println!("post");
-                            if post(url.clone(), push_msg, config.clone()) {
-                                reg.add_height();
-                            } else {
-                                reg.set_down(true);
-                                break;
-                            }
-                        } else {
+                    if let Some(msg) = is_post(queue.clone(), reg.status.height, reg.prefix.clone())
+                    {
+                        if post(url.clone(), msg, config.clone()) {
                             reg.add_height();
+                        } else {
+                            reg.set_down(true);
+                            break;
                         }
                     } else {
-                        println!("can not find msg, height: {:?}", reg.status.height);
-                        std::thread::sleep(Duration::new(2,0));
-                        break;
+                        reg.add_height();
                     }
                 }
                 tx.send(url.clone()).unwrap();
@@ -177,11 +165,31 @@ impl Client {
     }
 }
 
-pub fn slice(msg: PushMessage, slice_num: usize) -> Vec<PushMessage> {
+fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
+    if let Some(value) = queue.read().get(&height) {
+        let msg_prefix: String = serde_json::from_str(&value["prefix"].to_string()).unwrap();
+        let mut push_msg = Message::new(height);
+        for prefix in prefixs {
+            if prefix == msg_prefix {
+                println!("{:?},{:?}", prefix, msg_prefix);
+                push_msg.add(value.clone());
+            }
+        }
+        if push_msg.date.len() > 0 {
+            Some(push_msg)
+        } else {
+            None
+        }
+    } else {
+        panic!("can not find msg, height: {:?}", height);
+    }
+}
+
+fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
     if msg.date.len() > slice_num {
         let mut v = Vec::new();
         for i in 0..msg.date.len() / slice_num {
-            let mut m = PushMessage::new(msg.height);
+            let mut m = Message::new(msg.height);
             for j in 0..slice_num {
                 match msg.date.get(i * slice_num + j) {
                     Some(s) => m.add(s.clone()),
@@ -196,7 +204,7 @@ pub fn slice(msg: PushMessage, slice_num: usize) -> Vec<PushMessage> {
     }
 }
 
-pub fn post(url: String, msg: PushMessage, config: Config) -> bool {
+fn post(url: String, msg: Message, config: Config) -> bool {
     let slice_msg = slice(msg, 10);
     for msg in slice_msg {
         println!("msg:{:?}", msg);

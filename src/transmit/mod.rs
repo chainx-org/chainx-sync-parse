@@ -7,14 +7,23 @@ use std::time::Duration;
 
 use jsonrpc_http_server::Server;
 
-use error::Result;
 use transmit::register::{start_rpc, RegisterInfo, RegisterList};
 use {BlockQueue, HashMap};
 
-#[derive(Debug)]
-pub struct Client {
-    block_queue: BlockQueue,
-    server_url: String,
+pub fn start(server_url: String, block_queue: BlockQueue) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let register_server = RegisterServer::new(server_url);
+        register_server.load();
+
+        let push = push::Client::new(
+            register_server.list,
+            block_queue,
+            push::Config::new(3, Duration::new(3, 0)),
+        );
+        push.start();
+
+        register_server.server.wait();
+    })
 }
 
 pub struct RegisterServer {
@@ -38,34 +47,5 @@ impl RegisterServer {
                 }
             }
         }
-    }
-}
-
-impl Client {
-    pub fn new(server_url: String, block_queue: BlockQueue) -> Self {
-        Self {
-            server_url,
-            block_queue,
-        }
-    }
-
-    pub fn start(&self) -> Result<thread::JoinHandle<Result<()>>> {
-        let url = self.server_url.clone();
-        let block_queue = self.block_queue.clone();
-        let thread = thread::spawn(move || {
-            let register_server = RegisterServer::new(url);
-            register_server.load();
-
-            let push = push::Client::new(
-                register_server.list,
-                block_queue,
-                push::Config::new(3, Duration::new(3, 0)),
-            );
-            push.start();
-
-            register_server.server.wait();
-            Ok(())
-        });
-        Ok(thread)
     }
 }
