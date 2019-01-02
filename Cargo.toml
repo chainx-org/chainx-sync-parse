@@ -2,7 +2,6 @@
 name = "chainx-sub-parse"
 version = "0.1.0"
 authors = ["ChainX <https://chainx.org>"]
-#edition = "2018"
 
 [dependencies]
 env_logger = "0.6"
@@ -25,3 +24,7 @@ sr-std = { git = "https://github.com/paritytech/substrate" }
 sr-primitives = { git = "https://github.com/paritytech/substrate" }
 
 srml-metadata = { git = "https://github.com/paritytech/substrate" }
+
+[features]
+default = ["std"]
+std = []

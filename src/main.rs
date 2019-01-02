@@ -1,25 +1,14 @@
 #[macro_use]
 extern crate log;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate serde_json;
 
 extern crate chainx_sub_parse;
 
 use chainx_sub_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
-//const RPC_HTTP_URL: &str = "http://127.0.0.1:8081";
 
 fn main() -> Result<()> {
     env_logger::init();
-
-    // parse module metadata, create mapping table.
-    //        let runtime_metadata = get_runtime_metadata(RPC_HTTP_URL)?;
-    //        println!("Modules Metadata: {:#?}", modules);
-    //        parse_metadata(runtime_metadata)?;
 
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
     println!("Block queue initial len: {}", block_queue.read().len());
@@ -36,21 +25,24 @@ fn main() -> Result<()> {
                     continue;
                 }
                 cur_block_height = height;
-
                 println!(
                     "cur_block_height: {:?}, prefix+key: {:?}, value: {:?}",
-                    height, key, value
+                    cur_block_height, key, value
                 );
-                let block_value = RuntimeStorage::parse(&key, value)?;
+                let block_value = match RuntimeStorage::parse(&key, value) {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("{}", e);
+                        continue;
+                    }
+                };
                 if let Some(_) = block_queue.write().insert(cur_block_height, block_value) {
                     println!("Insert block failed");
                 }
                 let queue_len = block_queue.read().len();
                 println!("queue len: {}", queue_len);
-                if queue_len % 10 == 0 {
-                    let values: Vec<serde_json::Value> = block_queue.read().values().cloned().collect();
-                    println!("queue: {:?}", values);
-                }
+                let value = block_queue.read().get(&cur_block_height).unwrap().clone();
+                println!("Insert block: {:#?}", value);
             }
             Err(err) => {
                 println!("{}", err);
