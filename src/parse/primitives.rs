@@ -27,7 +27,7 @@ pub type Moment = u64;
 /// for an eventual total of 10^27 units (27 significant decimal figures).
 /// We round denomination to 10^12 (12 sdf), and leave the other redundancy at the upper end so
 /// that 32 bits may be multiplied with a balance in 128 bits without worrying about overflow.
-pub type Balance = u128;
+pub type Balance = u64;
 
 // ChainX ---------------------------------------------------------------------
 
@@ -177,6 +177,23 @@ pub struct NominationRecord<Balance: Default, BlockNumber: Default> {
     pub last_vote_weight: u64,
     pub last_vote_weight_update: BlockNumber,
     pub revocations: Vec<(BlockNumber, Balance)>,
+}
+
+/// This module only tracks the vote weight related changes.
+/// All the amount related has been taken care by assets module.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct PseduIntentionVoteWeight<Balance: Default, BlockNumber: Default> {
+    pub jackpot: Balance,
+    pub last_total_deposit_weight: u64,
+    pub last_total_deposit_weight_update: BlockNumber,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct DepositVoteWeight<BlockNumber: Default> {
+    pub last_deposit_weight: u64,
+    pub last_deposit_weight_update: BlockNumber,
 }
 
 pub type Amount = u128;

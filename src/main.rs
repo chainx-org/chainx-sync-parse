@@ -21,13 +21,13 @@ fn main() -> Result<()> {
     while let Ok(key) = client.recv_key() {
         match client.query(&key) {
             Ok((height, value)) => {
-                if height == cur_block_height {
-                    continue;
-                }
-                cur_block_height = height;
+                //                if height == cur_block_height {
+                //                    continue;
+                //                }
+                //                cur_block_height = height;
                 println!(
-                    "cur_block_height: {:?}, prefix+key: {:?}, value: {:?}",
-                    cur_block_height, key, value
+                    "block_height: {:?}, prefix+key: {:?}, value: {:?}",
+                    height, key, value
                 );
                 let block_value = match RuntimeStorage::parse(&key, value) {
                     Ok(value) => value,
@@ -36,13 +36,14 @@ fn main() -> Result<()> {
                         continue;
                     }
                 };
-                if let Some(_) = block_queue.write().insert(cur_block_height, block_value) {
-                    println!("Insert block failed");
-                }
-                let queue_len = block_queue.read().len();
-                println!("queue len: {}", queue_len);
-                let value = block_queue.read().get(&cur_block_height).unwrap().clone();
-                println!("Insert block: {:#?}", value);
+                println!("json: {:?}", block_value);
+                //                if let Some(_) = block_queue.write().insert(cur_block_height, block_value) {
+                //                    println!("Insert block failed");
+                //                }
+                //                let queue_len = block_queue.read().len();
+                //                println!("queue len: {}", queue_len);
+                //                let value = block_queue.read().get(&cur_block_height).unwrap().clone();
+                //                println!("Insert block: {:#?}", value);
             }
             Err(err) => {
                 println!("{}", err);
