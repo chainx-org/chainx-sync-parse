@@ -31,7 +31,7 @@ pub use parking_lot::{Mutex, RwLock};
 pub use std::collections::{BTreeMap, HashMap};
 pub use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 
-pub type BlockQueue = Arc<RwLock<BTreeMap<u64, serde_json::Value>>>;
+pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;
 
 pub use self::error::{Error, Result};
 pub use self::parse::{get_runtime_metadata, parse_metadata};

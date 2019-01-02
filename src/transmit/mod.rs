@@ -15,13 +15,12 @@ pub fn start(server_url: String, block_queue: BlockQueue) -> thread::JoinHandle<
         let register_server = RegisterServer::new(server_url);
         register_server.load();
 
-        let push = push::Client::new(
+        let mut push = push::Client::new(
             register_server.list,
             block_queue,
             push::Config::new(3, Duration::new(3, 0)),
         );
         push.start();
-
         register_server.server.wait();
     })
 }

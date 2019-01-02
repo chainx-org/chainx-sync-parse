@@ -8,8 +8,10 @@ use serde::de::DeserializeOwned;
 
 use error::Result;
 
+const FILE_PATH: &str = "./target/reg.json";
+
 pub fn write(json: String) -> Result<()> {
-    let p = Path::new("./target/reg.json");
+    let p = Path::new(FILE_PATH);
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
@@ -21,7 +23,7 @@ pub fn write(json: String) -> Result<()> {
 }
 
 pub fn read() -> Result<Option<String>> {
-    let p = Path::new("./target/reg.json");
+    let p = Path::new(FILE_PATH);
     match File::open(p) {
         Ok(mut file) => {
             let mut string = String::new();

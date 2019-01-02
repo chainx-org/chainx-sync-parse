@@ -12,8 +12,8 @@ pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterInfo>>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Info {
     pub prefix: Vec<String>,
-    pub version: String,
     pub status: Status,
+    version: String,
 }
 
 impl Info {
