@@ -84,7 +84,10 @@ impl Client {
                 let is_down = info.lock().unwrap().status.down;
                 if cur_block_height >= push_height && !is_down {
                     if let Vacant(flag) = self.push_flag.write().entry(url.clone()) {
-                        println!("cur_height: {:?}, push_height: {:?}, {:?}", cur_block_height, push_height, is_down);
+                        println!(
+                            "cur_height: {:?}, push_height: {:?}, {:?}",
+                            cur_block_height, push_height, is_down
+                        );
                         flag.insert(true);
                         have_new_push = true;
                         self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
@@ -163,14 +166,16 @@ impl Client {
                     println!("del: {:?}", h);
                     match queue.write().remove(&h) {
                         Some(s) => println!("del msg"),
-                        None => println!("no key"),
+                        None => warn!("error: no key!"),
                     };
                     h += 1;
                 }
+            } else {
+                warn!("error: no register!");
+                queue.write().clear();
             }
             println!("receive end");
         });
-
     }
 }
 
@@ -195,7 +200,10 @@ fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Messa
                 None
             }
         }
-        None => panic!("can not find msg, height: {:?}", height),
+        None => {
+            warn!("error: can not find msg! height: {:?}", height);
+            None
+        }
     }
 }
 
