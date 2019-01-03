@@ -21,15 +21,8 @@ pub type Index = u64;
 pub type Moment = u64;
 
 /// The balance of an account.
-/// 128-bits (or 38 significant decimal figures) will allow for 10m currency (10^7) at a resolution
-/// to all for one second's worth of an annualised 50% reward be paid to a unit holder (10^11 unit
-/// denomination), or 10^18 total atomic units, to grow at 50%/year for 51 years (10^9 multiplier)
-/// for an eventual total of 10^27 units (27 significant decimal figures).
-/// We round denomination to 10^12 (12 sdf), and leave the other redundancy at the upper end so
-/// that 32 bits may be multiplied with a balance in 128 bits without worrying about overflow.
+/// u64 for chainx token and all assets type, if the asset is not suit for u64, choose a suitable precision
 pub type Balance = u64;
-
-// ChainX ---------------------------------------------------------------------
 
 /// Cert immutable properties
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]

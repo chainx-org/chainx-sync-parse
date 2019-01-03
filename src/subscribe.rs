@@ -57,41 +57,42 @@ impl RedisClient {
         Ok(key)
     }
 
-    pub fn start_subscription(&self) -> Result<thread::JoinHandle<Result<()>>> {
+    pub fn start_subscription(&self) -> Result<thread::JoinHandle<()>> {
         let tx = self.tx.clone();
         let mut sub_conn = self.client.get_connection()?;
 
         let thread = thread::spawn(move || {
             let mut pubsub = sub_conn.as_pubsub();
-            pubsub.subscribe(REDIS_KEY_EVENT_NOTIFICATION)?;
+            pubsub
+                .subscribe(REDIS_KEY_EVENT_NOTIFICATION)
+                .unwrap_or_else(|err| warn!("Subscribe error: {:?}", err));
 
             loop {
                 let msg = match pubsub.get_message() {
                     Ok(msg) => msg,
-                    Err(e) => {
-                        warn!("Pubsub get msg error: {:?}", e);
+                    Err(err) => {
+                        warn!("Pubsub get msg error: {:?}", err);
                         break;
                     }
                 };
-                match msg.get_channel_name() {
-                    REDIS_KEY_EVENT_NOTIFICATION => {
-                        let key: Vec<u8> = match msg.get_payload() {
-                            Ok(key) => key,
-                            Err(e) => {
-                                warn!("Msg get payload error: {:?}", e);
-                                break;
-                            }
-                        };
-                        tx.send(key)?;
-                    }
-                    _ => {
-                        warn!("Wrong channel");
+
+                if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {
+                    let key: Vec<u8> = match msg.get_payload() {
+                        Ok(key) => key,
+                        Err(err) => {
+                            warn!("Msg get payload error: {:?}", err);
+                            break;
+                        }
+                    };
+                    if let Err(err) = tx.send(key) {
+                        warn!("Send error: {:?}", err);
                         break;
                     }
+                } else {
+                    warn!("Wrong channel");
+                    break;
                 }
             }
-
-            Ok(())
         });
 
         Ok(thread)
