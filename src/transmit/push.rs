@@ -1,4 +1,3 @@
-use std::collections::btree_map::Entry::Occupied;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::sync::mpsc;

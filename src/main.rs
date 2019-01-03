@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate log;
+extern crate env_logger;
 
 extern crate chainx_sub_parse;
+
+use env_logger::{Builder, Env};
 
 use chainx_sub_parse::*;
 
@@ -9,10 +12,10 @@ const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
 const REGISTER_SERVER_URL: &str = "127.0.0.1:3030";
 
 fn main() -> Result<()> {
-    env_logger::init();
+    Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
-    println!("Block queue initial len: {}", block_queue.read().len());
+    info!("Block queue initial len: {}", block_queue.read().len());
 
     let transmit_thread = transmit::start(REGISTER_SERVER_URL.to_string(), block_queue.clone());
 
@@ -25,9 +28,11 @@ fn main() -> Result<()> {
     while let Ok(key) = client.recv_key() {
         match client.query(&key) {
             Ok((height, value)) => {
-                println!(
+                info!(
                     "block_height: {:?}, prefix+key: {:?}, value: {:?}",
-                    height, key, value
+                    height,
+                    ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"),
+                    value
                 );
                 if height == cur_block_height {
                     match RuntimeStorage::parse(&key, value) {
@@ -35,7 +40,7 @@ fn main() -> Result<()> {
                             stat.insert(prefix, value);
                         }
                         Err(e) => {
-                            println!("{}", e);
+                            warn!("Runtime storage parse error: {}", e);
                             continue;
                         }
                     }
@@ -44,21 +49,21 @@ fn main() -> Result<()> {
                 cur_block_height = height;
                 let values: Vec<serde_json::Value> = stat.values().into_iter().cloned().collect();
                 if let Some(_) = block_queue.write().insert(cur_block_height - 1, values) {
-                    println!("Insert block failed");
+                    warn!("Failed to insert the block into block queue");
                 }
                 stat.clear();
 
                 let queue_len = block_queue.read().len();
-                println!("BlockQueue len: {}", queue_len);
+                info!("BlockQueue len: {:?}", queue_len);
                 let values = block_queue
                     .read()
                     .get(&(cur_block_height - 1))
                     .unwrap()
                     .clone();
-                println!("Insert block: {:#?}", values);
+                info!("Insert block: {:#?}", values);
             }
             Err(err) => {
-                println!("{}", err);
+                warn!("Redis query error: {}", err);
                 break;
             }
         }

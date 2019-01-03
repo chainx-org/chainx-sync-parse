@@ -302,7 +302,7 @@ macro_rules! to_value_json {
 macro_rules! to_map_json {
     ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {
         {
-            *$k = Decode::decode(&mut $key.as_bytes())
+            *$k = Decode::decode(&mut $key)
                     .ok_or(format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k))?;
             *$v = Decode::decode(&mut $value.as_slice())
                     .ok_or(format!("Decode failed, prefix: {:?}, key: {:?}, value: {:?}", $prefix, $k, $v))?;
@@ -317,18 +317,18 @@ macro_rules! to_map_json {
 }
 
 impl RuntimeStorage {
-    pub fn parse(key: &str, value: Vec<u8>) -> Result<(String, serde_json::Value)> {
+    pub fn parse(key: &[u8], value: Vec<u8>) -> Result<(String, serde_json::Value)> {
         let (mut storage, prefix) = Self::match_key(key)?;
         Ok((prefix.clone(), storage.decode_by_type(prefix, key, value)?))
     }
 
-    pub fn match_key(key: &str) -> Result<(Self, String)> {
+    pub fn match_key(key: &[u8]) -> Result<(Self, String)> {
         for storage in Self::iter() {
             let prefix: String = storage
                 .get_message()
                 .ok_or("Get storage prefix failed".to_string())?
                 .into();
-            if key.starts_with(&prefix) {
+            if key.starts_with(prefix.as_bytes()) {
                 return Ok((storage, prefix));
             }
         }
@@ -336,8 +336,8 @@ impl RuntimeStorage {
     }
 
     #[rustfmt::skip]
-    pub fn decode_by_type(&mut self, prefix: String, key: &str, value: Vec<u8>) -> Result<serde_json::Value> {
-        let key = match self.get_detailed_message() {
+    pub fn decode_by_type(&mut self, prefix: String, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
+        let mut key = match self.get_detailed_message() {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
             _ => return Err("Invalid storage type".into()),
@@ -487,9 +487,9 @@ mod tests {
 
     #[test]
     pub fn test_parse_match_value() {
-        let key = "Balances TotalIssuance";
+        let key = "Balances TotalIssuance".as_bytes();
         let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let got = RuntimeStorage::parse(key, value).unwrap();
+        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
         let exp = serde_json::Value::from_str(
             r#"{
                 "type":"value",
@@ -504,9 +504,9 @@ mod tests {
 
     #[test]
     pub fn test_parse_match_map() {
-        let key = "Balances FreeBalance12345678901234567890123456789012";
+        let key = "Balances FreeBalance12345678901234567890123456789012".as_bytes();
         let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let got = RuntimeStorage::parse(key, value).unwrap();
+        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
         let exp = serde_json::Value::from_str(
             r#"{
                 "type":"map",
@@ -521,12 +521,12 @@ mod tests {
 
     #[test]
     pub fn test_parse_match_map_option() {
-        let key = "XAssets AssetInfo\u{c}PCX";
+        let key = "XAssets AssetInfo\u{c}PCX".as_bytes();
         let value = vec![
             12, 80, 67, 88, 0, 3, 0, 68, 80, 67, 88, 32, 111, 110, 99, 104, 97, 105, 110, 32, 116,
             111, 107, 101, 110, 1, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
-        let got = RuntimeStorage::parse(key, value).unwrap();
+        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
         let exp = serde_json::Value::from_str(
             r#"{
                 "type":"map",
