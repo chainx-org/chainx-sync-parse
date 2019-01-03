@@ -25,17 +25,17 @@ extern crate substrate_primitives;
 // substrate runtime metadata module.
 extern crate srml_metadata;
 
-pub mod error;
-pub mod parse;
-pub mod serde_ext;
-pub mod subscribe;
+mod error;
+mod parse;
+mod serde_ext;
+mod subscribe;
 
-pub use std::collections::BTreeMap;
+pub use std::collections::{BTreeMap, HashMap};
 pub use std::sync::Arc;
 
 pub use parking_lot::RwLock;
 
-pub type BlockQueue = Arc<RwLock<BTreeMap<u64, serde_json::Value>>>;
+pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;
 
 pub use self::error::{Error, Result};
 pub use self::parse::*;

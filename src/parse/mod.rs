@@ -317,9 +317,9 @@ macro_rules! to_map_json {
 }
 
 impl RuntimeStorage {
-    pub fn parse(key: &str, value: Vec<u8>) -> Result<serde_json::Value> {
+    pub fn parse(key: &str, value: Vec<u8>) -> Result<(String, serde_json::Value)> {
         let (mut storage, prefix) = Self::match_key(key)?;
-        Ok(storage.decode_by_type(prefix, key, value)?)
+        Ok((prefix.clone(), storage.decode_by_type(prefix, key, value)?))
     }
 
     pub fn match_key(key: &str) -> Result<(Self, String)> {

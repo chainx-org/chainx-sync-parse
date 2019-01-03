@@ -16,34 +16,39 @@ fn main() -> Result<()> {
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
 
-    let mut cur_block_height: u64 = u64::max_value();
+    let mut cur_block_height: u64 = 0;
+    let mut stat = HashMap::new();
 
     while let Ok(key) = client.recv_key() {
         match client.query(&key) {
             Ok((height, value)) => {
-                //                if height == cur_block_height {
-                //                    continue;
-                //                }
-                //                cur_block_height = height;
                 println!(
                     "block_height: {:?}, prefix+key: {:?}, value: {:?}",
                     height, key, value
                 );
-                let block_value = match RuntimeStorage::parse(&key, value) {
-                    Ok(value) => value,
-                    Err(e) => {
-                        println!("{}", e);
-                        continue;
+                if height == cur_block_height {
+                    match RuntimeStorage::parse(&key, value) {
+                        Ok((prefix, value)) => {
+                            stat.insert(prefix, value);
+                        },
+                        Err(e) => {
+                            println!("{}", e);
+                            continue;
+                        }
                     }
-                };
-                println!("json: {:?}", block_value);
-                //                if let Some(_) = block_queue.write().insert(cur_block_height, block_value) {
-                //                    println!("Insert block failed");
-                //                }
-                //                let queue_len = block_queue.read().len();
-                //                println!("queue len: {}", queue_len);
-                //                let value = block_queue.read().get(&cur_block_height).unwrap().clone();
-                //                println!("Insert block: {:#?}", value);
+                    continue;
+                }
+                cur_block_height = height;
+                let values: Vec<serde_json::Value> = stat.values().into_iter().cloned().collect();
+                if let Some(_) = block_queue.write().insert(cur_block_height - 1, values) {
+                    println!("Insert block failed");
+                }
+                stat.clear();
+
+                let queue_len = block_queue.read().len();
+                println!("BlockQueue len: {}", queue_len);
+                let values = block_queue.read().get(&(cur_block_height - 1)).unwrap().clone();
+                println!("Insert block: {:#?}", values);
             }
             Err(err) => {
                 println!("{}", err);
