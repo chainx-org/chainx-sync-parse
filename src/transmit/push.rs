@@ -11,7 +11,7 @@ use transmit::json_manage;
 use transmit::register::{RegisterInfo, RegisterList};
 use {Arc, BlockQueue, RwLock};
 
-type IsPush = Arc<RwLock<HashMap<String, bool>>>;
+type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Message {
@@ -52,7 +52,7 @@ pub struct Client {
     register_list: RegisterList,
     block_queue: BlockQueue,
     config: Config,
-    is_push: IsPush,
+    push_flag: PushFlag,
 }
 
 impl Client {
@@ -61,7 +61,7 @@ impl Client {
             register_list,
             block_queue,
             config,
-            is_push: Arc::new(RwLock::new(HashMap::new())),
+            push_flag: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -74,7 +74,7 @@ impl Client {
 
     pub fn start(&mut self) {
         loop {
-            if self.block_queue.read().len() > 0 {
+            if self.block_queue.read().len() <= 0 {
                 continue;
             };
             let cur_block_height = self.get_block_height();
@@ -83,9 +83,9 @@ impl Client {
             for (url, info) in self.register_list.read().unwrap().iter() {
                 let push_height = info.lock().unwrap().status.height;
                 let is_down = info.lock().unwrap().status.down;
-                if cur_block_height > push_height && !is_down {
-                    if let Vacant(flag) = self.is_push.write().entry(url.clone()) {
-                        println!("{:?}, {:?}, {:?}", cur_block_height, push_height, is_down);
+                if cur_block_height >= push_height && !is_down {
+                    if let Vacant(flag) = self.push_flag.write().entry(url.clone()) {
+                        println!("cur_height: {:?}, push_height: {:?}, {:?}", cur_block_height, push_height, is_down);
                         flag.insert(true);
                         have_new_push = true;
                         self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
@@ -111,16 +111,19 @@ impl Client {
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
                 println!("cur_push_height: {:?}", cur_push_height);
-                while reg.status.height < cur_push_height {
+                while reg.status.height <= cur_push_height {
                     if let Some(msg) = is_post(queue.clone(), reg.status.height, reg.prefix.clone())
                     {
                         if !post(url.clone(), msg, config.clone()) {
+                            println!("post err");
                             reg.set_down(true);
                             break;
                         }
+                        println!("post ok");
                     }
                     reg.add_height();
                 }
+                println!("post end");
                 tx.send(url).unwrap();
             };
         });
@@ -130,7 +133,7 @@ impl Client {
         println!("receive");
         let list = self.register_list.clone();
         let queue = self.block_queue.clone();
-        let is_push = self.is_push.clone();
+        let is_push = self.push_flag.clone();
         let cur_block_height = self.get_block_height();
         thread::spawn(move || {
             for rx in rx {
@@ -150,21 +153,25 @@ impl Client {
             }
 
             if min_block_height <= cur_block_height {
-                let h = queue.read().keys().next().unwrap().clone();
+                let mut h = queue.read().keys().next().unwrap().clone();
                 println!(
                     "height: {:?}, min_block_height: {:?}, len: {:?}",
                     h,
                     min_block_height,
                     queue.read().len()
                 );
-                for i in h..min_block_height {
-                    if let Occupied(msg) = queue.write().entry(i) {
-                        msg.remove();
-                        println!("del msg, len: {:?}", queue.read().len());
-                    }
+                while h <= min_block_height {
+                    println!("del: {:?}", h);
+                    match queue.write().remove(&h) {
+                        Some(s) => println!("del msg"),
+                        None => println!("no key"),
+                    };
+                    h += 1;
                 }
             }
+            println!("receive end");
         });
+
     }
 }
 
@@ -175,8 +182,9 @@ fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Messa
             for v in v {
                 let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
                 for prefix in &prefixs {
+                    println!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
                     if *prefix == msg_prefix {
-                        println!("{:?},{:?}", *prefix, msg_prefix);
+                        println!("find prefix");
                         push_msg.add(v.clone());
                     }
                 }
@@ -193,6 +201,7 @@ fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Messa
 }
 
 fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
+    println!("slice");
     if msg.date.len() > slice_num {
         let mut v = Vec::new();
         for i in 0..msg.date.len() / slice_num {
@@ -212,6 +221,7 @@ fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
 }
 
 fn post(url: String, msg: Message, config: Config) -> bool {
+    println!("post");
     let slice_msg = slice(msg, 10);
     for msg in slice_msg {
         println!("msg:{:?}", msg);

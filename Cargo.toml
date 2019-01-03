@@ -2,7 +2,6 @@
 name = "chainx-sub-parse"
 version = "0.1.0"
 authors = ["ChainX <https://chainx.org>"]
-#edition = "2018"
 
 [dependencies]
 env_logger = "0.6"
@@ -11,13 +10,25 @@ error-chain = "0.12"
 redis = "0.9"
 hex = "0.3"
 parity-codec = "2.1"
+parity-codec-derive = "2.1"
 parking_lot = "0.7"
+
+reqwest = "0.9"
 serde = { version = "1.0", features = ["rc"] }
 serde_derive = "1.0"
-serde_json = "1.0"
-reqwest = "0.9"
+serde_json = { version = "1.0" }
+strum = "0.13"
+strum_macros = "0.13"
 jsonrpc-macros = "9.0"
 jsonrpc-core = "9.0"
 jsonrpc-http-server = "9.0"
 
-substrate-metadata = { git = "https://github.com/paritytech/substrate", rev = "4b34e0f2" }
+substrate-primitives = { git = "https://github.com/paritytech/substrate" }
+sr-std = { git = "https://github.com/paritytech/substrate" }
+sr-primitives = { git = "https://github.com/paritytech/substrate" }
+
+srml-metadata = { git = "https://github.com/paritytech/substrate" }
+
+[features]
+default = ["std"]
+std = []
