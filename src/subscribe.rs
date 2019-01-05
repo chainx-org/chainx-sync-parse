@@ -8,8 +8,8 @@ const REDIS_KEY_EVENT_NOTIFICATION: &str = "__keyevent@0__:zadd";
 pub struct RedisClient {
     client: redis::Client,
     conn: redis::Connection,
-    tx: mpsc::Sender<String>,
-    rx: mpsc::Receiver<String>,
+    tx: mpsc::Sender<Vec<u8>>,
+    rx: mpsc::Receiver<Vec<u8>>,
 }
 
 impl RedisClient {
@@ -25,57 +25,74 @@ impl RedisClient {
         })
     }
 
-    pub fn query(&self, key: String) -> Result<(u64, String, Vec<u8>)> {
-        let (key, score): (String, u64) = self.query_key_and_score(key)?;
-        let value = self.query_value(format!("{}", key))?;
-        println!("score: {:?}, key: {:?}, value: {:?}", score, key, value);
-        Ok((score, key, value))
+    pub fn query(&self, key: &[u8]) -> Result<(u64, Vec<u8>)> {
+        let (key, score): (Vec<u8>, u64) = self.query_key_and_score(key)?;
+        let value = self.query_value(&key)?;
+        Ok((score, value))
     }
 
     #[rustfmt::skip]
-    pub fn query_key_and_score(&self, key: String) -> Result<(String, u64)> {
-        let (key, score): (String, u64) = redis::cmd("ZREVRANGEBYSCORE")
+    pub fn query_key_and_score(&self, key: &[u8]) -> Result<(Vec<u8>, u64)> {
+        let (key, score): (Vec<u8>, u64) = redis::cmd("ZREVRANGEBYSCORE")
             .arg(key)
             .arg("+inf").arg("-inf")
             .arg("WITHSCORES")
             .arg("LIMIT").arg(0).arg(1)
             .query(&self.conn)?;
+        debug!(
+            "key: {:?}, score: {:?}",
+            ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"), score
+        );
         Ok((key, score))
     }
 
-    pub fn query_value(&self, key: String) -> Result<Vec<u8>> {
+    pub fn query_value(&self, key: &[u8]) -> Result<Vec<u8>> {
         let value: Vec<u8> = redis::cmd("GET").arg(key).query(&self.conn)?;
+        debug!("value: {:?}", value);
         Ok(value)
     }
 
-    pub fn recv_key(&self) -> Result<String> {
+    pub fn recv_key(&self) -> Result<Vec<u8>> {
         let key = self.rx.recv()?;
         Ok(key)
     }
 
-    pub fn start_subscription(&self) -> Result<thread::JoinHandle<Result<()>>> {
+    pub fn start_subscription(&self) -> Result<thread::JoinHandle<()>> {
         let tx = self.tx.clone();
         let mut sub_conn = self.client.get_connection()?;
 
         let thread = thread::spawn(move || {
             let mut pubsub = sub_conn.as_pubsub();
-            pubsub.subscribe(REDIS_KEY_EVENT_NOTIFICATION)?;
+            pubsub
+                .subscribe(REDIS_KEY_EVENT_NOTIFICATION)
+                .unwrap_or_else(|err| warn!("Subscribe error: {:?}", err));
 
             loop {
-                let msg = pubsub.get_message()?;
-                match msg.get_channel_name() {
-                    REDIS_KEY_EVENT_NOTIFICATION => {
-                        let key = msg.get_payload::<String>()?;
-                        tx.send(key)?;
-                    }
-                    _ => {
-                        warn!("Wrong channel");
+                let msg = match pubsub.get_message() {
+                    Ok(msg) => msg,
+                    Err(err) => {
+                        warn!("Pubsub get msg error: {:?}", err);
                         break;
                     }
+                };
+
+                if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {
+                    let key: Vec<u8> = match msg.get_payload() {
+                        Ok(key) => key,
+                        Err(err) => {
+                            warn!("Msg get payload error: {:?}", err);
+                            break;
+                        }
+                    };
+                    if let Err(err) = tx.send(key) {
+                        warn!("Send error: {:?}", err);
+                        break;
+                    }
+                } else {
+                    warn!("Wrong channel");
+                    break;
                 }
             }
-
-            Ok(())
         });
 
         Ok(thread)

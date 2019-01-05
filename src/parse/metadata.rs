@@ -1,5 +1,5 @@
 use parity_codec::Decode;
-use substrate_metadata::{
+use srml_metadata::{
     DecodeDifferent, RuntimeMetadata, RuntimeModuleMetadata, StorageFunctionMetadata,
     StorageFunctionModifier, StorageFunctionType,
 };
