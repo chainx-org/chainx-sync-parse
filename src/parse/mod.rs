@@ -1,13 +1,11 @@
-mod primitives;
 mod btree_map;
-
-use std::str::FromStr;
+mod primitives;
 
 use parity_codec::Decode;
 use strum::{EnumMessage, IntoEnumIterator};
 
-use self::primitives::*;
 use self::btree_map::CodecBTreeMap;
+use self::primitives::*;
 use error::Result;
 use serde_ext::Bytes;
 
@@ -454,7 +452,7 @@ impl RuntimeStorage {
 //            RuntimeStorage::BridgeOfBTCDepositRecordsMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
 //            RuntimeStorage::BridgeOfBTCCertCache(ref mut v) => to_value_json!(prefix, value => v),
 //            RuntimeStorage::BridgeOfBTCFee(ref mut v) => to_value_json!(prefix, value => v),
-            invalid @ _ => Err(format!("Invalid Runtime Storage: {:?}", invalid).into()),
+//            invalid @ _ => Err(format!("Invalid Runtime Storage: {:?}", invalid).into()),
         }
     }
 }
@@ -538,7 +536,8 @@ mod tests {
                 "key":[66, 84, 67],
                 "value":{"Free":0}
             }"#,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(got, exp);
     }
 }

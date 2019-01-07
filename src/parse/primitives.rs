@@ -1,5 +1,5 @@
-pub use substrate_primitives::H256;
 pub use sr_primitives::Perbill;
+pub use substrate_primitives::H256;
 
 /// A hash of some data used by the relay chain.
 pub type Hash = substrate_primitives::H256;
@@ -112,6 +112,13 @@ pub enum Action {
     Withdrawal(WithdrawalState),
 }
 
+impl Default for Action {
+    /// default not use for Action enum, it's just for the trait
+    fn default() -> Self {
+        Action::Deposit(DepositState::default())
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum DepositState {
@@ -138,13 +145,6 @@ pub enum WithdrawalState {
 impl Default for WithdrawalState {
     fn default() -> Self {
         WithdrawalState::Invalid
-    }
-}
-
-impl Default for Action {
-    /// default not use for Action enum, it's just for the trait
-    fn default() -> Self {
-        Action::Deposit(DepositState::default())
     }
 }
 
