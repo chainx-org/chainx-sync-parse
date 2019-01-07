@@ -306,7 +306,7 @@ impl RuntimeStorage {
         Ok((prefix.clone(), storage.decode_by_type(prefix, key, value)?))
     }
 
-    pub fn match_key(key: &[u8]) -> Result<(Self, String)> {
+    fn match_key(key: &[u8]) -> Result<(Self, String)> {
         for storage in Self::iter() {
             let prefix: String = storage
                 .get_message()
@@ -320,7 +320,7 @@ impl RuntimeStorage {
     }
 
     #[rustfmt::skip]
-    pub fn decode_by_type(&mut self, prefix: String, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
+    fn decode_by_type(&mut self, prefix: String, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
         let mut key = match self.get_detailed_message() {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
@@ -527,14 +527,14 @@ mod tests {
     #[test]
     pub fn test_parse_match_codec_btree_map() {
         let key = "XAssets TotalAssetBalance\u{c}BTC".as_bytes();
-        let value = vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let value = vec![1, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
         let exp = serde_json::Value::from_str(
             r#"{
                 "type":"map",
                 "prefix":"XAssets TotalAssetBalance",
                 "key":[66, 84, 67],
-                "value":{"Free":0}
+                "value":{"Free":123}
             }"#,
         )
         .unwrap();
