@@ -22,7 +22,6 @@ extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
 #[macro_use]
 extern crate jsonrpc_macros;
-
 // substrate core
 extern crate sr_primitives;
 extern crate sr_std;

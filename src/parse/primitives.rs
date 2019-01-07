@@ -1,3 +1,4 @@
+pub use sr_primitives::Perbill;
 pub use substrate_primitives::H256;
 
 /// A hash of some data used by the relay chain.
@@ -56,14 +57,14 @@ pub type Precision = u16;
 #[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum Chain {
-    PCX,
-    BTC,
-    ETH,
+    ChainX,
+    Bitcoin,
+    Ethereum,
 }
 
 impl Default for Chain {
     fn default() -> Self {
-        Chain::PCX
+        Chain::ChainX
     }
 }
 
@@ -76,19 +77,45 @@ pub struct Asset {
     desc: Desc,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Copy, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum ReservedType {
-    Others,
-    Staking,
-    AssetsWithdrawal,
-    DexSpot,
-    DexFuture,
+pub enum AssetType {
+    Free,
+    ReservedStaking,
+    ReservedWithdrawal,
+    ReservedDexSpot,
+    ReservedDexFuture,
 }
 
-impl Default for ReservedType {
+impl Default for AssetType {
     fn default() -> Self {
-        ReservedType::Others
+        AssetType::Free
+    }
+}
+
+/// application for withdrawal
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct Application<AccountId, Balance> {
+    id: u32,
+    applicant: AccountId,
+    token: Token,
+    balance: Balance,
+    addr: Vec<u8>,
+    ext: Vec<u8>,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum Action {
+    Deposit(DepositState),
+    Withdrawal(WithdrawalState),
+}
+
+impl Default for Action {
+    /// default not use for Action enum, it's just for the trait
+    fn default() -> Self {
+        Action::Deposit(DepositState::default())
     }
 }
 
@@ -118,20 +145,6 @@ pub enum WithdrawalState {
 impl Default for WithdrawalState {
     fn default() -> Self {
         WithdrawalState::Invalid
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum Action {
-    Deposit(DepositState),
-    Withdrawal(WithdrawalState),
-}
-
-impl Default for Action {
-    /// default not use for Action enum, it's just for the trait
-    fn default() -> Self {
-        Action::Deposit(DepositState::default())
     }
 }
 

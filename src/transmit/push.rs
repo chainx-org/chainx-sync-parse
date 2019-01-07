@@ -144,36 +144,8 @@ impl Client {
                 json_manage::write(json![list].to_string()).unwrap();
             }
 
-            let mut min_block_height = u64::max_value();
-            for register in list.read().unwrap().values() {
-                let reg = register.lock().unwrap();
-                if !reg.status.down {
-                    if reg.status.height > 0 && reg.status.height - 1 < min_block_height {
-                        min_block_height = reg.status.height - 1;
-                    }
-                }
-            }
+            delete_msg(list, queue, cur_block_height);
 
-            if min_block_height <= cur_block_height {
-                let mut h = *queue.read().keys().next().unwrap();
-                info!(
-                    "height: {:?}, min_block_height: {:?}, len: {:?}",
-                    h,
-                    min_block_height,
-                    queue.read().len()
-                );
-                while h <= min_block_height {
-                    info!("del: {:?}", h);
-                    match queue.write().remove(&h) {
-                        Some(_) => info!("del msg"),
-                        None => error!("error: no key!"),
-                    };
-                    h += 1;
-                }
-            } else {
-                error!("no register!");
-                queue.write().clear();
-            }
             info!("receive end");
         });
     }
@@ -259,4 +231,38 @@ fn post(url: String, msg: Message, config: Config) -> bool {
         }
     }
     true
+}
+
+fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
+    info!("delete_msg");
+    let mut min_block_height = u64::max_value();
+    for register in list.read().unwrap().values() {
+        let reg = register.lock().unwrap();
+        if !reg.status.down {
+            if reg.status.height > 0 && reg.status.height - 1 < min_block_height {
+                min_block_height = reg.status.height - 1;
+            }
+        }
+    }
+
+    if min_block_height <= cur_block_height {
+        let mut h = *queue.read().keys().next().unwrap();
+        info!(
+            "height: {:?}, min_block_height: {:?}, len: {:?}",
+            h,
+            min_block_height,
+            queue.read().len()
+        );
+        while h <= min_block_height {
+            info!("del: {:?}", h);
+            match queue.write().remove(&h) {
+                Some(_) => info!("del msg"),
+                None => error!("error: no key!"),
+            };
+            h += 1;
+        }
+    } else {
+        error!("no register!");
+        queue.write().clear();
+    }
 }
