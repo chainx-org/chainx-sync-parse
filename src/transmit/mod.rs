@@ -39,7 +39,7 @@ impl RegisterServer {
     }
 
     pub fn load(&self) -> Result<()> {
-        let string = json_manage::read()?;
+        let string = json_manage::IO::read()?;
         if let Some(string) = string {
             let map: HashMap<String, RegisterInfo> = serde_json::from_str(string.as_str())?;
             for (k, v) in map {

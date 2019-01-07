@@ -102,7 +102,7 @@ impl Rpc for RpcImpl {
             };
         }
         info!("register ok");
-        json_manage::write(json!(self.register_list).to_string()).unwrap();
+        json_manage::IO::write(json!(self.register_list).to_string()).unwrap();
         Ok("OK".to_string())
     }
 }

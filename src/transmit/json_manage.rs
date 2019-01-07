@@ -10,27 +10,31 @@ use error::Result;
 
 const FILE_PATH: &str = "./target/reg.json";
 
-pub fn write(json: String) -> Result<()> {
-    let p = Path::new(FILE_PATH);
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&p)?;
+pub struct IO;
 
-    file.write(json.as_bytes())?;
-    Ok(())
-}
+impl IO {
+    pub fn write(json: String) -> Result<()> {
+        let p = Path::new(FILE_PATH);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&p)?;
 
-pub fn read() -> Result<Option<String>> {
-    let p = Path::new(FILE_PATH);
-    match File::open(p) {
-        Ok(mut file) => {
-            let mut string = String::new();
-            file.read_to_string(&mut string)?;
-            Ok(Some(string))
+        file.write(json.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn read() -> Result<Option<String>> {
+        let p = Path::new(FILE_PATH);
+        match File::open(p) {
+            Ok(mut file) => {
+                let mut string = String::new();
+                file.read_to_string(&mut string)?;
+                Ok(Some(string))
+            }
+            Err(_) => Ok(None),
         }
-        Err(_) => Ok(None),
     }
 }
 
@@ -47,7 +51,7 @@ pub fn post(url: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
         .json::<serde_json::Value>()?)
 }
 
-pub fn deserialize<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
+pub fn request<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
     let resp: JsonResponse<T> = serde_json::from_value(post(url, &body)?)?;
     Ok(resp.result)
 }
