@@ -1,7 +1,8 @@
 // Copyright 2018 Chainpool.
 
-use parity_codec::{Decode, Encode, Input, Output};
 use std::collections::BTreeMap;
+
+use parity_codec::{Decode, Encode, Input, Output};
 
 #[derive(Default, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]

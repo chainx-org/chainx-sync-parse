@@ -4,7 +4,7 @@ use srml_metadata::{
     StorageFunctionModifier, StorageFunctionType,
 };
 
-use error::Result;
+use crate::Result;
 
 macro_rules! try_opt {
     ($expr:expr) => {
