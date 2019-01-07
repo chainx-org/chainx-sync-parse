@@ -77,7 +77,8 @@ fn main() -> Result<()> {
 
     transmit_thread
         .join()
-        .expect("Couldn't join on the transmit thread");
+        .expect("Couldn't join on the transmit thread")
+        .err();
 
     Ok(())
 }

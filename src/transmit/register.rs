@@ -69,7 +69,7 @@ pub struct RpcImpl {
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
         let prefix: String = serde_json::from_str(&prefix).unwrap();
-        println!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
+        info!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
         if let Ok(mut list) = self.register_list.write() {
             match list.entry(url) {
                 Vacant(reg) => {
@@ -77,7 +77,7 @@ impl Rpc for RpcImpl {
                 }
                 Occupied(reg) => {
                     if let Ok(mut reg) = reg.into_mut().lock() {
-                        println!(
+                        info!(
                             "version:{:?}, reg_version{:?}",
                             version.parse::<f64>().unwrap(),
                             reg.version.parse::<f64>().unwrap()
@@ -92,7 +92,7 @@ impl Rpc for RpcImpl {
                                 if reg.status.down {
                                     reg.set_down(false);
                                 } else {
-                                    println!("register null");
+                                    info!("register null");
                                     return Ok("null".to_string());
                                 }
                             }
@@ -101,7 +101,7 @@ impl Rpc for RpcImpl {
                 }
             };
         }
-        println!("register ok");
+        info!("register ok");
         json_manage::write(json!(self.register_list).to_string()).unwrap();
         Ok("OK".to_string())
     }

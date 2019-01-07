@@ -7,13 +7,14 @@ use std::time::Duration;
 
 use jsonrpc_http_server::Server;
 
+use error::Result;
 use transmit::register::{start_rpc, RegisterInfo, RegisterList};
 use {BlockQueue, HashMap};
 
-pub fn start(server_url: String, block_queue: BlockQueue) -> thread::JoinHandle<()> {
+pub fn start(server_url: String, block_queue: BlockQueue) -> thread::JoinHandle<Result<()>> {
     thread::spawn(move || {
         let register_server = RegisterServer::new(server_url);
-        register_server.load();
+        register_server.load()?;
 
         let mut push = push::Client::new(
             register_server.list,
@@ -22,6 +23,7 @@ pub fn start(server_url: String, block_queue: BlockQueue) -> thread::JoinHandle<
         );
         push.start();
         register_server.server.wait();
+        Ok(())
     })
 }
 
@@ -36,15 +38,14 @@ impl RegisterServer {
         Self { server, list }
     }
 
-    pub fn load(&self) {
-        if let Ok(Some(string)) = json_manage::read() {
-            let res: serde_json::Result<HashMap<String, RegisterInfo>> =
-                serde_json::from_str(string.as_str());
-            if let Ok(map) = res {
-                for (k, v) in map {
-                    self.list.write().unwrap().insert(k, v);
-                }
+    pub fn load(&self) -> Result<()> {
+        let string = json_manage::read()?;
+        if let Some(string) = string {
+            let map: HashMap<String, RegisterInfo> = serde_json::from_str(string.as_str())?;
+            for (k, v) in map {
+                self.list.write().unwrap().insert(k, v);
             }
         }
+        Ok(())
     }
 }

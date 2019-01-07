@@ -15,19 +15,19 @@ type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
 #[derive(Debug, Clone, Serialize)]
 pub struct Message {
     height: u64,
-    date: Vec<serde_json::Value>,
+    data: Vec<serde_json::Value>,
 }
 
 impl Message {
     pub fn new(num: u64) -> Self {
         Self {
             height: num,
-            date: Default::default(),
+            data: vec![],
         }
     }
 
     pub fn add(&mut self, date: serde_json::Value) {
-        self.date.push(date);
+        self.data.push(date);
     }
 }
 
@@ -84,7 +84,7 @@ impl Client {
                 let is_down = info.lock().unwrap().status.down;
                 if cur_block_height >= push_height && !is_down {
                     if let Vacant(flag) = self.push_flag.write().entry(url.clone()) {
-                        println!(
+                        info!(
                             "cur_height: {:?}, push_height: {:?}, {:?}",
                             cur_block_height, push_height, is_down
                         );
@@ -112,34 +112,34 @@ impl Client {
         let config = self.config.clone();
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
-                println!("cur_push_height: {:?}", cur_push_height);
+                info!("cur_push_height: {:?}", cur_push_height);
                 while reg.status.height <= cur_push_height {
                     if let Some(msg) = is_post(queue.clone(), reg.status.height, reg.prefix.clone())
                     {
                         if !post(url.clone(), msg, config.clone()) {
-                            println!("post err");
+                            info!("post err");
                             reg.set_down(true);
                             break;
                         }
-                        println!("post ok");
+                        info!("post ok");
                     }
                     reg.add_height();
                 }
-                println!("post end");
+                info!("post end");
                 tx.send(url).unwrap();
             };
         });
     }
 
     fn receive(&self, rx: Receiver<String>) {
-        println!("receive");
+        info!("receive");
         let list = self.register_list.clone();
         let queue = self.block_queue.clone();
         let is_push = self.push_flag.clone();
         let cur_block_height = self.get_block_height();
         thread::spawn(move || {
             for rx in rx {
-                println!("{:?}", rx);
+                info!("{:?}", rx);
                 is_push.write().remove(&rx);
                 json_manage::write(json![list].to_string()).unwrap();
             }
@@ -155,66 +155,66 @@ impl Client {
             }
 
             if min_block_height <= cur_block_height {
-                let mut h = queue.read().keys().next().unwrap().clone();
-                println!(
+                let mut h = *queue.read().keys().next().unwrap();
+                info!(
                     "height: {:?}, min_block_height: {:?}, len: {:?}",
                     h,
                     min_block_height,
                     queue.read().len()
                 );
                 while h <= min_block_height {
-                    println!("del: {:?}", h);
+                    info!("del: {:?}", h);
                     match queue.write().remove(&h) {
-                        Some(s) => println!("del msg"),
-                        None => warn!("error: no key!"),
+                        Some(_) => info!("del msg"),
+                        None => error!("error: no key!"),
                     };
                     h += 1;
                 }
             } else {
-                warn!("error: no register!");
+                error!("no register!");
                 queue.write().clear();
             }
-            println!("receive end");
+            info!("receive end");
         });
     }
 }
 
 fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
     match queue.read().get(&height) {
-        Some(v) => {
+        Some(msg) => {
             let mut push_msg = Message::new(height);
-            for v in v {
+            for v in msg {
                 let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
                 for prefix in &prefixs {
-                    println!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
+                    info!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
                     if *prefix == msg_prefix {
-                        println!("find prefix");
+                        info!("find prefix");
                         push_msg.add(v.clone());
                     }
                 }
             }
 
-            if push_msg.date.len() > 0 {
+            if push_msg.data.len() > 0 {
                 Some(push_msg)
             } else {
                 None
             }
         }
         None => {
-            warn!("error: can not find msg! height: {:?}", height);
+            error!("can not find msg! height: {:?}", height);
             None
         }
     }
 }
 
 fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
-    println!("slice");
-    if msg.date.len() > slice_num {
+    info!("slice");
+    if msg.data.len() > slice_num {
         let mut v = Vec::new();
-        for i in 0..msg.date.len() / slice_num {
+        for i in 0..msg.data.len() / slice_num {
             let mut m = Message::new(msg.height);
             for j in 0..slice_num {
-                match msg.date.get(i * slice_num + j) {
+                match msg.data.get(i * slice_num + j) {
                     Some(s) => m.add(s.clone()),
                     None => break,
                 }
@@ -228,27 +228,27 @@ fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
 }
 
 fn post(url: String, msg: Message, config: Config) -> bool {
-    println!("post");
+    info!("post");
     let slice_msg = slice(msg, 10);
     for msg in slice_msg {
-        println!("msg:{:?}", msg);
+        info!("msg:{:?}", msg);
         let json = json!(msg);
         let mut flag = true;
         for i in 0..config.retry_count {
             let res: Result<String> = json_manage::deserialize(url.as_str(), &json);
-            println!("res: {:?}", res);
+            info!("res: {:?}", res);
             flag = match res {
                 Ok(ok) => {
                     if ok == "OK" {
                         break;
                     } else {
-                        println!("retry: {:?}", i);
+                        info!("retry: {:?}", i);
                         std::thread::sleep(config.retry_interval);
                         false
                     }
                 }
                 Err(_) => {
-                    println!("retry: {:?}", i);
+                    info!("retry: {:?}", i);
                     std::thread::sleep(config.retry_interval);
                     false
                 }
