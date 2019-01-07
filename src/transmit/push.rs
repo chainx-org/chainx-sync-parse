@@ -4,13 +4,29 @@ use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::Duration;
+use std::fmt::Debug;
 
-use error::Result;
-use transmit::json_manage;
-use transmit::register::{RegisterInfo, RegisterList};
-use {Arc, BlockQueue, RwLock};
+use serde::de::DeserializeOwned;
+
+use crate::{Arc, BlockQueue, RwLock, Result};
+use super::register::{RegisterInfo, RegisterList, RegisterRecord};
 
 type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
+
+#[derive(Deserialize, Debug)]
+struct JsonResponse<T> {
+    result: T,
+}
+
+pub fn request<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
+    let resp: serde_json::Value = reqwest::Client::new()
+        .post(url)
+        .json(body)
+        .send()?
+        .json::<serde_json::Value>()?;
+    let resp: JsonResponse<T> = serde_json::from_value(resp)?;
+    Ok(resp.result)
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Message {
@@ -141,7 +157,7 @@ impl Client {
             for rx in rx {
                 info!("{:?}", rx);
                 is_push.write().remove(&rx);
-                json_manage::IO::write(json![list].to_string()).unwrap();
+                RegisterRecord::save(json![list].to_string()).unwrap();
             }
             delete_msg(list, queue, cur_block_height);
             info!("receive end");
@@ -205,7 +221,7 @@ fn post(url: String, msg: Message, config: Config) -> bool {
         let json = json!(msg);
         let mut flag = true;
         for i in 0..config.retry_count {
-            let res: Result<String> = json_manage::request(url.as_str(), &json);
+            let res: Result<String> = request(url.as_str(), &json);
             info!("res: {:?}", res);
             flag = match res {
                 Ok(ok) => {

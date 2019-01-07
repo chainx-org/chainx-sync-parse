@@ -1,10 +1,16 @@
-use jsonrpc_core::Result;
+use std::fs::{File, OpenOptions};
+use std::io::{Write, Read};
+use std::path::Path;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+
+use jsonrpc_core::Result as RpcResult;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-use transmit::json_manage;
-use {Arc, HashMap, StdMutex, StdRwLock};
+
+use crate::{Arc, HashMap, StdMutex, StdRwLock, Result};
+
+const REGISTER_RECORD_PATH: &str = "./target/reg.json";
 
 pub type RegisterInfo = Arc<StdMutex<Info>>;
 pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterInfo>>>;
@@ -57,7 +63,7 @@ pub struct Status {
 build_rpc_trait! {
     pub trait Rpc {
         #[rpc(name = "register")]
-        fn register(&self, String, String, String) -> Result<String>;
+        fn register(&self, String, String, String) -> RpcResult<String>;
     }
 }
 
@@ -67,7 +73,7 @@ pub struct RpcImpl {
 }
 
 impl Rpc for RpcImpl {
-    fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
+    fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
         let prefix: String = serde_json::from_str(&prefix).unwrap();
         info!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
         if let Ok(mut list) = self.register_list.write() {
@@ -102,7 +108,7 @@ impl Rpc for RpcImpl {
             };
         }
         info!("register ok");
-        json_manage::IO::write(json!(self.register_list).to_string()).unwrap();
+        RegisterRecord::save(json!(self.register_list).to_string()).unwrap();
         Ok("OK".to_string())
     }
 }
@@ -122,4 +128,32 @@ pub fn start_rpc(rpc_http: String) -> (Server, RegisterList) {
         .start_http(&rpc_http.parse().unwrap())
         .expect("Unable to start RPC server");
     (server, registrant_list)
+}
+
+pub struct RegisterRecord;
+
+impl RegisterRecord {
+    pub fn save(json: String) -> Result<()> {
+        let p = Path::new(REGISTER_RECORD_PATH);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&p)?;
+
+        file.write(json.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn load() -> Result<Option<String>> {
+        let p = Path::new(REGISTER_RECORD_PATH);
+        match File::open(p) {
+            Ok(mut file) => {
+                let mut string = String::new();
+                file.read_to_string(&mut string)?;
+                Ok(Some(string))
+            }
+            Err(_) => Ok(None),
+        }
+    }
 }
