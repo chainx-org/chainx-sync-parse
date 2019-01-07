@@ -53,8 +53,7 @@ impl RedisClient {
     }
 
     pub fn recv_key(&self) -> Result<Vec<u8>> {
-        let key = self.rx.recv()?;
-        Ok(key)
+        Ok(self.rx.recv()?)
     }
 
     pub fn start_subscription(&self) -> Result<thread::JoinHandle<()>> {
@@ -87,33 +86,6 @@ impl RedisClient {
             }
 
             warn!("Pubsub get msg error, exit subscription loop");
-
-            //            loop {
-            //                let msg = match pubsub.get_message() {
-            //                    Ok(msg) => msg,
-            //                    Err(err) => {
-            //                        warn!("Pubsub get msg error: {:?}", err);
-            //                        break;
-            //                    }
-            //                };
-            //
-            //                if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {
-            //                    let key: Vec<u8> = match msg.get_payload() {
-            //                        Ok(key) => key,
-            //                        Err(err) => {
-            //                            warn!("Msg get payload error: {:?}", err);
-            //                            break;
-            //                        }
-            //                    };
-            //                    if let Err(err) = tx.send(key) {
-            //                        warn!("Send error: {:?}", err);
-            //                        break;
-            //                    }
-            //                } else {
-            //                    warn!("Wrong channel");
-            //                    break;
-            //                }
-            //            }
         });
 
         Ok(thread)
