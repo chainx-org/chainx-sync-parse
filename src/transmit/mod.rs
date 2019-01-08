@@ -27,8 +27,7 @@ impl RegisterService {
     }
 
     fn load(list: &RegisterList) -> Result<()> {
-        let record = RegisterRecord::load()?;
-        if let Some(record) = record {
+        if let Some(record) = RegisterRecord::load()? {
             let map: HashMap<String, RegisterInfo> = serde_json::from_str(record.as_str())?;
             for (k, v) in map {
                 list.write().unwrap().insert(k, v);

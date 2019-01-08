@@ -130,9 +130,10 @@ impl PushClient {
             if let Ok(mut reg) = reg_data.lock() {
                 info!("cur_push_height: {:?}", cur_push_height);
                 while reg.status.height <= cur_push_height {
-                    if let Some(msg) = is_post(queue.clone(), reg.status.height, reg.prefix.clone())
+                    if let Some(msg) =
+                        is_post_msg(queue.clone(), reg.status.height, reg.prefix.clone())
                     {
-                        if !post(url.clone(), msg, config.clone()) {
+                        if !post_msg(&url, msg, config.clone()) {
                             info!("post err");
                             reg.set_down(true);
                             break;
@@ -165,7 +166,7 @@ impl PushClient {
     }
 }
 
-fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
+fn is_post_msg(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
     if let Some(msg) = queue.read().get(&height) {
         let mut push_msg = Message::new(height);
         for v in msg {
@@ -207,7 +208,7 @@ fn split_msg(msg: Message, slice_num: usize) -> Vec<Message> {
     }
 }
 
-fn post(url: String, msg: Message, config: Config) -> bool {
+fn post_msg(url: &str, msg: Message, config: Config) -> bool {
     info!("post");
     let slice_msg = split_msg(msg, 10);
     for msg in slice_msg {
@@ -215,7 +216,7 @@ fn post(url: String, msg: Message, config: Config) -> bool {
         let json = json!(msg);
         let mut flag = true;
         for i in 0..config.retry_count {
-            if let Ok(ok) = request::<String>(url.as_str(), &json) {
+            if let Ok(ok) = request::<String>(url, &json) {
                 info!("res: {:?}", ok);
                 if ok == "OK" {
                     flag = true;

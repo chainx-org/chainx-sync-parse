@@ -1,4 +1,3 @@
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -47,9 +46,12 @@ impl Info {
         self.status.height += 1;
     }
 
-    pub fn set_down(&mut self, down: bool) {
+    pub fn set_down(&mut self, down: bool) -> bool {
         if self.status.down != down {
             self.status.down = down;
+            true
+        } else {
+            false
         }
     }
 }
@@ -76,40 +78,38 @@ impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
         let prefix: String = serde_json::from_str(&prefix).unwrap();
         info!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
-        if let Ok(mut list) = self.register_list.write() {
-            match list.entry(url) {
-                Vacant(reg) => {
-                    reg.insert(Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
-                }
-                Occupied(reg) => {
-                    if let Ok(mut reg) = reg.into_mut().lock() {
-                        info!(
-                            "version:{:?}, reg_version{:?}",
-                            version.parse::<f64>().unwrap(),
-                            reg.version.parse::<f64>().unwrap()
-                        );
-                        if version.parse::<f64>().unwrap() > reg.version.parse::<f64>().unwrap() {
-                            reg.new_version(version);
-                            reg.add_prefix(prefix);
-                        } else {
-                            if let None = reg.prefix.iter().find(|&x| x == &prefix) {
-                                reg.add_prefix(prefix);
-                            } else {
-                                if reg.status.down {
-                                    reg.set_down(false);
-                                } else {
-                                    info!("register null");
-                                    return Ok("null".to_string());
-                                }
-                            }
-                        }
+        let mut new_info = true;
+        self.register_list
+            .write()
+            .unwrap()
+            .entry(url)
+            .and_modify(|info| {
+                let mut info = info.lock().unwrap();
+                info!(
+                    "version:{:?}, reg_version{:?}",
+                    version.parse::<f64>().unwrap(),
+                    info.version.parse::<f64>().unwrap()
+                );
+                if version.parse::<f64>().unwrap() > info.version.parse::<f64>().unwrap() {
+                    info.new_version(version.clone());
+                    info.add_prefix(prefix.clone());
+                } else {
+                    match info.prefix.iter().find(|&x| x == &prefix) {
+                        Some(_) => new_info = info.set_down(false),
+                        None => info.add_prefix(prefix.clone()),
                     }
                 }
-            };
+            })
+            .or_insert(Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
+
+        if new_info {
+            info!("register ok");
+            RegisterRecord::save(json!(self.register_list).to_string()).unwrap();
+            Ok("OK".to_string())
+        } else {
+            info!("register null");
+            Ok("NULL".to_string())
         }
-        info!("register ok");
-        RegisterRecord::save(json!(self.register_list).to_string()).unwrap();
-        Ok("OK".to_string())
     }
 }
 
