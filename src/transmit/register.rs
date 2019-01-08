@@ -47,13 +47,13 @@ impl Info {
     }
 
     pub fn switch_on(&mut self) {
-        if self.status.down != false {
+        if self.status.down {
             self.status.down = false;
         }
     }
 
     pub fn switch_off(&mut self) {
-        if self.status.down != true {
+        if !self.status.down {
             self.status.down = true;
         }
     }
@@ -102,7 +102,7 @@ impl Rpc for RpcImpl {
                     }
                 }
             })
-            .or_insert(Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
+            .or_insert_with(|| Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
 
         info!("register ok");
         RegisterRecord::save(json!(self.register_list).to_string()).expect("record save error");
@@ -137,7 +137,7 @@ impl RegisterRecord {
             .truncate(true)
             .open(&Path::new(REGISTER_RECORD_PATH))?;
 
-        file.write(json.as_bytes())?;
+        file.write_all(json.as_bytes())?;
         Ok(())
     }
 

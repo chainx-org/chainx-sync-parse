@@ -81,14 +81,14 @@ impl PushClient {
 
     fn get_block_height(&self) -> u64 {
         match self.block_queue.read().keys().next_back() {
-            Some(s) => s.clone(),
+            Some(s) => *s,
             None => 0,
         }
     }
 
     pub fn start(&mut self) {
         loop {
-            if self.block_queue.read().len() <= 0 {
+            if self.block_queue.read().is_empty() {
                 continue;
             };
             let cur_block_height = self.get_block_height();
@@ -102,6 +102,7 @@ impl PushClient {
                         .write()
                         .entry(url.clone())
                         .or_insert_with(|| {
+                            info!("have new push!");
                             have_new_push = true;
                             self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
                             true
@@ -177,7 +178,7 @@ fn is_post_msg(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<M
                 }
             }
         }
-        if push_msg.data.len() > 0 {
+        if !push_msg.data.is_empty() {
             return Some(push_msg);
         }
     } else {
@@ -236,10 +237,8 @@ fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
     let mut min_block_height = u64::max_value();
     for register in list.read().unwrap().values() {
         let reg = register.lock().unwrap();
-        if !reg.status.down {
-            if reg.status.height > 0 && reg.status.height - 1 < min_block_height {
-                min_block_height = reg.status.height - 1;
-            }
+        if !reg.status.down && reg.status.height > 0 && reg.status.height - 1 < min_block_height {
+            min_block_height = reg.status.height - 1;
         }
     }
 
