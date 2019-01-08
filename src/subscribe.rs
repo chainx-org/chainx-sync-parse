@@ -84,6 +84,7 @@ impl RedisClient {
                     break;
                 }
             }
+
             warn!("Pubsub get msg error, exit subscription loop");
         });
 

@@ -9,6 +9,7 @@ use self::primitives::*;
 use crate::Result;
 
 #[rustfmt::skip]
+#[allow(clippy::large_enum_variant)]
 #[derive(EnumIter, EnumMessage, Debug, Eq, PartialEq)]
 pub enum RuntimeStorage {
     // substrate
@@ -309,7 +310,10 @@ impl RuntimeStorage {
         for storage in Self::iter() {
             let prefix: String = storage
                 .get_message()
-                .ok_or("Get storage prefix failed".to_string())?
+                .ok_or_else(|| {
+                    error!("Get storage prefix failed");
+                    "Get storage prefix failed".to_string()
+                })?
                 .into();
             if key.starts_with(prefix.as_bytes()) {
                 return Ok((storage, prefix));
@@ -323,7 +327,10 @@ impl RuntimeStorage {
         let mut key = match self.get_detailed_message() {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
-            _ => return Err("Invalid storage type".into()),
+            _ => {
+                error!("Get storage type failed");
+                return Err("Invalid storage type".into());
+            },
         };
 
         match self {

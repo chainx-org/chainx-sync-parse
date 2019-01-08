@@ -51,8 +51,8 @@ fn main() -> Result<()> {
                 continue;
             }
             cur_block_height = height;
-            let values: Vec<serde_json::Value> = stat.values().into_iter().cloned().collect();
-            if let Some(_) = block_queue.write().insert(cur_block_height - 1, values) {
+            let values: Vec<serde_json::Value> = stat.values().cloned().collect();
+            if block_queue.write().insert(cur_block_height - 1, values).is_some() {
                 warn!("Failed to insert the block into block queue");
             }
             stat.clear();
