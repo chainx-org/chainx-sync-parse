@@ -145,15 +145,23 @@ impl RegisterRecord {
         Ok(())
     }
 
-    pub fn load() -> Result<Option<String>> {
-        let p = Path::new(REGISTER_RECORD_PATH);
-        match File::open(p) {
-            Ok(mut file) => {
-                let mut string = String::new();
-                file.read_to_string(&mut string)?;
-                Ok(Some(string))
-            }
-            Err(_) => Ok(None),
-        }
+    pub fn load() -> Result<String> {
+        let path = Path::new(REGISTER_RECORD_PATH);
+        let mut file = File::open(path)?;
+        let mut buf = String::new();
+        file.read_to_string(&mut buf)?;
+        Ok(buf)
     }
+
+//    pub fn load() -> Result<Option<String>> {
+//        let p = Path::new(REGISTER_RECORD_PATH);
+//        match File::open(p) {
+//            Ok(mut file) => {
+//                let mut string = String::new();
+//                file.read_to_string(&mut string)?;
+//                Ok(Some(string))
+//            }
+//            Err(_) => Ok(None),
+//        }
+//    }
 }
