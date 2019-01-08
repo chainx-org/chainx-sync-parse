@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 use std::thread;
 
-use error::Result;
+use crate::Result;
 
 const REDIS_KEY_EVENT_NOTIFICATION: &str = "__keyevent@0__:zadd";
 
@@ -32,7 +32,7 @@ impl RedisClient {
     }
 
     #[rustfmt::skip]
-    pub fn query_key_and_score(&self, key: &[u8]) -> Result<(Vec<u8>, u64)> {
+    fn query_key_and_score(&self, key: &[u8]) -> Result<(Vec<u8>, u64)> {
         let (key, score): (Vec<u8>, u64) = redis::cmd("ZREVRANGEBYSCORE")
             .arg(key)
             .arg("+inf").arg("-inf")
@@ -46,7 +46,7 @@ impl RedisClient {
         Ok((key, score))
     }
 
-    pub fn query_value(&self, key: &[u8]) -> Result<Vec<u8>> {
+    fn query_value(&self, key: &[u8]) -> Result<Vec<u8>> {
         let value: Vec<u8> = redis::cmd("GET").arg(key).query(&self.conn)?;
         debug!("value: {:?}", value);
         Ok(value)

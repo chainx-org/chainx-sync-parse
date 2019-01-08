@@ -165,35 +165,29 @@ impl PushClient {
     }
 }
 
-fn is_post(queue: BlockQueue, height: u64, prefixes: Vec<String>) -> Option<Message> {
-    match queue.read().get(&height) {
-        Some(msg) => {
-            let mut push_msg = Message::new(height);
-            for v in msg {
-                let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
-                for prefix in &prefixes {
-                    info!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
-                    if *prefix == msg_prefix {
-                        info!("find prefix");
-                        push_msg.add(v.clone());
-                    }
+fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
+    if let Some(msg) = queue.read().get(&height) {
+        let mut push_msg = Message::new(height);
+        for v in msg {
+            let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
+            for prefix in &prefixs {
+                info!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
+                if *prefix == msg_prefix {
+                    info!("find prefix");
+                    push_msg.add(v.clone());
                 }
             }
-
-            if push_msg.data.len() > 0 {
-                Some(push_msg)
-            } else {
-                None
-            }
         }
-        None => {
-            error!("can not find msg! height: {:?}", height);
-            None
+        if push_msg.data.len() > 0 {
+            return Some(push_msg);
         }
+    } else {
+        error!("can not find msg! height: {:?}", height);
     }
+    None
 }
 
-fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
+fn split_msg(msg: Message, slice_num: usize) -> Vec<Message> {
     info!("slice");
     if msg.data.len() > slice_num {
         let mut v = Vec::new();
@@ -215,30 +209,22 @@ fn slice(msg: Message, slice_num: usize) -> Vec<Message> {
 
 fn post(url: String, msg: Message, config: Config) -> bool {
     info!("post");
-    let slice_msg = slice(msg, 10);
+    let slice_msg = split_msg(msg, 10);
     for msg in slice_msg {
         info!("msg:{:?}", msg);
         let json = json!(msg);
         let mut flag = true;
         for i in 0..config.retry_count {
-            let res: Result<String> = request(url.as_str(), &json);
-            info!("res: {:?}", res);
-            flag = match res {
-                Ok(ok) => {
-                    if ok == "OK" {
-                        break;
-                    } else {
-                        info!("retry: {:?}", i);
-                        std::thread::sleep(config.retry_interval);
-                        false
-                    }
-                }
-                Err(_) => {
-                    info!("retry: {:?}", i);
-                    std::thread::sleep(config.retry_interval);
-                    false
+            if let Ok(ok) = request::<String>(url.as_str(), &json) {
+                info!("res: {:?}", ok);
+                if ok == "OK" {
+                    flag = true;
+                    break;
                 }
             }
+            info!("retry: {:?}", i);
+            flag = false;
+            std::thread::sleep(config.retry_interval);
         }
         if !flag {
             return false;
