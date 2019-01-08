@@ -34,24 +34,28 @@ impl Info {
         self.prefix.clear();
         self.status = Status::default();
         self.version = version;
-        self.set_down(false);
+        self.switch_on();
     }
+
 
     pub fn add_prefix(&mut self, prefix: String) {
         self.prefix.push(prefix);
-        self.set_down(false);
+        self.switch_on();
     }
 
     pub fn add_height(&mut self) {
         self.status.height += 1;
     }
 
-    pub fn set_down(&mut self, down: bool) -> bool {
-        if self.status.down != down {
-            self.status.down = down;
-            true
-        } else {
-            false
+    pub fn switch_on(&mut self) {
+        if self.status.down != false {
+            self.status.down = false;
+        }
+    }
+
+    pub fn switch_off(&mut self) {
+        if self.status.down != true {
+            self.status.down = true;
         }
     }
 }
@@ -76,15 +80,14 @@ pub struct RpcImpl {
 
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
-        let prefix: String = serde_json::from_str(&prefix).unwrap();
+        let prefix: String = serde_json::from_str(&prefix).expect("prefix deserialize error");
         info!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
-        let mut new_info = true;
         self.register_list
             .write()
             .unwrap()
             .entry(url)
             .and_modify(|info| {
-                let mut info = info.lock().unwrap();
+                let mut info = info.lock().expect("");
                 info!(
                     "version:{:?}, reg_version{:?}",
                     version.parse::<f64>().unwrap(),
@@ -95,21 +98,16 @@ impl Rpc for RpcImpl {
                     info.add_prefix(prefix.clone());
                 } else {
                     match info.prefix.iter().find(|&x| x == &prefix) {
-                        Some(_) => new_info = info.set_down(false),
+                        Some(_) => info.switch_on(),
                         None => info.add_prefix(prefix.clone()),
                     }
                 }
             })
             .or_insert(Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
 
-        if new_info {
-            info!("register ok");
-            RegisterRecord::save(json!(self.register_list).to_string()).unwrap();
-            Ok("OK".to_string())
-        } else {
-            info!("register null");
-            Ok("NULL".to_string())
-        }
+        info!("register ok");
+        RegisterRecord::save(json!(self.register_list).to_string()).expect("record save error");
+        Ok("OK".to_string())
     }
 }
 
@@ -134,22 +132,24 @@ pub struct RegisterRecord;
 
 impl RegisterRecord {
     pub fn save(json: String) -> Result<()> {
-        let p = Path::new(REGISTER_RECORD_PATH);
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&p)?;
+            .open(&Path::new(REGISTER_RECORD_PATH))?;
 
         file.write(json.as_bytes())?;
         Ok(())
     }
 
-    pub fn load() -> Result<String> {
-        let path = Path::new(REGISTER_RECORD_PATH);
-        let mut file = File::open(path)?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)?;
-        Ok(buf)
+    pub fn load() -> Result<Option<String>> {
+        match File::open(Path::new(REGISTER_RECORD_PATH)) {
+            Ok(mut file) => {
+                let mut buf = String::new();
+                file.read_to_string(&mut buf)?;
+                Ok(Some(buf))
+            },
+            Err(_) => Ok(None),
+        }
     }
 }

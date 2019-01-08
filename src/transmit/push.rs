@@ -135,7 +135,7 @@ impl PushClient {
                     {
                         if !post_msg(&url, msg, config.clone()) {
                             info!("post err");
-                            reg.set_down(true);
+                            reg.switch_off();
                             break;
                         }
                         info!("post ok");
