@@ -4,8 +4,6 @@ mod register;
 use std::thread;
 use std::time::Duration;
 
-use jsonrpc_http_server::Server;
-
 use self::push::{Config, PushClient};
 
 use self::register::{build_http_rpc_server, RegisterInfo, RegisterList, RegisterRecord};
@@ -16,7 +14,7 @@ pub struct RegisterService;
 impl RegisterService {
     pub fn run(url: &str, block_queue: BlockQueue) -> Result<thread::JoinHandle<()>> {
         let (server, list) = build_http_rpc_server(url);
-        Self::load(&list);
+        Self::load(&list)?;
 
         let thread = thread::spawn(move || {
             let mut push_client =
