@@ -1,5 +1,3 @@
-//use serde::{de, ser};
-
 error_chain! {
     // The type defined for this error. These are the conventional
     // and recommended names, but they can be arbitrarily chosen.
@@ -53,24 +51,5 @@ error_chain! {
 //            description("invalid toolchain name")
 //            display("invalid toolchain name: '{}'", t)
 //        }
-
-        // You can also add commas after description/display.
-        // This may work better with some editor auto-indentation modes:
-//        UnknownToolchainVersion(v: String) {
-//            description("unknown toolchain version"), // note the ,
-//            display("unknown toolchain version: '{}'", v), // trailing comma is allowed
-//        }
     }
 }
-
-//impl ser::Error for Error {
-//    fn custom<T: std::fmt::Display>(msg: T) -> Self {
-//        ErrorKind::Msg(msg.to_string()).into()
-//    }
-//}
-
-//impl de::Error for Error {
-//    fn custom<T: std::fmt::Display>(msg: T) -> Self {
-//        ErrorKind::Msg(msg.to_string()).into()
-//    }
-//}
