@@ -10,8 +10,6 @@ use serde::de::DeserializeOwned;
 use super::register::{RegisterInfo, RegisterList, RegisterRecord};
 use crate::{Arc, BlockQueue, Result, RwLock};
 
-type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
-
 #[derive(Deserialize, Debug)]
 struct JsonResponse<T> {
     result: T,
@@ -61,6 +59,8 @@ impl Config {
     }
 }
 
+type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
+
 #[derive(Debug)]
 pub struct PushClient {
     register_list: RegisterList,
@@ -104,7 +104,7 @@ impl PushClient {
                         .or_insert_with(|| {
                             info!("have new push!");
                             have_new_push = true;
-                            self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
+                            self.push_msg(cur_block_height, url, info.clone(), tx.clone());
                             true
                         });
                 }
@@ -119,12 +119,13 @@ impl PushClient {
     fn push_msg(
         &self,
         cur_push_height: u64,
-        url: String,
+        url: &str,
         reg_data: RegisterInfo,
         tx: Sender<String>,
     ) {
         let queue = self.block_queue.clone();
         let config = self.config.clone();
+        let url = url.to_string();
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
                 info!("cur_push_height: {:?}", cur_push_height);
@@ -154,10 +155,10 @@ impl PushClient {
         let is_push = self.push_flag.clone();
         let cur_block_height = self.get_block_height();
         thread::spawn(move || {
-            for rx in rx {
-                info!("{:?}", rx);
-                is_push.write().remove(&rx);
-                RegisterRecord::save(json![list].to_string()).unwrap();
+            for url in rx {
+                info!("{:?}", url);
+                is_push.write().remove(&url);
+                RegisterRecord::save(json!(list).to_string()).unwrap();
             }
             delete_msg(list, queue, cur_block_height);
             info!("receive end");
@@ -165,12 +166,12 @@ impl PushClient {
     }
 }
 
-fn is_post_msg(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
+fn is_post_msg(queue: BlockQueue, height: u64, prefixes: Vec<String>) -> Option<Message> {
     if let Some(msg) = queue.read().get(&height) {
         let mut push_msg = Message::new(height);
         for v in msg {
             let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
-            for prefix in &prefixs {
+            for prefix in &prefixes {
                 info!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
                 if *prefix == msg_prefix {
                     info!("find prefix");
