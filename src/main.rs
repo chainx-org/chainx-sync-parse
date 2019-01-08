@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
     info!("BlockQueue len: {}", block_queue.read().len());
 
-    let transmit_thread = transmit::start(REGISTER_SERVER_URL.to_string(), block_queue.clone());
+    let register_service_thread = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
@@ -75,10 +75,9 @@ fn main() -> Result<()> {
         .join()
         .expect("Couldn't join on the subscribe thread");
 
-    transmit_thread
+    register_service_thread
         .join()
-        .expect("Couldn't join on the transmit thread")
-        .err();
+        .expect("Couldn't join on the transmit thread");
 
     Ok(())
 }

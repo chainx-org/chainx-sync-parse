@@ -6,42 +6,34 @@ use std::time::Duration;
 
 use jsonrpc_http_server::Server;
 
+use self::push::{Config, PushClient};
+
+use self::register::{build_http_rpc_server, RegisterInfo, RegisterList, RegisterRecord};
 use crate::{BlockQueue, HashMap, Result};
-use self::register::{start_rpc, RegisterInfo, RegisterList, RegisterRecord};
 
-pub fn start(server_url: String, block_queue: BlockQueue) -> thread::JoinHandle<Result<()>> {
-    thread::spawn(move || {
-        let register_server = RegisterServer::new(server_url);
-        register_server.load()?;
+pub struct RegisterService;
 
-        let mut push = push::Client::new(
-            register_server.list,
-            block_queue,
-            push::Config::new(3, Duration::new(3, 0)),
-        );
-        push.start();
-        register_server.server.wait();
-        Ok(())
-    })
-}
+impl RegisterService {
+    pub fn run(url: &str, block_queue: BlockQueue) -> Result<thread::JoinHandle<()>> {
+        let (server, list) = build_http_rpc_server(url);
+        Self::load(&list);
 
-pub struct RegisterServer {
-    server: Server,
-    list: RegisterList,
-}
+        let thread = thread::spawn(move || {
+            let mut push_client =
+                PushClient::new(list, block_queue, Config::new(3, Duration::new(3, 0)));
+            push_client.start();
+            server.wait();
+        });
 
-impl RegisterServer {
-    pub fn new(url: String) -> Self {
-        let (server, list) = start_rpc(url);
-        Self { server, list }
+        Ok(thread)
     }
 
-    pub fn load(&self) -> Result<()> {
-        let string = RegisterRecord::load()?;
-        if let Some(string) = string {
-            let map: HashMap<String, RegisterInfo> = serde_json::from_str(string.as_str())?;
+    fn load(list: &RegisterList) -> Result<()> {
+        let record = RegisterRecord::load()?;
+        if let Some(record) = record {
+            let map: HashMap<String, RegisterInfo> = serde_json::from_str(record.as_str())?;
             for (k, v) in map {
-                self.list.write().unwrap().insert(k, v);
+                list.write().unwrap().insert(k, v);
             }
         }
         Ok(())

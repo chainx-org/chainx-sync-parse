@@ -1,14 +1,14 @@
-use std::fs::{File, OpenOptions};
-use std::io::{Write, Read};
-use std::path::Path;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::path::Path;
 
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
 
-use crate::{Arc, HashMap, StdMutex, StdRwLock, Result};
+use crate::{Arc, HashMap, Result, StdMutex, StdRwLock};
 
 const REGISTER_RECORD_PATH: &str = "./target/reg.json";
 
@@ -26,8 +26,8 @@ impl Info {
     pub fn new(prefix: Vec<String>, version: String) -> Self {
         Self {
             prefix,
-            version,
             status: Status::default(),
+            version,
         }
     }
 
@@ -113,7 +113,7 @@ impl Rpc for RpcImpl {
     }
 }
 
-pub fn start_rpc(rpc_http: String) -> (Server, RegisterList) {
+pub fn build_http_rpc_server(rpc_http: &str) -> (Server, RegisterList) {
     let mut io = jsonrpc_core::IoHandler::new();
     let rpc = RpcImpl::default();
     let registrant_list = rpc.register_list.clone();

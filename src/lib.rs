@@ -33,7 +33,7 @@ mod error;
 mod parse;
 mod serde_ext;
 mod subscribe;
-pub mod transmit;
+mod transmit;
 
 pub use parking_lot::RwLock;
 pub use std::collections::{BTreeMap, HashMap};
@@ -45,3 +45,4 @@ pub use self::error::{Error, Result};
 pub use self::parse::*;
 pub use self::serde_ext::Bytes;
 pub use self::subscribe::RedisClient;
+pub use self::transmit::RegisterService;

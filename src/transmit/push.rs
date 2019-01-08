@@ -1,15 +1,15 @@
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::Duration;
-use std::fmt::Debug;
 
 use serde::de::DeserializeOwned;
 
-use crate::{Arc, BlockQueue, RwLock, Result};
 use super::register::{RegisterInfo, RegisterList, RegisterRecord};
+use crate::{Arc, BlockQueue, Result, RwLock};
 
 type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
 
@@ -18,7 +18,7 @@ struct JsonResponse<T> {
     result: T,
 }
 
-pub fn request<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
+fn request<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
     let resp: serde_json::Value = reqwest::Client::new()
         .post(url)
         .json(body)
@@ -63,14 +63,14 @@ impl Config {
 }
 
 #[derive(Debug)]
-pub struct Client {
+pub struct PushClient {
     register_list: RegisterList,
     block_queue: BlockQueue,
     config: Config,
     push_flag: PushFlag,
 }
 
-impl Client {
+impl PushClient {
     pub fn new(register_list: RegisterList, block_queue: BlockQueue, config: Config) -> Self {
         Self {
             register_list,
@@ -165,13 +165,13 @@ impl Client {
     }
 }
 
-fn is_post(queue: BlockQueue, height: u64, prefixs: Vec<String>) -> Option<Message> {
+fn is_post(queue: BlockQueue, height: u64, prefixes: Vec<String>) -> Option<Message> {
     match queue.read().get(&height) {
         Some(msg) => {
             let mut push_msg = Message::new(height);
             for v in msg {
                 let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
-                for prefix in &prefixs {
+                for prefix in &prefixes {
                     info!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
                     if *prefix == msg_prefix {
                         info!("find prefix");
