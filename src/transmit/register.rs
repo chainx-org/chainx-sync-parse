@@ -37,7 +37,6 @@ impl Info {
         self.switch_on();
     }
 
-
     pub fn add_prefix(&mut self, prefix: String) {
         self.prefix.push(prefix);
         self.switch_on();
@@ -87,7 +86,7 @@ impl Rpc for RpcImpl {
             .unwrap()
             .entry(url)
             .and_modify(|info| {
-                let mut info = info.lock().expect("");
+                let mut info = info.lock().unwrap();
                 info!(
                     "version:{:?}, reg_version{:?}",
                     version.parse::<f64>().unwrap(),
@@ -148,7 +147,7 @@ impl RegisterRecord {
                 let mut buf = String::new();
                 file.read_to_string(&mut buf)?;
                 Ok(Some(buf))
-            },
+            }
             Err(_) => Ok(None),
         }
     }

@@ -1,4 +1,3 @@
-use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::mpsc;
@@ -99,15 +98,14 @@ impl PushClient {
                 let push_height = info.lock().unwrap().status.height;
                 let is_down = info.lock().unwrap().status.down;
                 if cur_block_height >= push_height && !is_down {
-                    if let Vacant(flag) = self.push_flag.write().entry(url.clone()) {
-                        info!(
-                            "cur_height: {:?}, push_height: {:?}, {:?}",
-                            cur_block_height, push_height, is_down
-                        );
-                        flag.insert(true);
-                        have_new_push = true;
-                        self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
-                    }
+                    self.push_flag
+                        .write()
+                        .entry(url.clone())
+                        .or_insert_with(|| {
+                            have_new_push = true;
+                            self.push_msg(cur_block_height, url.clone(), info.clone(), tx.clone());
+                            true
+                        });
                 }
             }
 
