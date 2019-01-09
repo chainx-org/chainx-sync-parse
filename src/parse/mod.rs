@@ -311,7 +311,7 @@ impl RuntimeStorage {
             let prefix: String = storage
                 .get_message()
                 .ok_or_else(|| {
-                    error!("Get storage prefix failed");
+                    error!("Runtime storage parse error: get storage prefix failed");
                     "Get storage prefix failed".to_string()
                 })?
                 .into();
@@ -319,6 +319,7 @@ impl RuntimeStorage {
                 return Ok((storage, prefix));
             }
         }
+        //        warn!("No matching key found");
         Err("No matching key found".into())
     }
 
@@ -328,7 +329,7 @@ impl RuntimeStorage {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
-                error!("Get storage type failed");
+                error!("Runtime storage parse error: get storage type failed");
                 return Err("Invalid storage type".into());
             },
         };
