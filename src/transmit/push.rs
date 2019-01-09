@@ -133,6 +133,7 @@ impl PushClient {
                     if let Some(msg) =
                         is_post_msg(queue.clone(), reg.status.height, reg.prefix.clone())
                     {
+                        info!("should post!");
                         if !post_msg(&url, msg, config.clone()) {
                             warn!("post err");
                             reg.switch_off();
@@ -235,23 +236,23 @@ fn post_msg(url: &str, msg: Message, config: Config) -> bool {
 }
 
 fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
-    let mut min_block_height = u64::max_value();
+    let mut min_push_height = u64::max_value();
     for register in list.read().unwrap().values() {
         let reg = register.lock().unwrap();
-        if !reg.status.down && reg.status.height > 0 && reg.status.height - 1 < min_block_height {
-            min_block_height = reg.status.height - 1;
+        if !reg.status.down && reg.status.height > 0 && reg.status.height - 1 < min_push_height {
+            min_push_height = reg.status.height - 1;
         }
     }
 
-    if min_block_height <= cur_block_height {
+    if min_push_height <= cur_block_height {
         let mut h = *queue.read().keys().next().unwrap();
         info!(
-            "height: {:?}, min_block_height: {:?}, len: {:?}",
+            "height: {:?}, min_push_height: {:?}, len: {:?}",
             h,
-            min_block_height,
+            min_push_height,
             queue.read().len()
         );
-        while h <= min_block_height {
+        while h <= min_push_height {
             match queue.write().remove(&h) {
                 Some(_) => info!("del msg: {:?}", h),
                 None => warn!("error: no key: {:?}", h),
@@ -259,7 +260,7 @@ fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
             h += 1;
         }
     } else {
-        warn!("no register!");
+        warn!("delete msg error! min_push_height: {:?}, cur_block_height: {:?}", min_push_height, cur_block_height);
         queue.write().clear();
     }
 }
