@@ -16,7 +16,7 @@ use chainx_sub_parse::*;
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
 const LOG_FILE_PATH: &str = "log/output.log";
 
-fn main() -> Result<()> {
+fn init_log_config() -> Result<()> {
     let console = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
@@ -36,9 +36,14 @@ fn main() -> Result<()> {
                 .appenders(vec!["console", "file"])
                 .build(LevelFilter::Info),
         )
-        .unwrap();
+        .expect("Construct log config failure");
 
-    let _handle = log4rs::init_config(config).unwrap();
+    log4rs::init_config(config).expect("Initialize log config failure");
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    init_log_config()?;
 
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
     debug!("BlockQueue len: {}", block_queue.read().len());
@@ -46,6 +51,7 @@ fn main() -> Result<()> {
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
 
+    let mut next_block_height: u64 = 0;
     let mut cur_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
@@ -57,7 +63,7 @@ fn main() -> Result<()> {
                 ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"),
                 value
             );
-            if height == cur_block_height {
+            if height == next_block_height {
                 match RuntimeStorage::parse(&key, value) {
                     Ok((prefix, value)) => {
                         stat.insert(prefix, value);
@@ -66,16 +72,21 @@ fn main() -> Result<()> {
                 }
                 continue;
             }
-            cur_block_height = height;
+            assert!(height >= 1);
+            next_block_height = height;
+            if next_block_height <= cur_block_height {
+                continue;
+            }
+            cur_block_height = next_block_height - 1;
             let values: Vec<serde_json::Value> = stat.values().cloned().collect();
             info!(
                 "Current block height: {:?}, block info: {:?}",
-                cur_block_height - 1,
+                cur_block_height,
                 serde_json::Value::Array(values.clone()).to_string()
             );
             if block_queue
                 .write()
-                .insert(cur_block_height - 1, values)
+                .insert(cur_block_height, values)
                 .is_some()
             {
                 warn!("Failed to insert the block into block queue");
