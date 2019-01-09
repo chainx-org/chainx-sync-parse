@@ -134,34 +134,34 @@ impl PushClient {
                         is_post_msg(queue.clone(), reg.status.height, reg.prefix.clone())
                     {
                         if !post_msg(&url, msg, config.clone()) {
-                            info!("post err");
+                            warn!("post err");
                             reg.switch_off();
                             break;
                         }
-                        info!("post ok");
+                        debug!("post ok");
                     }
                     reg.add_height();
                 }
-                info!("post end");
+                debug!("post end");
                 tx.send(url).unwrap();
             };
         });
     }
 
     fn receive(&self, rx: Receiver<String>) {
-        info!("receive");
+        debug!("receive");
         let list = self.register_list.clone();
         let queue = self.block_queue.clone();
         let is_push = self.push_flag.clone();
         let cur_block_height = self.get_block_height();
         thread::spawn(move || {
             for url in rx {
-                info!("{:?}", url);
+                info!("receive url: {:?}", url);
                 is_push.write().remove(&url);
                 RegisterRecord::save(json!(list).to_string()).unwrap();
             }
             delete_msg(list, queue, cur_block_height);
-            info!("receive end");
+            debug!("receive end");
         });
     }
 }
@@ -172,9 +172,9 @@ fn is_post_msg(queue: BlockQueue, height: u64, prefixes: Vec<String>) -> Option<
         for v in msg {
             let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
             for prefix in &prefixes {
-                info!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
+                debug!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
                 if *prefix == msg_prefix {
-                    info!("find prefix");
+                    debug!("find prefix");
                     push_msg.add(v.clone());
                 }
             }
@@ -183,13 +183,13 @@ fn is_post_msg(queue: BlockQueue, height: u64, prefixes: Vec<String>) -> Option<
             return Some(push_msg);
         }
     } else {
-        error!("can not find msg! height: {:?}", height);
+        warn!("can not find msg! height: {:?}", height);
     }
     None
 }
 
 fn split_msg(msg: Message, slice_num: usize) -> Vec<Message> {
-    info!("slice");
+    debug!("slice");
     if msg.data.len() > slice_num {
         let mut v = Vec::new();
         for i in 0..msg.data.len() / slice_num {
@@ -209,21 +209,21 @@ fn split_msg(msg: Message, slice_num: usize) -> Vec<Message> {
 }
 
 fn post_msg(url: &str, msg: Message, config: Config) -> bool {
-    info!("post");
+    debug!("post");
     let slice_msg = split_msg(msg, 10);
     for msg in slice_msg {
-        info!("msg:{:?}", msg);
+        debug!("msg:{:?}", msg);
         let json = json!(msg);
         let mut flag = true;
         for i in 0..config.retry_count {
             if let Ok(ok) = request::<String>(url, &json) {
-                info!("res: {:?}", ok);
+                info!("post res: {:?}", ok);
                 if ok == "OK" {
                     flag = true;
                     break;
                 }
             }
-            info!("retry: {:?}", i);
+            info!("retry count: {:?}", i);
             flag = false;
             std::thread::sleep(config.retry_interval);
         }
@@ -252,15 +252,14 @@ fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
             queue.read().len()
         );
         while h <= min_block_height {
-            info!("del: {:?}", h);
             match queue.write().remove(&h) {
-                Some(_) => info!("del msg"),
-                None => error!("error: no key!"),
+                Some(_) => info!("del msg: {:?}", h),
+                None => warn!("error: no key: {:?}", h),
             };
             h += 1;
         }
     } else {
-        error!("no register!");
+        warn!("no register!");
         queue.write().clear();
     }
 }
