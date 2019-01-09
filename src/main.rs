@@ -82,8 +82,7 @@ fn main() -> Result<()> {
             }
             stat.clear();
 
-        // let queue_len = block_queue.read().len();
-        // debug!("BlockQueue len: {:?}", queue_len);
+            debug!("BlockQueue len: {}", block_queue.read().len());
         } else {
             error!("Redis query error");
             break;
