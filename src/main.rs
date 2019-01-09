@@ -1,25 +1,47 @@
-extern crate env_logger;
 #[macro_use]
 extern crate log;
+extern crate log4rs;
 
 extern crate chainx_sub_parse;
 
-use env_logger::Builder;
 use log::LevelFilter;
+use log4rs::{
+    append::{console::ConsoleAppender, file::FileAppender},
+    config::{Appender, Config, Root},
+    encode::pattern::PatternEncoder,
+};
 
 use chainx_sub_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
+const LOG_FILE_PATH: &str = "log/output.log";
 
 fn main() -> Result<()> {
-    Builder::new()
-        .default_format()
-        .default_format_module_path(false)
-        .filter_level(LevelFilter::Info)
-        .init();
+    let console = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
+        )))
+        .build();
+    let file = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
+        )))
+        .build(LOG_FILE_PATH)?;
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("console", Box::new(console)))
+        .appender(Appender::builder().build("file", Box::new(file)))
+        .build(
+            Root::builder()
+                .appenders(vec!["console", "file"])
+                .build(LevelFilter::Info),
+        )
+        .unwrap();
+
+    let _handle = log4rs::init_config(config).unwrap();
 
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
-    info!("BlockQueue len: {}", block_queue.read().len());
+    debug!("BlockQueue len: {}", block_queue.read().len());
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
@@ -29,7 +51,7 @@ fn main() -> Result<()> {
 
     while let Ok(key) = client.recv_key() {
         if let Ok((height, value)) = client.query(&key) {
-            info!(
+            debug!(
                 "block_height: {:?}, prefix+key: {:?}, value: {:?}",
                 height,
                 ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"),
@@ -40,28 +62,28 @@ fn main() -> Result<()> {
                     Ok((prefix, value)) => {
                         stat.insert(prefix, value);
                     }
-                    Err(err) => {
-                        warn!("Runtime storage parse error: {}", err);
-                        continue;
-                    }
+                    Err(_) => continue,
                 }
                 continue;
             }
             cur_block_height = height;
             let values: Vec<serde_json::Value> = stat.values().cloned().collect();
-            if block_queue.write().insert(cur_block_height - 1, values).is_some() {
+            info!(
+                "Current block height: {:?}, block info: {:?}",
+                cur_block_height - 1,
+                serde_json::Value::Array(values.clone()).to_string()
+            );
+            if block_queue
+                .write()
+                .insert(cur_block_height - 1, values)
+                .is_some()
+            {
                 warn!("Failed to insert the block into block queue");
             }
             stat.clear();
 
-            let queue_len = block_queue.read().len();
-            info!("BlockQueue len: {:?}", queue_len);
-            let values = block_queue
-                .read()
-                .get(&(cur_block_height - 1))
-                .unwrap()
-                .clone();
-            info!("Insert block: {:#?}", values);
+        // let queue_len = block_queue.read().len();
+        // debug!("BlockQueue len: {:?}", queue_len);
         } else {
             warn!("Redis query error");
             break;
