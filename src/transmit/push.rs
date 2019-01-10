@@ -102,7 +102,10 @@ impl PushClient {
                         .write()
                         .entry(url.clone())
                         .or_insert_with(|| {
-                            info!("have new push!");
+                            info!(
+                                "have new push! cur_block_height:{:?}, push_height: {:?}",
+                                cur_block_height, push_height
+                            );
                             have_new_push = true;
                             self.push_msg(cur_block_height, url, info.clone(), tx.clone());
                             true
@@ -128,7 +131,6 @@ impl PushClient {
         let url = url.to_string();
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
-                info!("cur_push_height: {:?}", cur_push_height);
                 while reg.status.height <= cur_push_height {
                     if let Some(msg) =
                         is_post_msg(queue.clone(), reg.status.height, reg.prefix.clone())
@@ -153,12 +155,12 @@ impl PushClient {
         debug!("receive");
         let list = self.register_list.clone();
         let queue = self.block_queue.clone();
-        let is_push = self.push_flag.clone();
+        let push_flag = self.push_flag.clone();
         let cur_block_height = self.get_block_height();
         thread::spawn(move || {
             for url in rx {
                 info!("receive url: {:?}", url);
-                is_push.write().remove(&url);
+                push_flag.write().remove(&url);
                 RegisterRecord::save(json!(list).to_string()).unwrap();
             }
             delete_msg(list, queue, cur_block_height);
@@ -247,7 +249,7 @@ fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
     if min_push_height <= cur_block_height {
         let mut h = *queue.read().keys().next().unwrap();
         info!(
-            "height: {:?}, min_push_height: {:?}, len: {:?}",
+            "cur_block_height: {:?}, min_push_height: {:?},queue len: {:?}",
             h,
             min_push_height,
             queue.read().len()
@@ -260,7 +262,10 @@ fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
             h += 1;
         }
     } else {
-        warn!("delete msg error! min_push_height: {:?}, cur_block_height: {:?}", min_push_height, cur_block_height);
+        warn!(
+            "delete msg error! min_push_height: {:?}, cur_block_height: {:?}",
+            min_push_height, cur_block_height
+        );
         queue.write().clear();
     }
 }

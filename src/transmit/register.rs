@@ -80,18 +80,16 @@ pub struct RpcImpl {
 impl Rpc for RpcImpl {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
         let prefix: String = serde_json::from_str(&prefix).expect("prefix deserialize error");
-        info!("prefix:{:?}, url:{:?}, version{:?}", prefix, url, version);
+        info!(
+            "new register! prefix:{:?}, url:{:?}, version{:?}",
+            prefix, url, version
+        );
         self.register_list
             .write()
             .unwrap()
             .entry(url)
             .and_modify(|info| {
                 let mut info = info.lock().unwrap();
-                info!(
-                    "version:{:?}, reg_version{:?}",
-                    version.parse::<f64>().unwrap(),
-                    info.version.parse::<f64>().unwrap()
-                );
                 if version.parse::<f64>().unwrap() > info.version.parse::<f64>().unwrap() {
                     info.new_version(version.clone());
                     info.add_prefix(prefix.clone());
