@@ -272,7 +272,11 @@ macro_rules! to_value_json {
     ($prefix:ident, $value:ident => $v:ident) => {
         {
             *$v = Decode::decode(&mut $value.as_slice())
-                    .ok_or(format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v))?;
+                    .ok_or_else(|| {
+                        let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
+                        error!("Runtime storage parse error: {}", err);
+                        err
+                    })?;
             Ok(json!({
                 "type":"value",
                 "prefix":$prefix,
@@ -287,9 +291,17 @@ macro_rules! to_map_json {
     ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {
         {
             *$k = Decode::decode(&mut $key)
-                    .ok_or(format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k))?;
+                    .ok_or_else(|| {
+                        let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
+                        error!("Runtime storage parse error: {}", err);
+                        err
+                    })?;
             *$v = Decode::decode(&mut $value.as_slice())
-                    .ok_or(format!("Decode failed, prefix: {:?}, key: {:?}, value: {:?}", $prefix, $k, $v))?;
+                    .ok_or_else(|| {
+                        let err = format!("Decode failed, prefix: {:?}, key: {:?}, value: {:?}", $prefix, $k, $v);
+                        error!("Runtime storage parse error: {}", err);
+                        err
+                    })?;
             Ok(json!({
                 "type":"map",
                 "prefix":$prefix,
@@ -311,7 +323,7 @@ impl RuntimeStorage {
             let prefix: String = storage
                 .get_message()
                 .ok_or_else(|| {
-                    error!("Get storage prefix failed");
+                    error!("Runtime storage parse error: get storage prefix failed");
                     "Get storage prefix failed".to_string()
                 })?
                 .into();
@@ -319,6 +331,7 @@ impl RuntimeStorage {
                 return Ok((storage, prefix));
             }
         }
+        debug!("Runtime storage parse error: No matching key found");
         Err("No matching key found".into())
     }
 
@@ -328,7 +341,7 @@ impl RuntimeStorage {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
-                error!("Get storage type failed");
+                error!("Runtime storage parse error: get storage type failed");
                 return Err("Invalid storage type".into());
             },
         };

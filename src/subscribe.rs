@@ -64,19 +64,19 @@ impl RedisClient {
             let mut pubsub = sub_conn.as_pubsub();
             pubsub
                 .subscribe(REDIS_KEY_EVENT_NOTIFICATION)
-                .unwrap_or_else(|err| warn!("Subscribe error: {:?}", err));
+                .unwrap_or_else(|err| error!("Subscribe error: {:?}", err));
 
             while let Ok(msg) = pubsub.get_message() {
                 if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {
                     let key: Vec<u8> = match msg.get_payload() {
                         Ok(key) => key,
                         Err(err) => {
-                            warn!("Msg get payload error: {:?}", err);
+                            error!("Msg get payload error: {:?}", err);
                             break;
                         }
                     };
                     if let Err(err) = tx.send(key) {
-                        warn!("Send error: {:?}", err);
+                        error!("Send error: {:?}", err);
                         break;
                     }
                 } else {
@@ -85,7 +85,7 @@ impl RedisClient {
                 }
             }
 
-            warn!("Pubsub get msg error, exit subscription loop");
+            error!("Pubsub get msg error, exit subscription loop");
         });
 
         Ok(thread)
