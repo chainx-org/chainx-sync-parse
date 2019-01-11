@@ -22,7 +22,6 @@ strum_macros = "0.13"
 substrate-primitives = { git = "https://github.com/paritytech/substrate" }
 sr-std = { git = "https://github.com/paritytech/substrate" }
 sr-primitives = { git = "https://github.com/paritytech/substrate" }
-
 srml-metadata = { git = "https://github.com/paritytech/substrate" }
 
 [features]
