@@ -9,7 +9,7 @@ use jsonrpc_http_server::{
 
 use crate::{Arc, HashMap, Result, StdMutex, StdRwLock};
 
-const REGISTER_RECORD_PATH: &str = "./target/reg.json";
+const REGISTER_RECORD_PATH: &str = "record/reginfo.json";
 
 pub type RegisterInfo = Arc<StdMutex<Info>>;
 pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterInfo>>>;
