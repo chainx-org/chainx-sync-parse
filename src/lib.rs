@@ -18,6 +18,10 @@ extern crate strum;
 #[macro_use]
 extern crate strum_macros;
 
+extern crate jsonrpc_core;
+extern crate jsonrpc_http_server;
+#[macro_use]
+extern crate jsonrpc_macros;
 // substrate core
 extern crate sr_primitives;
 extern crate sr_std;
@@ -29,11 +33,11 @@ mod error;
 mod parse;
 mod serde_ext;
 mod subscribe;
-
-pub use std::collections::{BTreeMap, HashMap};
-pub use std::sync::Arc;
+mod transmit;
 
 pub use parking_lot::RwLock;
+pub use std::collections::{BTreeMap, HashMap};
+pub use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 
 pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;
 
@@ -41,3 +45,4 @@ pub use self::error::{Error, Result};
 pub use self::parse::*;
 pub use self::serde_ext::Bytes;
 pub use self::subscribe::RedisClient;
+pub use self::transmit::RegisterService;
