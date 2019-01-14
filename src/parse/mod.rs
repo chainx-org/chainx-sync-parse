@@ -29,6 +29,8 @@ pub enum RuntimeStorage {
 //    SystemExtrinsicData(u32, Vec<u8>),
 //    #[strum(message = "System ExtrinsicsRoot", detailed_message = "value")]
 //    SystemExtrinsicsRoot(Hash),
+//    #[strum(message = "System Events", detailed_message = "value")]
+//    SystemEvents(Vec<EventRecord>),
     #[strum(message = "Balances TotalIssuance", detailed_message = "value")]
     BalancesTotalIssuance(Balance),
     #[strum(message = "Balances ExistentialDeposit", detailed_message = "value")]
@@ -271,12 +273,18 @@ pub enum RuntimeStorage {
 macro_rules! to_value_json {
     ($prefix:ident, $value:ident => $v:ident) => {
         {
-            *$v = Decode::decode(&mut $value.as_slice())
-                    .ok_or_else(|| {
-                        let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                        error!("Runtime storage parse error: {}", err);
-                        err
-                    })?;
+            *$v = match Decode::decode(&mut $value.as_slice()) {
+                Some(value) => value,
+                None => {
+                    error!("Runtime storage parse error: Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
+                    return Ok(json!({
+                        "type":"value",
+                        "prefix":$prefix,
+                        "key":null,
+                        "value":null,
+                    }));
+                }
+            };
             Ok(json!({
                 "type":"value",
                 "prefix":$prefix,
@@ -296,12 +304,18 @@ macro_rules! to_map_json {
                         error!("Runtime storage parse error: {}", err);
                         err
                     })?;
-            *$v = Decode::decode(&mut $value.as_slice())
-                    .ok_or_else(|| {
-                        let err = format!("Decode failed, prefix: {:?}, key: {:?}, value: {:?}", $prefix, $k, $v);
-                        error!("Runtime storage parse error: {}", err);
-                        err
-                    })?;
+            *$v = match Decode::decode(&mut $value.as_slice()) {
+                Some(value) => value,
+                None => {
+                    error!("Runtime storage parse error: Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
+                    return Ok(json!({
+                        "type":"map",
+                        "prefix":$prefix,
+                        "key":$k,
+                        "value":null,
+                    }));
+                }
+            };
             Ok(json!({
                 "type":"map",
                 "prefix":$prefix,
@@ -356,6 +370,7 @@ impl RuntimeStorage {
 //            RuntimeStorage::SystemExtrinsicCount(ref mut v) => to_value_json!(prefix, value => v),
 //            RuntimeStorage::SystemExtrinsicData(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
 //            RuntimeStorage::SystemExtrinsicsRoot(ref mut v) => to_value_json!(prefix, value => v),
+//            RuntimeStorage::SystemEvents(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesTotalIssuance(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesExistentialDeposit(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesReclaimRebate(ref mut v) => to_value_json!(prefix, value => v),
@@ -554,6 +569,23 @@ mod tests {
                 "prefix":"XAssets TotalAssetBalance",
                 "key":[66, 84, 67],
                 "value":{"Free":123}
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(got, exp);
+    }
+
+    #[test]
+    pub fn test_parse_remove_value() {
+        let key = "XSystem BlockProducer".as_bytes();
+        let value = vec![];
+        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
+        let exp = serde_json::Value::from_str(
+            r#"{
+                "type":"value",
+                "prefix":"XSystem BlockProducer",
+                "key":null,
+                "value":null
             }"#,
         )
         .unwrap();

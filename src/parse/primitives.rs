@@ -25,6 +25,35 @@ pub type Moment = u64;
 /// u64 for chainx token and all assets type, if the asset is not suit for u64, choose a suitable precision
 pub type Balance = u64;
 
+///// A phase of a block's execution.
+//#[derive(Encode, Decode)]
+//#[cfg_attr(feature = "std", derive(Serialize, PartialEq, Eq, Clone, Debug))]
+//pub enum Phase {
+//    /// Applying an extrinsic.
+//    ApplyExtrinsic(u32),
+//    /// The end.
+//    Finalization,
+//}
+//
+//#[derive(Clone, PartialEq, Eq, Encode, Decode)]
+//#[cfg_attr(feature = "std", derive(Serialize, Debug))]
+//pub enum Event {
+//    /// An extrinsic completed successfully.
+//    ExtrinsicSuccess,
+//    /// An extrinsic failed.
+//    ExtrinsicFailed,
+//}
+//
+///// Record of an event happening.
+//#[derive(Clone, PartialEq, Eq, Encode, Decode)]
+//#[cfg_attr(feature = "std", derive(Serialize, Debug))]
+//pub struct EventRecord {
+//    /// The phase of the block it happened in.
+//    pub phase: Phase,
+//    /// The event itself.
+//    pub event: Event,
+//}
+
 /// Cert immutable properties
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
