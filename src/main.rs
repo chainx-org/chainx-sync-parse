@@ -14,6 +14,7 @@ use log4rs::{
 use chainx_sub_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
+const REGISTER_SERVER_URL: &str = "127.0.0.1:3030";
 const LOG_FILE_PATH: &str = "log/output.log";
 
 fn init_log_config() -> Result<()> {
@@ -47,6 +48,8 @@ fn main() -> Result<()> {
 
     let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
     debug!("BlockQueue len: {}", block_queue.read().len());
+
+    let register_service_thread = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
@@ -103,6 +106,10 @@ fn main() -> Result<()> {
     subscribe_thread
         .join()
         .expect("Couldn't join on the subscribe thread");
+
+    register_service_thread
+        .join()
+        .expect("Couldn't join on the transmit thread");
 
     Ok(())
 }
