@@ -1,11 +1,11 @@
-// Copyright 2018 Chainpool.
+// Copyright 2019 Chainpool.
 
 use std::collections::BTreeMap;
 
 use parity_codec::{Decode, Encode, Input, Output};
 
 #[derive(Default, Eq, PartialEq, Clone)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct CodecBTreeMap<K: Ord, V>(pub BTreeMap<K, V>);
 
 impl<K: Encode + Ord, V: Encode> Encode for CodecBTreeMap<K, V> {

@@ -1,3 +1,11 @@
+use parity_codec::Codec;
+
+use super::linked_node::NodeT;
+
+// ================================================================================================
+// Substrate primitives.
+// ================================================================================================
+
 pub use sr_primitives::Perbill;
 pub use substrate_primitives::H256;
 
@@ -19,72 +27,62 @@ pub type AccountIndex = u64;
 /// Index of a transaction in the relay chain. 32-bit should be plenty.
 pub type Index = u64;
 
+/// Type used for expressing timestamp.
 pub type Moment = u64;
 
 /// The balance of an account.
 /// u64 for chainx token and all assets type, if the asset is not suit for u64, choose a suitable precision
 pub type Balance = u64;
 
-///// A phase of a block's execution.
-//#[derive(Encode, Decode)]
-//#[cfg_attr(feature = "std", derive(Serialize, PartialEq, Eq, Clone, Debug))]
-//pub enum Phase {
-//    /// Applying an extrinsic.
-//    ApplyExtrinsic(u32),
-//    /// The end.
-//    Finalization,
-//}
-//
-//#[derive(Clone, PartialEq, Eq, Encode, Decode)]
-//#[cfg_attr(feature = "std", derive(Serialize, Debug))]
-//pub enum Event {
-//    /// An extrinsic completed successfully.
-//    ExtrinsicSuccess,
-//    /// An extrinsic failed.
-//    ExtrinsicFailed,
-//}
-//
-///// Record of an event happening.
-//#[derive(Clone, PartialEq, Eq, Encode, Decode)]
-//#[cfg_attr(feature = "std", derive(Serialize, Debug))]
-//pub struct EventRecord {
-//    /// The phase of the block it happened in.
-//    pub phase: Phase,
-//    /// The event itself.
-//    pub event: Event,
-//}
+// ================================================================================================
+// ChainX primitives.
+// ================================================================================================
+
+pub type XString = String;
+
+// ============================================================================
+// xaccounts runtime module definitions.
+// ============================================================================
+
+pub type Name = XString;
+pub type URL = XString;
 
 /// Cert immutable properties
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct CertImmutableProps<BlockNumber: Default> {
-    pub issued_at: BlockNumber,
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct CertImmutableProps<BlockNumber: Default, Moment: Default> {
+    pub issued_at: (BlockNumber, Moment),
     pub frozen_duration: u32,
 }
 
 /// Intention Immutable properties
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct IntentionImmutableProps {
-    pub name: Vec<u8>,
-    pub activator: Vec<u8>,
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct IntentionImmutableProps<Moment> {
+    pub name: Name,
+    pub activator: Name,
     pub initial_shares: u32,
+    pub registered_at: Moment,
 }
 
 /// Intention mutable properties
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct IntentionProps {
-    pub url: Vec<u8>,
+    pub url: URL,
     pub is_active: bool,
 }
 
-pub type Token = Vec<u8>;
-pub type Desc = Vec<u8>;
+// ============================================================================
+// xassets - assets runtime module definitions.
+// ============================================================================
+
+pub type Token = XString;
+pub type Desc = XString;
 pub type Precision = u16;
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum Chain {
     ChainX,
     Bitcoin,
@@ -97,8 +95,8 @@ impl Default for Chain {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Asset {
     token: Token,
     chain: Chain,
@@ -106,11 +104,12 @@ pub struct Asset {
     desc: Desc,
 }
 
-#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum AssetType {
     Free,
     ReservedStaking,
+    ReservedStakingRevocation,
     ReservedWithdrawal,
     ReservedDexSpot,
     ReservedDexFuture,
@@ -122,81 +121,47 @@ impl Default for AssetType {
     }
 }
 
+// ============================================================================
+// xassets - records runtime module definitions.
+// ============================================================================
+
+pub type AddrStr = XString;
+pub type Memo = XString;
+
 /// application for withdrawal
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct Application<AccountId, Balance> {
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct Application<AccountId, Balance>
+where
+    AccountId: Codec + Clone,
+    Balance: Codec + Copy,
+{
     id: u32,
     applicant: AccountId,
     token: Token,
     balance: Balance,
-    addr: Vec<u8>,
-    ext: Vec<u8>,
+    addr: AddrStr,
+    ext: Memo,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum Action {
-    Deposit(DepositState),
-    Withdrawal(WithdrawalState),
-}
-
-impl Default for Action {
-    /// default not use for Action enum, it's just for the trait
-    fn default() -> Self {
-        Action::Deposit(DepositState::default())
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum DepositState {
-    Invalid,
-    Success,
-    Failed,
-}
-
-impl Default for DepositState {
-    fn default() -> Self {
-        DepositState::Invalid
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum WithdrawalState {
-    Invalid,
-    Locking,
-    Success,
-    Failed,
-}
-
-impl Default for WithdrawalState {
-    fn default() -> Self {
-        WithdrawalState::Invalid
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct Record<Token, Balance, BlockNumber>
+impl<AccountId, Balance> NodeT for Application<AccountId, Balance>
 where
-    Token: Clone + Default,
-    Balance: Copy + Default,
-    BlockNumber: Copy + Default,
+    AccountId: Codec + Clone,
+    Balance: Codec + Copy,
 {
-    action: Action,
-    token: Token,
-    balance: Balance,
-    init_blocknum: BlockNumber,
-    txid: Vec<u8>,
-    addr: Vec<u8>,
-    ext: Vec<u8>,
+    type Index = u32;
+    fn index(&self) -> Self::Index {
+        self.id
+    }
 }
+
+// ============================================================================
+// xmining - staking runtime module definitions.
+// ============================================================================
 
 /// Intention mutable properties
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct IntentionProfs<Balance: Default, BlockNumber: Default> {
     pub jackpot: Balance,
     pub total_nomination: Balance,
@@ -205,8 +170,8 @@ pub struct IntentionProfs<Balance: Default, BlockNumber: Default> {
 }
 
 /// Nomination record of one of the nominator's nominations.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct NominationRecord<Balance: Default, BlockNumber: Default> {
     pub nomination: Balance,
     pub last_vote_weight: u64,
@@ -214,105 +179,74 @@ pub struct NominationRecord<Balance: Default, BlockNumber: Default> {
     pub revocations: Vec<(BlockNumber, Balance)>,
 }
 
+// ============================================================================
+// xmining - tokens runtime module definitions.
+// ============================================================================
+
 /// This module only tracks the vote weight related changes.
 /// All the amount related has been taken care by assets module.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct PseduIntentionVoteWeight<Balance: Default, BlockNumber: Default> {
     pub jackpot: Balance,
     pub last_total_deposit_weight: u64,
     pub last_total_deposit_weight_update: BlockNumber,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositVoteWeight<BlockNumber: Default> {
     pub last_deposit_weight: u64,
     pub last_deposit_weight_update: BlockNumber,
 }
 
-pub type Amount = u128;
+// ============================================================================
+// xdex - spot runtime module definitions.
+// ============================================================================
+
 pub type Price = u128;
-pub type BidId = u128;
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct Bid<Amount, Price>
-where
-    Amount: Copy + Default,
-    Price: Copy + Default,
-{
-    nodeid: u128,
-    price: Price,
-    sum: Amount,
-    list: Vec<BidId>,
+pub type ID = u128;
+pub type OrderPairID = u32;
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct OrderPair {
+    pub id: OrderPairID,
+    pub first: Token,
+    pub second: Token,
+    pub precision: u32, //价格精度
+    pub used: bool,
 }
 
-//pub type BidT = Bid<Amount, Price>;
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct BidDetail<Pair, AccountId, Amount, Price, BlockNumber>
-where
-    Pair: Clone + Default,
-    AccountId: Clone + Default,
-    Amount: Copy + Default,
-    Price: Copy + Default,
-    BlockNumber: Copy + Default,
-{
-    id: BidId,
-    pair: Pair,
-    order_type: OrderType,
-    user: AccountId,
-    order_index: u64,
-    price: Price,
-    amount: Amount,
-    time: BlockNumber,
-}
-
-pub type BidDetailT = BidDetail<OrderPair, AccountId, Amount, Price, BlockNumber>;
-
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum OrderType {
-    Buy,
-    Sell,
+    Limit,  //限价单
+    Market, //市价单
 }
 
 impl Default for OrderType {
     fn default() -> Self {
-        OrderType::Buy
+        OrderType::Limit
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum CommandType {
-    Match,
-    Cancel,
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum OrderDirection {
+    Buy,
+    Sell,
 }
 
-impl Default for CommandType {
+impl Default for OrderDirection {
     fn default() -> Self {
-        CommandType::Match
+        OrderDirection::Buy
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct OrderPair {
-    pub first: Token,
-    pub second: Token,
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct OrderPairDetail {
-    pub precision: u32, //价格精度
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum OrderStatus {
     FillNo,
     FillPart,
@@ -327,95 +261,100 @@ impl Default for OrderStatus {
     }
 }
 
-pub type Channel = Vec<u8>;
-
-/// 用户的挂单记录 包含了成交历史的index
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+/// 用户的委托记录 包含了成交历史的index
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Order<Pair, AccountId, Amount, Price, BlockNumber>
 where
-    Pair: Clone + Default,
-    AccountId: Clone + Default,
-    Amount: Copy + Default,
-    Price: Copy + Default,
-    BlockNumber: Copy + Default,
+    Pair: Clone,
+    AccountId: Clone,
+    Amount: Copy,
+    Price: Copy,
+    BlockNumber: Copy,
 {
-    pair: Pair,
-    index: u64,
-    class: OrderType,
-    user: AccountId,
-    amount: Amount,
-    channel: Channel,
-    hasfill_amount: Amount,
-    price: Price,
-    create_time: BlockNumber,
-    lastupdate_time: BlockNumber,
-    status: OrderStatus,
-    fill_index: Vec<u128>, // 填充历史记录的索引
-    reserve_last: Amount,  //未被交易 未被回退
+    pub pair: Pair,
+    pub price: Price,
+    pub index: ID,
+
+    pub user: AccountId,
+    pub class: OrderType,
+    pub direction: OrderDirection,
+
+    pub amount: Amount,
+    pub hasfill_amount: Amount,
+    pub create_time: BlockNumber,
+    pub lastupdate_time: BlockNumber,
+    pub status: OrderStatus,
+    pub reserve_last: Amount, //未被交易 未被回退
+    pub fill_index: Vec<ID>,  // 填充历史记录的索引
 }
 
-pub type OrderT = Order<OrderPair, AccountId, Amount, Price, BlockNumber>;
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct Handicap<Price>
+where
+    Price: Copy,
+{
+    pub buy: Price,
+    pub sell: Price,
+}
+
+// ============================================================================
+// xbridge - bitcoin runtime module definitions.
+// ============================================================================
 
 //#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
 //#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct BestHeader {
-//    /// Height/number of the best block (genesis block has zero height)
-//    pub number: u32,
-//    /// Hash of the best block
-//    pub hash: H256,
+//pub struct BlockHeaderInfo {
+//    pub header: BlockHeader,
+//    pub height: u32,
+//    pub confirmed: bool,
+//    pub txid: Vec<H256>,
 //}
-//
-//#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Default)]
-//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct Params {
-//    max_bits: u32,
-//    //Compact
-//    block_max_future: u32,
-//    max_fork_route_preset: u32,
-//
-//    target_timespan_seconds: u32,
-//    target_spacing_seconds: u32,
-//    retargeting_factor: u32,
-//
-//    double_spacing_seconds: u32,
-//
-//    retargeting_interval: u32,
-//    min_timespan: u32,
-//    max_timespan: u32,
-//}
-//
-//#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct UTXO {
-//    pub txid: H256,
-//    pub index: u32,
-//    pub balance: u64,
-//    pub is_spent: bool,
-//}
-//
+
 //#[derive(PartialEq, Clone, Encode, Decode, Default)]
 //#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct BindInfo<AccountId: Parameter + Ord + Default> {
-//    pub account: AccountId,
-//    pub channel: Vec<u8>,
+//pub struct TxInfo {
+//    pub input_address: keys::Address,
+//    pub raw_tx: BTCTransaction,
 //}
-//
-//#[derive(PartialEq, Clone, Encode, Decode, Default, Serialize, Deserialize, Debug)]
-////#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct DepositInfo<AccountId: Parameter + Ord + Default> {
-//    pub account: AccountId,
-//    pub btc_balance: u64,
-//    pub tx_hash: H256,
-//    pub block_hash: H256,
-//    pub channel: Vec<u8>,
-//}
-//
-//#[derive(PartialEq, Clone, Encode, Decode, Default)]
-//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct DepositHistInfo {
-//    pub btc_balance: u64,
-//    pub tx_hash: H256,
-//    pub block_hash: H256,
-//    pub channel: Vec<u8>,
+
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct Params {
+    max_bits: u32,
+    //Compact
+    block_max_future: u32,
+    max_fork_route_preset: u32,
+
+    target_timespan_seconds: u32,
+    target_spacing_seconds: u32,
+    retargeting_factor: u32,
+
+    double_spacing_seconds: u32,
+
+    retargeting_interval: u32,
+    min_timespan: u32,
+    max_timespan: u32,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct UTXOKey {
+    pub txid: H256,
+    pub index: u32,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct UTXOStatus {
+    pub balance: u64,
+    pub status: bool,
+}
+
+//#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+//pub struct CandidateTx {
+//    pub tx: BTCTransaction,
+//    pub outs: Vec<u32>,
 //}

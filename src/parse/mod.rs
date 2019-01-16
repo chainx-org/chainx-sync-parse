@@ -1,10 +1,12 @@
 mod btree_map;
+mod linked_node;
 mod primitives;
 
 use parity_codec::Decode;
 use strum::{EnumMessage, IntoEnumIterator};
 
 use self::btree_map::CodecBTreeMap;
+use self::linked_node::{MultiNodeIndex, Node};
 use self::primitives::*;
 use crate::Result;
 
@@ -12,25 +14,15 @@ use crate::Result;
 #[allow(clippy::large_enum_variant)]
 #[derive(EnumIter, EnumMessage, Debug, Eq, PartialEq)]
 pub enum RuntimeStorage {
-    // substrate
+    // ============================================================================================
+    // Substrate
+    // ============================================================================================
+    // system -------------------------------------------------------------------------------------
     #[strum(message = "System AccountNonce", detailed_message = "map")]
     SystemAccountNonce(AccountId, Index),
     #[strum(message = "System BlockHash", detailed_message = "map")]
     SystemBlockHash(BlockNumber, Hash),
-    #[strum(message = "System Number", detailed_message = "value")]
-    SystemNumber(BlockNumber),
-    #[strum(message = "System ParentHash", detailed_message = "value")]
-    SystemParentHash(Hash),
-//    #[strum(message = "System RandomSeed", detailed_message = "value")]
-//    SystemRandomSeed(Hash),
-//    #[strum(message = "System ExtrinsicCount", detailed_message = "value")]
-//    SystemExtrinsicCount(u32),
-//    #[strum(message = "System ExtrinsicData", detailed_message = "map")]
-//    SystemExtrinsicData(u32, Vec<u8>),
-//    #[strum(message = "System ExtrinsicsRoot", detailed_message = "value")]
-//    SystemExtrinsicsRoot(Hash),
-//    #[strum(message = "System Events", detailed_message = "value")]
-//    SystemEvents(Vec<EventRecord>),
+    // balances -----------------------------------------------------------------------------------
     #[strum(message = "Balances TotalIssuance", detailed_message = "value")]
     BalancesTotalIssuance(Balance),
     #[strum(message = "Balances ExistentialDeposit", detailed_message = "value")]
@@ -53,10 +45,12 @@ pub enum RuntimeStorage {
     BalancesTransactionBaseFee(Balance),
     #[strum(message = "Balances TransactionByteFee", detailed_message = "value")]
     BalancesTransactionByteFee(Balance),
+    // timestamp ----------------------------------------------------------------------------------
     #[strum(message = "Timestamp Now", detailed_message = "value")]
     TimestampNow(Moment),
     #[strum(message = "Timestamp BlockPeriod", detailed_message = "value")]
     TimestampBlockPeriod(Moment),
+    // session ------------------------------------------------------------------------------------
     #[strum(message = "Session Validators", detailed_message = "value")]
     SessionValidators(Vec<AccountId>),
     #[strum(message = "Session SessionLength", detailed_message = "value")]
@@ -67,8 +61,10 @@ pub enum RuntimeStorage {
     SessionCurrentStart(Moment),
     #[strum(message = "Session ForcingNewSession", detailed_message = "value")]
     SessionForcingNewSession(bool),
-    // chainx
-    // XSystem
+    // ============================================================================================
+    // ChainX
+    // ============================================================================================
+    // xsystem ------------------------------------------------------------------------------------
     #[strum(message = "XSystem BlockProducer", detailed_message = "value")]
     XSystemBlockProducer(AccountId),
     #[strum(message = "XSystem DeathAccount", detailed_message = "value")]
@@ -77,9 +73,7 @@ pub enum RuntimeStorage {
     XSystemBannedAccount(AccountId),
     #[strum(message = "XSystem BurnAccount", detailed_message = "value")]
     XSystemBurnAccount(AccountId),
-    // XAccounts
-    #[strum(message = "XAccounts AccountRelationships", detailed_message = "map")]
-    XAccountsAccountRelationships(AccountId, AccountId),
+    // xaccounts ----------------------------------------------------------------------------------
     #[strum(message = "XAccounts SharesPerCert", detailed_message = "value")]
     XAccountsSharesPerCert(u32),
     #[strum(message = "XAccounts ActivationPerShare", detailed_message = "value")]
@@ -89,23 +83,24 @@ pub enum RuntimeStorage {
     #[strum(message = "XAccounts TotalIssued", detailed_message = "value")]
     XAccountsTotalIssued(u32),
     #[strum(message = "XAccounts CertOwnerOf", detailed_message = "map")]
-    XAccountsCertOwnerOf(Vec<u8>, AccountId),
+    XAccountsCertOwnerOf(Name, AccountId),
     #[strum(message = "XAccounts CertImmutablePropertiesOf", detailed_message = "map")]
-    XAccountsCertImmutablePropertiesOf(Vec<u8>, CertImmutableProps<BlockNumber>),
+    XAccountsCertImmutablePropertiesOf(Name, CertImmutableProps<BlockNumber, Moment>),
     #[strum(message = "XAccounts RemainingSharesOf", detailed_message = "map")]
-    XAccountsRemainingSharesOf(Vec<u8>, u32),
+    XAccountsRemainingSharesOf(Name, u32),
     #[strum(message = "XAccounts CertNamesOf", detailed_message = "map")]
-    XAccountsCertNamesOf(AccountId, Vec<Vec<u8>>),
+    XAccountsCertNamesOf(AccountId, Vec<Name>),
     #[strum(message = "XAccounts IntentionOf", detailed_message = "map")]
-    XAccountsIntentionOf(Vec<u8>, AccountId),
+    XAccountsIntentionOf(Name, AccountId),
     #[strum(message = "XAccounts IntentionImmutablePropertiesOf", detailed_message = "map")]
-    XAccountsIntentionImmutablePropertiesOf(AccountId, IntentionImmutableProps),
+    XAccountsIntentionImmutablePropertiesOf(AccountId, IntentionImmutableProps<Moment>),
     #[strum(message = "XAccounts IntentionPropertiesOf", detailed_message = "map")]
     XAccountsIntentionPropertiesOf(AccountId, IntentionProps),
-    // fee
+    // xfee ---------------------------------------------------------------------------------------
     #[strum(message = "XFeeManager Switch", detailed_message = "value")]
     XFeeManagerSwitch(bool),
-    // assets
+    // xassets ------------------------------------------------------------------------------------
+    // XAssets
     #[strum(message = "XAssets AssetList", detailed_message = "map")]
     XAssetsAssetList(Chain, Vec<Token>),
     #[strum(message = "XAssets AssetInfo", detailed_message = "map")]
@@ -120,15 +115,16 @@ pub enum RuntimeStorage {
     XAssetsPCXPriceFor(Token, Balance),
     #[strum(message = "XAssets MemoLen", detailed_message = "value")]
     XAssetsMemoLen(u32),
-//    #[strum(message = "XAssetsRecords ApplicationMHeader", detailed_message = "map")]
-//    XAssetsRecordsApplicationMHeader(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance>>),
-//    #[strum(message = "XAssetsRecords ApplicationMHeader", detailed_message = "map")]
-//    XAssetsRecordsApplicationMTail(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance>>),
-//    #[strum(message = "XAssetsRecords ApplicationMHeader", detailed_message = "map")]
-//    XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance>>),
+    // XAssetsRecords
+    #[strum(message = "XAssetsRecords ApplicationMHeader", detailed_message = "map")]
+    XAssetsRecordsApplicationMHeader(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance>>),
+    #[strum(message = "XAssetsRecords ApplicationMTail", detailed_message = "map")]
+    XAssetsRecordsApplicationMTail(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance>>),
+    #[strum(message = "XAssetsRecords ApplicationMap", detailed_message = "map")]
+    XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance>>),
     #[strum(message = "XAssetsRecords SerialNumber", detailed_message = "value")]
     XAssetsRecordsSerialNumber(u32),
-    // mining
+    // xmining ------------------------------------------------------------------------------------
     // XStaking
     #[strum(message = "XStaking ValidatorCount", detailed_message = "value")]
     XStakingValidatorCount(u32),
@@ -169,161 +165,129 @@ pub enum RuntimeStorage {
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<Balance, BlockNumber>),
     #[strum(message = "XTokens DepositRecords", detailed_message = "map")]
     XTokensDepositRecords((AccountId, Token), DepositVoteWeight<BlockNumber>),
-    // dex
-    // XMatchOrder
-    #[strum(message = "XMatchOrder MatchFee", detailed_message = "value")]
-    XMatchOrderMatchFee(Amount),
-    #[strum(message = "XMatchOrder TakerMatchFee", detailed_message = "value")]
-    XMatchOrderTakerMatchFee(Amount),
-    #[strum(message = "XMatchOrder MakerMatchFee", detailed_message = "value")]
-    XMatchOrderMakerMatchFee(Amount),
-    #[strum(message = "XMatchOrder FeePrecision", detailed_message = "value")]
-    XMatchOrderFeePrecision(Amount),
-//    #[strum(message = "XMatchOrder BidListHeaderFor", detailed_message = "map")]
-//    XMatchOrderBidListHeaderFor((OrderPair,OrderType), MultiNodeIndex<(OrderPair,OrderType), BidT>),
-//    #[strum(message = "XMatchOrder BidListTailFor", detailed_message = "map")]
-//    XMatchOrderBidListTailFor((OrderPair,OrderType), MultiNodeIndex<(OrderPair,OrderType), BidT>),
-//    #[strum(message = "XMatchOrder BidListCache", detailed_message = "map")]
-//    XMatchOrderBidListCache(u128, Node<BidT>),
-//    #[strum(message = "XMatchOrder NodeId", detailed_message = "value")]
-//    XMatchOrderNodeId(u128),
-    #[strum(message = "XMatchOrder BidOf", detailed_message = "map")]
-    XMatchOrderBidOf(BidId, BidDetailT),
-    #[strum(message = "XMatchOrder LastBidIndexOf", detailed_message = "value")]
-    XMatchOrderLastBidIndexOf(BidId),
-    #[strum(message = "XMatchOrder BidOfUserOrder", detailed_message = "map")]
-    XMatchOrderBidOfUserOrder((AccountId, OrderPair, u64), BidId),
-    // XPendingOrders
-    #[strum(message = "XPendingOrders OrderFee", detailed_message = "value")]
-    XPendingOrdersOrderFee(Balance),
-    #[strum(message = "XPendingOrders OrderPairList", detailed_message = "value")]
-    XPendingOrdersOrderPairList(Vec<OrderPair>),
-    #[strum(message = "XPendingOrders OrderPairDetailMap", detailed_message = "map")]
-    XPendingOrdersOrderPairDetailMap(OrderPair, OrderPairDetail),
-    #[strum(message = "XPendingOrders FillIndexOf", detailed_message = "map")]
-    XPendingOrdersFillIndexOf(OrderPair, u128),
-    #[strum(message = "XPendingOrders OrdersOf", detailed_message = "map")]
-    XPendingOrdersOrdersOf((AccountId, OrderPair, u64), OrderT),
-    #[strum(message = "XPendingOrders LastOrderIndexOf", detailed_message = "map")]
-    XPendingOrdersLastOrderIndexOf((AccountId, OrderPair), u64),
-    #[strum(message = "XPendingOrders MaxCommandId", detailed_message = "value")]
-    XPendingOrdersMaxCommandId(u64),
-    #[strum(message = "XPendingOrders CommandOf", detailed_message = "map")]
-    XPendingOrdersCommandOf(u64 , (AccountId, OrderPair, u64, CommandType, u128)),
-    #[strum(message = "XPendingOrders AveragePriceLen", detailed_message = "value")]
-    XPendingOrdersAveragePriceLen(Amount),
-    #[strum(message = "XPendingOrders LastAveragePrice", detailed_message = "map")]
-    XPendingOrdersLastAveragePrice(OrderPair, Price),
-    #[strum(message = "XPendingOrders LastPrice", detailed_message = "map")]
-    XPendingOrdersLastPrice(OrderPair, Price),
-    #[strum(message = "XPendingOrders FeeBuyOrder", detailed_message = "map")]
-    XPendingOrdersFeeBuyOrder(u64, (OrderPair, Amount, Price, AccountId)),
-    #[strum(message = "XPendingOrders FeeBuyOrderMax", detailed_message = "value")]
-    XPendingOrdersFeeBuyOrderMax(u64),
-    // bridge
-    // BTC
-//    #[strum(message = "BridgeOfBTC BestIndex", detailed_message = "value")]
-//    BridgeOfBTCBestIndex(BestHeader),
+    // xdex ---------------------------------------------------------------------------------------
+    // XSpot
+    #[strum(message = "XSpot OrderPairLen", detailed_message = "value")]
+    XSpotOrderPairLen(OrderPairID),
+    #[strum(message = "XSpot OrderPairOf", detailed_message = "map")]
+    XSpotOrderPairOf(OrderPairID, OrderPair),
+    #[strum(message = "XSpot OrderPairPriceOf", detailed_message = "map")]
+    XSpotOrderPairPriceOf(OrderPairID, (Price, Price, BlockNumber)),
+    #[strum(message = "XSpot FillLen", detailed_message = "map")]
+    XSpotFillLen(OrderPairID, ID),
+    #[strum(message = "XSpot AccountOrdersLen", detailed_message = "map")]
+    XSpotAccountOrdersLen(AccountId, ID),
+    #[strum(message = "XSpot AccountOrder", detailed_message = "map")]
+    XSpotAccountOrder((AccountId, ID), Order<OrderPairID, AccountId, Balance, Price, BlockNumber>),
+    #[strum(message = "XSpot Quotations", detailed_message = "map")]
+    XSpotQuotations((OrderPairID, Price), Vec<(AccountId, ID)>),
+    #[strum(message = "XSpot HandicapMap", detailed_message = "map")]
+    XSpotHandicapMap(OrderPairID, Handicap<Price>),
+    #[strum(message = "XSpot PriceVolatility", detailed_message = "value")]
+    XSpotPriceVolatility(u32),
+    // xbridge ------------------------------------------------------------------------------------
+    // BridgeOfBTC
+    #[strum(message = "BridgeOfBTC BestIndex", detailed_message = "value")]
+    BridgeOfBTCBestIndex(H256),
 //    #[strum(message = "BridgeOfBTC BlockHeaderFor", detailed_message = "map")]
-//    BridgeOfBTCBlockHeaderFor(H256, (BlockHeader, AccountId, BlockNumber)),
-//    #[strum(message = "BridgeOfBTC NumberForHash", detailed_message = "map")]
-//    BridgeOfBTCNumberForHash(H256, u32),
-//    #[strum(message = "BridgeOfBTC HashsForNumber", detailed_message = "map")]
-//    BridgeOfBTCHashsForNumber(u32, Vec<H256>),
+//    BridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
+    #[strum(message = "BridgeOfBTC BlockHeightFor", detailed_message = "map")]
+    BridgeOfBTCBlockHeightFor(u32, Vec<H256>),
+//    #[strum(message = "BridgeOfBTC TxFor", detailed_message = "map")]
+//    BridgeOfBTCTxFor(H256, TxInfo),
 //    #[strum(message = "BridgeOfBTC GenesisInfo", detailed_message = "value")]
 //    BridgeOfBTCGenesisInfo((BlockHeader, u32)),
-//    #[strum(message = "BridgeOfBTC ParamsInfo", detailed_message = "value")]
-//    BridgeOfBTCParamsInfo(Params),
-//    #[strum(message = "BridgeOfBTC NetworkId", detailed_message = "value")]
-//    BridgeOfBTCNetworkId(u32),
+    #[strum(message = "BridgeOfBTC ParamsInfo", detailed_message = "value")]
+    BridgeOfBTCParamsInfo(Params),
+    #[strum(message = "BridgeOfBTC NetworkId", detailed_message = "value")]
+    BridgeOfBTCNetworkId(u32),
 //    #[strum(message = "BridgeOfBTC TrusteeAddress", detailed_message = "value")]
 //    BridgeOfBTCTrusteeAddress(keys::Address),
-//    #[strum(message = "BridgeOfBTC TrusteeRedeemScript", detailed_message = "value")]
-//    BridgeOfBTCTrusteeRedeemScript(Vec<u8>),
+    #[strum(message = "BridgeOfBTC TrusteeRedeemScript", detailed_message = "value")]
+    BridgeOfBTCTrusteeRedeemScript(Vec<u8>),
 //    #[strum(message = "BridgeOfBTC CertAddress", detailed_message = "value")]
 //    BridgeOfBTCCertAddress(keys::Address),
-//    #[strum(message = "BridgeOfBTC CertRedeemScript", detailed_message = "value")]
-//    BridgeOfBTCCertRedeemScript(Vec<u8>),
-//    #[strum(message = "BridgeOfBTC UTXOSet", detailed_message = "value")]
-//    BridgeOfBTCUTXOSet(UTXO),
-//    #[strum(message = "BridgeOfBTC UTXOSetLen", detailed_message = "value")]
-//    BridgeOfBTCUTXOSetLen(u64),
-//    #[strum(message = "BridgeOfBTC IrrBlock", detailed_message = "value")]
-//    BridgeOfBTCIrrBlock(u32),
-//    #[strum(message = "BridgeOfBTC BtcFee", detailed_message = "value")]
-//    BridgeOfBTCBtcFee(u64),
-//    #[strum(message = "BridgeOfBTC BlockTxsMapKeys", detailed_message = "map")]
-//    BridgeOfBTCBlockTxsMapKeys(H256, Vec<H256>),
+    #[strum(message = "BridgeOfBTC CertRedeemScript", detailed_message = "value")]
+    BridgeOfBTCCertRedeemScript(Vec<u8>),
+    #[strum(message = "BridgeOfBTC UTXOSet", detailed_message = "map")]
+    BridgeOfBTCUTXOSet(UTXOKey, UTXOStatus),
+    #[strum(message = "BridgeOfBTC UTXOSetKey", detailed_message = "value")]
+    BridgeOfBTCUTXOSetKey(Vec<UTXOKey>),
+    #[strum(message = "BridgeOfBTC ReservedBlock", detailed_message = "value")]
+    BridgeOfBTCReservedBlock(u32),
+    #[strum(message = "BridgeOfBTC IrrBlock", detailed_message = "value")]
+    BridgeOfBTCIrrBlock(u32),
+    #[strum(message = "BridgeOfBTC BtcFee", detailed_message = "value")]
+    BridgeOfBTCBtcFee(u64),
+    #[strum(message = "BridgeOfBTC MaxWithdrawAmount", detailed_message = "value")]
+    BridgeOfBTCMaxWithdrawAmount(u32),
+//    #[strum(message = "BridgeOfBTC TxProposal", detailed_message = "value")]
+//    BridgeOfBTCTxProposal(CandidateTx),
+//    #[strum(message = "BridgeOfBTC PendingDepositMap", detailed_message = "map")]
+//    BridgeOfBTCPendingDepositMap(keys::Address, Vec<UTXOKey>),
 //    #[strum(message = "BridgeOfBTC AddressMap", detailed_message = "map")]
-//    BridgeOfBTCAddressMap(keys::Address, BindInfo<AccountId>),
-//    #[strum(message = "BridgeOfBTC TxProposalLen", detailed_message = "value")]
-//    BridgeOfBTCTxProposalLen(u32),
-//    #[strum(message = "BridgeOfBTC TxProposal", detailed_message = "map")]
-//    BridgeOfBTCTxProposal(u32, Vec<DepositInfo<AccountId>>),
-//    #[strum(message = "BridgeOfBTC DepositCache", detailed_message = "value")]
-//    BridgeOfBTCDepositCache(Vec<DepositInfo<AccountId>>),
-//    #[strum(message = "BridgeOfBTC DepositRecordsMap", detailed_message = "map")]
-//    BridgeOfBTCDepositRecordsMap(Address, Vec<DepositHistInfo>),
-//    #[strum(message = "BridgeOfBTC CertCache", detailed_message = "value")]
-//    BridgeOfBTCCertCache(Vec<(Vec<u8>, u32, AccountId)>),
-//    #[strum(message = "BridgeOfBTC Fee", detailed_message = "value")]
-//    BridgeOfBTCFee(Balance),
+//    BridgeOfBTCAddressMap(keys::Address, AccountId),
+//    #[strum(message = "BridgeOfBTC AccountMap", detailed_message = "map")]
+//    BridgeOfBTCAccountMap(AccountId, Vec<keys::Address>),
+}
+
+macro_rules! build_json {
+    ($type:expr, $prefix:ident, $key:ident, $value:ident) => {
+        json!({
+            "type":$type,
+            "prefix":$prefix,
+            "key":$key,
+            "value":$value,
+        })
+    };
 }
 
 macro_rules! to_value_json {
-    ($prefix:ident, $value:ident => $v:ident) => {
-        {
-            *$v = match Decode::decode(&mut $value.as_slice()) {
-                Some(value) => value,
-                None => {
-                    error!("Runtime storage parse error: Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    return Ok(json!({
-                        "type":"value",
-                        "prefix":$prefix,
-                        "key":null,
-                        "value":null,
-                    }));
-                }
-            };
-            Ok(json!({
-                "type":"value",
-                "prefix":$prefix,
-                "key":null,
-                "value":$v,
-            }))
+    ($prefix:ident, $value:ident => $v:ident) => {{
+        if $value.is_empty() {
+            info!("Empty Value: [{:?}] may have been removed", $prefix);
+            return Ok(build_json!("value", $prefix, null, null));
         }
-    };
+        *$v = match Decode::decode(&mut $value.as_slice()) {
+            Some(value) => value,
+            None => {
+                error!(
+                    "Runtime storage parse: Decode failed, prefix: {:?}, value: {:?}",
+                    $prefix, $v
+                );
+                return Ok(build_json!("value", $prefix, null, null));
+            }
+        };
+        Ok(build_json!("value", $prefix, null, $v))
+    }};
 }
 
 macro_rules! to_map_json {
-    ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {
-        {
-            *$k = Decode::decode(&mut $key)
-                    .ok_or_else(|| {
-                        let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                        error!("Runtime storage parse error: {}", err);
-                        err
-                    })?;
-            *$v = match Decode::decode(&mut $value.as_slice()) {
-                Some(value) => value,
-                None => {
-                    error!("Runtime storage parse error: Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    return Ok(json!({
-                        "type":"map",
-                        "prefix":$prefix,
-                        "key":$k,
-                        "value":null,
-                    }));
-                }
-            };
-            Ok(json!({
-                "type":"map",
-                "prefix":$prefix,
-                "key":$k,
-                "value":$v,
-            }))
+    ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {{
+        *$k = match Decode::decode(&mut $key) {
+            Some(key) => key,
+            None => {
+                let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
+                error!("Runtime storage parse: {}", err);
+                return Err(err.into());
+            }
+        };
+        if $value.is_empty() {
+            info!("Empty Value: [{:?}] may have been removed", $prefix);
+            return Ok(build_json!("map", $prefix, $k, null));
         }
-    };
+        *$v = match Decode::decode(&mut $value.as_slice()) {
+            Some(value) => value,
+            None => {
+                error!(
+                    "Runtime storage parse: Decode failed, prefix: {:?}, value: {:?}",
+                    $prefix, $v
+                );
+                return Ok(build_json!("map", $prefix, $k, null));
+            }
+        };
+        Ok(build_json!("map", $prefix, $k, $v))
+    }};
 }
 
 impl RuntimeStorage {
@@ -334,18 +298,18 @@ impl RuntimeStorage {
 
     fn match_key(key: &[u8]) -> Result<(Self, String)> {
         for storage in Self::iter() {
-            let prefix: String = storage
-                .get_message()
-                .ok_or_else(|| {
-                    error!("Runtime storage parse error: get storage prefix failed");
-                    "Get storage prefix failed".to_string()
-                })?
-                .into();
+            let prefix: String = match storage.get_message() {
+                Some(prefix) => prefix.to_string(),
+                None => {
+                    error!("Runtime storage parse: get storage prefix failed");
+                    return Err("Runtime storage parse: get storage prefix failed".into());
+                }
+            };
             if key.starts_with(prefix.as_bytes()) {
                 return Ok((storage, prefix));
             }
         }
-        debug!("Runtime storage parse error: No matching key found");
+        debug!("Runtime storage parse: No matching key found");
         Err("No matching key found".into())
     }
 
@@ -355,22 +319,15 @@ impl RuntimeStorage {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
-                error!("Runtime storage parse error: get storage type failed");
+                error!("Runtime storage parse: get storage type failed");
                 return Err("Invalid storage type".into());
             },
         };
 
         match self {
-            // substrate
+            // Substrate
             RuntimeStorage::SystemAccountNonce(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::SystemBlockHash(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::SystemNumber(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::SystemParentHash(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::SystemRandomSeed(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::SystemExtrinsicCount(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::SystemExtrinsicData(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::SystemExtrinsicsRoot(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::SystemEvents(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesTotalIssuance(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesExistentialDeposit(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesReclaimRebate(ref mut v) => to_value_json!(prefix, value => v),
@@ -389,12 +346,11 @@ impl RuntimeStorage {
             RuntimeStorage::SessionCurrentIndex(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::SessionCurrentStart(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::SessionForcingNewSession(ref mut v) => to_value_json!(prefix, value => v),
-            // chainx
+            // ChainX
             RuntimeStorage::XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSystemDeathAccount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSystemBannedAccount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSystemBurnAccount(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XAccountsAccountRelationships(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAccountsSharesPerCert(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XAccountsActivationPerShare(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XAccountsMaximumCertCount(ref mut v) => to_value_json!(prefix, value => v),
@@ -414,9 +370,9 @@ impl RuntimeStorage {
             RuntimeStorage::XAssetsTotalAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsPCXPriceFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsMemoLen(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::XAssetsRecordsApplicationMHeader(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAssetsRecordsApplicationMHeader(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsRecordsSerialNumber(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
@@ -437,56 +393,37 @@ impl RuntimeStorage {
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XMatchOrderMatchFee(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XMatchOrderTakerMatchFee(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XMatchOrderMakerMatchFee(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XMatchOrderFeePrecision(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::XMatchOrderBidListHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::XMatchOrderBidListTailFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::XMatchOrderBidListCache(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::XMatchOrderNodeId(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XMatchOrderBidOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XMatchOrderLastBidIndexOf(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XMatchOrderBidOfUserOrder(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersOrderFee(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XPendingOrdersOrderPairList(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XPendingOrdersOrderPairDetailMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersFillIndexOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersOrdersOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersLastOrderIndexOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersMaxCommandId(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XPendingOrdersCommandOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersAveragePriceLen(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XPendingOrdersLastAveragePrice(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersLastPrice(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersFeeBuyOrder(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XPendingOrdersFeeBuyOrderMax(ref mut v) => to_value_json!(prefix, value => v),
-            // bridge
-            // BTC
-//            RuntimeStorage::BridgeOfBTCBestIndex(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XSpotOrderPairLen(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XSpotOrderPairOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotOrderPairPriceOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotFillLen(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotAccountOrdersLen(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotAccountOrder(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotQuotations(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotHandicapMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XSpotPriceVolatility(ref mut v) => to_value_json!(prefix, value => v),
+            // bridge - bitcoin
+            RuntimeStorage::BridgeOfBTCBestIndex(ref mut v) => to_value_json!(prefix, value => v),
 //            RuntimeStorage::BridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCNumberForHash(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCHashsForNumber(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCBlockHeightFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+//            RuntimeStorage::BridgeOfBTCTxFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
 //            RuntimeStorage::BridgeOfBTCGenesisInfo(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCParamsInfo(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCNetworkId(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCParamsInfo(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCNetworkId(ref mut v) => to_value_json!(prefix, value => v),
 //            RuntimeStorage::BridgeOfBTCTrusteeAddress(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCTrusteeRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCTrusteeRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
 //            RuntimeStorage::BridgeOfBTCCertAddress(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCCertRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCUTXOSet(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCUTXOSetLen(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCIrrBlock(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCBtcFee(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCBlockTxsMapKeys(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCCertRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCUTXOSet(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCUTXOSetKey(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCReservedBlock(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCIrrBlock(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCBtcFee(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCMaxWithdrawAmount(ref mut v) => to_value_json!(prefix, value => v),
+//            RuntimeStorage::BridgeOfBTCTxProposal(ref mut v) => to_value_json!(prefix, value => v),
+//            RuntimeStorage::BridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
 //            RuntimeStorage::BridgeOfBTCAddressMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCTxProposalLen(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCTxProposal(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCDepositCache(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCDepositRecordsMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCCertCache(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCFee(ref mut v) => to_value_json!(prefix, value => v),
-//            invalid @ _ => Err(format!("Invalid Runtime Storage: {:?}", invalid).into()),
+//            RuntimeStorage::BridgeOfBTCAccountMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
         }
     }
 }
@@ -542,19 +479,20 @@ mod tests {
             r#"{
                 "type":"map",
                 "prefix":"XAssets AssetInfo",
-                "key":[80, 67, 88],
+                "key":"PCX",
                 "value":[
                     {
-                        "token":[80, 67, 88],
+                        "token":"PCX",
                         "chain":"ChainX",
                         "precision":3,
-                        "desc":[80, 67, 88, 32, 111, 110, 99, 104, 97, 105, 110, 32, 116, 111, 107, 101, 110]
+                        "desc":"PCX onchain token"
                     },
                     true,
                     0
                 ]
             }"#,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(got, exp);
     }
 
@@ -567,7 +505,7 @@ mod tests {
             r#"{
                 "type":"map",
                 "prefix":"XAssets TotalAssetBalance",
-                "key":[66, 84, 67],
+                "key":"BTC",
                 "value":{"Free":123}
             }"#,
         )
