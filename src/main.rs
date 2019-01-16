@@ -35,7 +35,7 @@ fn init_log_config() -> Result<()> {
         .build(
             Root::builder()
                 .appenders(vec!["console", "file"])
-                .build(LevelFilter::Debug),
+                .build(LevelFilter::Info),
         )
         .expect("Construct log config failure");
 
