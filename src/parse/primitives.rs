@@ -1,5 +1,6 @@
 use parity_codec::Codec;
 
+use super::btc;
 use super::linked_node::NodeT;
 
 // ================================================================================================
@@ -303,21 +304,36 @@ where
 // xbridge - bitcoin runtime module definitions.
 // ============================================================================
 
-//#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
-//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct BlockHeaderInfo {
-//    pub header: BlockHeader,
-//    pub height: u32,
-//    pub confirmed: bool,
-//    pub txid: Vec<H256>,
-//}
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct BlockHeaderInfo {
+    pub header: BlockHeader,
+    pub height: u32,
+    pub confirmed: bool,
+    pub txid: Vec<H256>,
+}
 
-//#[derive(PartialEq, Clone, Encode, Decode, Default)]
-//#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-//pub struct TxInfo {
-//    pub input_address: keys::Address,
-//    pub raw_tx: BTCTransaction,
-//}
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct Compact(u32);
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct BlockHeader {
+    pub version: u32,
+    pub previous_header_hash: substrate_primitives::H256,
+    pub merkle_root_hash: substrate_primitives::H256,
+    pub time: u32,
+    pub bits: Compact,
+    pub nonce: u32,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TxInfo {
+    pub input_address: btc::Address,
+    pub raw_tx: btc::Transaction,
+}
 
 #[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -352,9 +368,9 @@ pub struct UTXOStatus {
     pub status: bool,
 }
 
-//#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-//pub struct CandidateTx {
-//    pub tx: BTCTransaction,
-//    pub outs: Vec<u32>,
-//}
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct CandidateTx {
+    pub tx: btc::Transaction,
+    pub outs: Vec<u32>,
+}
