@@ -22,10 +22,11 @@ jsonrpc-macros = "9.0"
 jsonrpc-core = "9.0"
 jsonrpc-http-server = "9.0"
 
-substrate-primitives = { git = "https://github.com/paritytech/substrate" }
-sr-std = { git = "https://github.com/paritytech/substrate" }
-sr-primitives = { git = "https://github.com/paritytech/substrate" }
-srml-metadata = { git = "https://github.com/paritytech/substrate" }
+substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
+sr-std = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
+sr-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
+srml-support = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
+srml-metadata = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 
 [features]
 default = ["std"]
