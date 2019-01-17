@@ -3,8 +3,7 @@ use std::fmt;
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(PartialEq, Eq, Clone, Default, Debug, Encode, Decode)]
 pub struct Bytes(pub Vec<u8>);
 
 impl<T: Into<Vec<u8>>> From<T> for Bytes {
@@ -13,7 +12,6 @@ impl<T: Into<Vec<u8>>> From<T> for Bytes {
     }
 }
 
-#[cfg(feature = "std")]
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -24,7 +22,6 @@ impl Serialize for Bytes {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for Bytes {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -64,7 +61,6 @@ impl<'de> Visitor<'de> for BytesVisitor {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     use super::*;

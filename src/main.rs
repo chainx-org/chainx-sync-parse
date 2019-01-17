@@ -113,3 +113,21 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_slice() -> Result<()> {
+    fn test_slice_inner(slice: &mut [u8]) {
+        slice.reverse();
+        println!("{:?}", slice);
+    }
+
+    let mut v: Vec<u8> = vec![1, 2, 3];
+    let slice: &mut [u8] = v.as_mut();
+    if slice.is_empty() {
+        println!("slice is empty");
+        return Ok(());
+    }
+
+    test_slice_inner(slice);
+    Ok(())
+}

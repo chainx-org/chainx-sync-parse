@@ -103,7 +103,7 @@ impl Rpc for RpcImpl {
             .or_insert_with(|| Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
 
         info!("register ok");
-        RegisterRecord::save(json!(self.register_list).to_string()).expect("record save error");
+        RegisterRecord::save(&json!(self.register_list).to_string()).expect("record save error");
         Ok("OK".to_string())
     }
 }
@@ -128,7 +128,7 @@ pub fn build_http_rpc_server(rpc_http: &str) -> (Server, RegisterList) {
 pub struct RegisterRecord;
 
 impl RegisterRecord {
-    pub fn save(json: String) -> Result<()> {
+    pub fn save(json: &str) -> Result<()> {
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)

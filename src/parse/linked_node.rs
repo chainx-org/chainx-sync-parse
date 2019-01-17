@@ -127,17 +127,11 @@ where
     T: NodeT,
 {
     fn as_ref(&self) -> Option<&Node<T>> {
-        match self {
-            None => None,
-            Some(ref i) => Some(i),
-        }
+        self.as_ref()
     }
 
     fn as_mut(&mut self) -> Option<&mut Node<T>> {
-        match self {
-            None => None,
-            Some(ref mut i) => Some(i),
-        }
+        self.as_mut()
     }
 }
 
@@ -146,17 +140,11 @@ where
     T: NodeT,
 {
     fn as_ref(&self) -> Option<&NodeIndex<T>> {
-        match self {
-            None => None,
-            Some(ref i) => Some(i),
-        }
+        self.as_ref()
     }
 
     fn as_mut(&mut self) -> Option<&mut NodeIndex<T>> {
-        match self {
-            None => None,
-            Some(ref mut i) => Some(i),
-        }
+        self.as_mut()
     }
 }
 
@@ -166,17 +154,11 @@ where
     T: NodeT,
 {
     fn as_ref(&self) -> Option<&MultiNodeIndex<K, T>> {
-        match self {
-            None => None,
-            Some(ref i) => Some(i),
-        }
+        self.as_ref()
     }
 
     fn as_mut(&mut self) -> Option<&mut MultiNodeIndex<K, T>> {
-        match self {
-            None => None,
-            Some(ref mut i) => Some(i),
-        }
+        self.as_mut()
     }
 }
 
@@ -340,8 +322,8 @@ impl<T: NodeT + Codec> Node<T> {
                 }
             }
         } else {
-            let prev = self.prev.clone().unwrap_or(Default::default());
-            let next = self.next.clone().unwrap_or(Default::default());
+            let prev = self.prev.clone().unwrap_or_default();
+            let next = self.next.clone().unwrap_or_default();
 
             C::NodeMap::mutate(&prev, |prev| {
                 // TODO add Result when substrate update
@@ -374,7 +356,7 @@ impl<T: NodeT + Codec> Node<T> {
         }
         match &self.prev {
             Some(p) => C::NodeMap::mutate(p, |prev_node| {
-                if prev_node.as_ref().is_none() == false {
+                if !prev_node.as_ref().is_none() {
                     node.prev = Some(prev_node.as_ref().index());
                     node.next = Some(i);
                     prev_node.as_mut().next = Some(node.index());
@@ -413,7 +395,7 @@ impl<T: NodeT + Codec> Node<T> {
         }
         match &self.next {
             Some(n) => C::NodeMap::mutate(n, |next_node| {
-                if next_node.as_ref().is_none() == false {
+                if !next_node.as_ref().is_none() {
                     node.prev = Some(i);
                     node.next = Some(next_node.as_ref().index());
                     next_node.as_mut().prev = Some(node.index());
@@ -464,7 +446,7 @@ impl<T: NodeT + Codec> Node<T> {
         if self.prev.is_none() {
             match &self.next {
                 Some(next) => C::NodeMap::mutate(next, |next_node| {
-                    if next_node.as_ref().is_none() == false {
+                    if !next_node.as_ref().is_none() {
                         next_node.as_mut().prev = None;
                         C::Header::put(NodeIndex::<T> {
                             index: next_node.as_ref().index(),
@@ -480,7 +462,7 @@ impl<T: NodeT + Codec> Node<T> {
         } else if self.next.is_none() {
             match &self.prev {
                 Some(prev) => C::NodeMap::mutate(prev, |prev_node| {
-                    if prev_node.as_ref().is_none() == false {
+                    if !prev_node.as_ref().is_none() {
                         prev_node.as_mut().next = None;
                         C::Tail::put(NodeIndex::<T> {
                             index: prev_node.as_ref().index(),
@@ -494,17 +476,17 @@ impl<T: NodeT + Codec> Node<T> {
                 }
             }
         } else {
-            let prev = self.prev.clone().unwrap_or(Default::default());
-            let next = self.next.clone().unwrap_or(Default::default());
+            let prev = self.prev.clone().unwrap_or_default();
+            let next = self.next.clone().unwrap_or_default();
 
             C::NodeMap::mutate(&prev, |prev_node| {
-                if prev_node.as_ref().is_none() == false {
+                if !prev_node.as_ref().is_none() {
                     prev_node.as_mut().next = Some(next.clone());
                     self.prev = None;
                 }
             });
             C::NodeMap::mutate(&next, |next_node| {
-                if next_node.as_ref().is_none() == false {
+                if !next_node.as_ref().is_none() {
                     next_node.as_mut().prev = Some(prev.clone());
                     self.next = None;
                 }
@@ -525,12 +507,12 @@ impl<T: NodeT + Codec> Node<T> {
         C::NodeMap: StorageMap<T::Index, Node<T>>,
         C::Tail: StorageValue<NodeIndex<T>>,
     {
-        if C::Header::exists() == false {
+        if !C::Header::exists() {
             C::Header::put(NodeIndex::<T> {
                 index: self.index(),
             });
         }
-        if C::Tail::exists() == false {
+        if !C::Tail::exists() {
             C::Tail::put(NodeIndex::<T> {
                 index: self.index(),
             });
@@ -541,14 +523,14 @@ impl<T: NodeT + Codec> Node<T> {
 
 // for multi index
 impl<T: NodeT + Codec> Node<T> {
-    pub fn init_storage_with_key<C: LinkedNodeCollection, K>(&self, key: K)
+    pub fn init_storage_with_key<C: LinkedNodeCollection, K>(&self, key: &K)
     where
         K: Codec + Clone + Eq + PartialEq + Default,
         C::Header: StorageMap<K, MultiNodeIndex<K, T>>,
         C::NodeMap: StorageMap<T::Index, Node<T>>,
         C::Tail: StorageMap<K, MultiNodeIndex<K, T>>,
     {
-        if C::Header::exists(&key) == false {
+        if !C::Header::exists(key) {
             C::Header::insert(
                 key.clone(),
                 MultiNodeIndex::<K, T> {
@@ -557,7 +539,7 @@ impl<T: NodeT + Codec> Node<T> {
                 },
             );
         }
-        if C::Tail::exists(&key) == false {
+        if !C::Tail::exists(key) {
             C::Tail::insert(
                 key.clone(),
                 MultiNodeIndex::<K, T> {
@@ -743,8 +725,8 @@ impl<T: NodeT + Codec> Node<T> {
                 }
             }
         } else {
-            let prev = self.prev.clone().unwrap_or(Default::default());
-            let next = self.next.clone().unwrap_or(Default::default());
+            let prev = self.prev.clone().unwrap_or_default();
+            let next = self.next.clone().unwrap_or_default();
 
             C::NodeMap::mutate(&prev, |prev| {
                 // TODO add Result when substrate update
