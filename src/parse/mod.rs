@@ -1,3 +1,4 @@
+mod btc;
 mod btree_map;
 mod linked_node;
 mod primitives;
@@ -12,7 +13,7 @@ use crate::Result;
 
 #[rustfmt::skip]
 #[allow(clippy::large_enum_variant)]
-#[derive(EnumIter, EnumMessage, Debug, Eq, PartialEq)]
+#[derive(PartialEq, Eq, Debug, EnumIter, EnumMessage)]
 pub enum RuntimeStorage {
     // ============================================================================================
     // Substrate
@@ -189,24 +190,24 @@ pub enum RuntimeStorage {
     // BridgeOfBTC
     #[strum(message = "BridgeOfBTC BestIndex", detailed_message = "value")]
     BridgeOfBTCBestIndex(H256),
-//    #[strum(message = "BridgeOfBTC BlockHeaderFor", detailed_message = "map")]
-//    BridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
+    #[strum(message = "BridgeOfBTC BlockHeaderFor", detailed_message = "map")]
+    BridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
     #[strum(message = "BridgeOfBTC BlockHeightFor", detailed_message = "map")]
     BridgeOfBTCBlockHeightFor(u32, Vec<H256>),
-//    #[strum(message = "BridgeOfBTC TxFor", detailed_message = "map")]
-//    BridgeOfBTCTxFor(H256, TxInfo),
-//    #[strum(message = "BridgeOfBTC GenesisInfo", detailed_message = "value")]
-//    BridgeOfBTCGenesisInfo((BlockHeader, u32)),
+    #[strum(message = "BridgeOfBTC TxFor", detailed_message = "map")]
+    BridgeOfBTCTxFor(H256, TxInfo),
+    #[strum(message = "BridgeOfBTC GenesisInfo", detailed_message = "value")]
+    BridgeOfBTCGenesisInfo((BlockHeader, u32)),
     #[strum(message = "BridgeOfBTC ParamsInfo", detailed_message = "value")]
     BridgeOfBTCParamsInfo(Params),
     #[strum(message = "BridgeOfBTC NetworkId", detailed_message = "value")]
     BridgeOfBTCNetworkId(u32),
-//    #[strum(message = "BridgeOfBTC TrusteeAddress", detailed_message = "value")]
-//    BridgeOfBTCTrusteeAddress(keys::Address),
+    #[strum(message = "BridgeOfBTC TrusteeAddress", detailed_message = "value")]
+    BridgeOfBTCTrusteeAddress(btc::Address),
     #[strum(message = "BridgeOfBTC TrusteeRedeemScript", detailed_message = "value")]
     BridgeOfBTCTrusteeRedeemScript(Vec<u8>),
-//    #[strum(message = "BridgeOfBTC CertAddress", detailed_message = "value")]
-//    BridgeOfBTCCertAddress(keys::Address),
+    #[strum(message = "BridgeOfBTC CertAddress", detailed_message = "value")]
+    BridgeOfBTCCertAddress(btc::Address),
     #[strum(message = "BridgeOfBTC CertRedeemScript", detailed_message = "value")]
     BridgeOfBTCCertRedeemScript(Vec<u8>),
     #[strum(message = "BridgeOfBTC UTXOSet", detailed_message = "map")]
@@ -221,14 +222,14 @@ pub enum RuntimeStorage {
     BridgeOfBTCBtcFee(u64),
     #[strum(message = "BridgeOfBTC MaxWithdrawAmount", detailed_message = "value")]
     BridgeOfBTCMaxWithdrawAmount(u32),
-//    #[strum(message = "BridgeOfBTC TxProposal", detailed_message = "value")]
-//    BridgeOfBTCTxProposal(CandidateTx),
-//    #[strum(message = "BridgeOfBTC PendingDepositMap", detailed_message = "map")]
-//    BridgeOfBTCPendingDepositMap(keys::Address, Vec<UTXOKey>),
-//    #[strum(message = "BridgeOfBTC AddressMap", detailed_message = "map")]
-//    BridgeOfBTCAddressMap(keys::Address, AccountId),
-//    #[strum(message = "BridgeOfBTC AccountMap", detailed_message = "map")]
-//    BridgeOfBTCAccountMap(AccountId, Vec<keys::Address>),
+    #[strum(message = "BridgeOfBTC TxProposal", detailed_message = "value")]
+    BridgeOfBTCTxProposal(CandidateTx),
+    #[strum(message = "BridgeOfBTC PendingDepositMap", detailed_message = "map")]
+    BridgeOfBTCPendingDepositMap(btc::Address, Vec<UTXOKey>),
+    #[strum(message = "BridgeOfBTC AddressMap", detailed_message = "map")]
+    BridgeOfBTCAddressMap(btc::Address, AccountId),
+    #[strum(message = "BridgeOfBTC AccountMap", detailed_message = "map")]
+    BridgeOfBTCAccountMap(AccountId, Vec<btc::Address>),
 }
 
 macro_rules! build_json {
@@ -243,23 +244,9 @@ macro_rules! build_json {
 }
 
 macro_rules! to_value_json {
-    ($prefix:ident, $value:ident => $v:ident) => {{
-        if $value.is_empty() {
-            info!("Empty Value: [{:?}] may have been removed", $prefix);
-            return Ok(build_json!("value", $prefix, null, null));
-        }
-        *$v = match Decode::decode(&mut $value.as_slice()) {
-            Some(value) => value,
-            None => {
-                error!(
-                    "Runtime storage parse: Decode failed, prefix: {:?}, value: {:?}",
-                    $prefix, $v
-                );
-                return Ok(build_json!("value", $prefix, null, null));
-            }
-        };
-        Ok(build_json!("value", $prefix, null, $v))
-    }};
+    ($prefix:ident, $value:ident => $v:ident) => {
+        to_value_json_impl!("value", $prefix, null, $value => $v)
+    };
 }
 
 macro_rules! to_map_json {
@@ -272,31 +259,36 @@ macro_rules! to_map_json {
                 return Err(err.into());
             }
         };
+        to_value_json_impl!("map", $prefix, $k, $value => $v)
+    }};
+}
+
+macro_rules! to_value_json_impl {
+    ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
         if $value.is_empty() {
             info!("Empty Value: [{:?}] may have been removed", $prefix);
-            return Ok(build_json!("map", $prefix, $k, null));
+            return Ok(build_json!($type, $prefix, $k, null));
         }
         *$v = match Decode::decode(&mut $value.as_slice()) {
             Some(value) => value,
             None => {
-                error!(
-                    "Runtime storage parse: Decode failed, prefix: {:?}, value: {:?}",
-                    $prefix, $v
-                );
-                return Ok(build_json!("map", $prefix, $k, null));
+                let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
+                error!("Runtime storage parse: {}", err);
+                return Err(err.into());
             }
         };
-        Ok(build_json!("map", $prefix, $k, $v))
+        Ok(build_json!($type, $prefix, $k, $v))
     }};
 }
 
 impl RuntimeStorage {
     pub fn parse(key: &[u8], value: Vec<u8>) -> Result<(String, serde_json::Value)> {
-        let (mut storage, prefix) = Self::match_key(key)?;
-        Ok((prefix.clone(), storage.decode_by_type(prefix, key, value)?))
+        let (mut storage, prefix) = Self::match_prefix(key)?;
+        let json = storage.decode_by_type(&prefix, key, value)?;
+        Ok((prefix, json))
     }
 
-    fn match_key(key: &[u8]) -> Result<(Self, String)> {
+    fn match_prefix(key: &[u8]) -> Result<(Self, String)> {
         for storage in Self::iter() {
             let prefix: String = match storage.get_message() {
                 Some(prefix) => prefix.to_string(),
@@ -313,16 +305,22 @@ impl RuntimeStorage {
         Err("No matching key found".into())
     }
 
-    #[rustfmt::skip]
-    fn decode_by_type(&mut self, prefix: String, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
-        let mut key = match self.get_detailed_message() {
+    fn match_key<'a>(&mut self, prefix: &str, key: &'a [u8]) -> Result<&'a [u8]> {
+        let key = match self.get_detailed_message() {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
                 error!("Runtime storage parse: get storage type failed");
                 return Err("Invalid storage type".into());
-            },
+            }
         };
+        Ok(key)
+    }
+
+    #[rustfmt::skip]
+    #[allow(clippy::cyclomatic_complexity)] // cyclomatic_complexity = 234 (defaults to 25)
+    fn decode_by_type(&mut self, prefix: &str, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
+        let mut key = self.match_key(prefix, key)?;
 
         match self {
             // Substrate
@@ -404,15 +402,15 @@ impl RuntimeStorage {
             RuntimeStorage::XSpotPriceVolatility(ref mut v) => to_value_json!(prefix, value => v),
             // bridge - bitcoin
             RuntimeStorage::BridgeOfBTCBestIndex(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BridgeOfBTCBlockHeightFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCTxFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCGenesisInfo(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCTxFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCGenesisInfo(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCParamsInfo(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCNetworkId(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCTrusteeAddress(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCTrusteeAddress(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCTrusteeRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCCertAddress(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCCertAddress(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCCertRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCUTXOSet(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BridgeOfBTCUTXOSetKey(ref mut v) => to_value_json!(prefix, value => v),
@@ -420,10 +418,10 @@ impl RuntimeStorage {
             RuntimeStorage::BridgeOfBTCIrrBlock(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCBtcFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BridgeOfBTCMaxWithdrawAmount(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCTxProposal(ref mut v) => to_value_json!(prefix, value => v),
-//            RuntimeStorage::BridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCAddressMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-//            RuntimeStorage::BridgeOfBTCAccountMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCTxProposal(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCAddressMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::BridgeOfBTCAccountMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
         }
     }
 }

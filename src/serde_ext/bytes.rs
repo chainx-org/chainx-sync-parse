@@ -3,7 +3,7 @@ use std::fmt;
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Clone, Default, Debug, Encode, Decode)]
 pub struct Bytes(pub Vec<u8>);
 
 impl<T: Into<Vec<u8>>> From<T> for Bytes {

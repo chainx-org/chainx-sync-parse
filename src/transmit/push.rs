@@ -44,7 +44,7 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Config {
     retry_count: u32,
     retry_interval: Duration,
@@ -127,16 +127,14 @@ impl PushClient {
         tx: Sender<String>,
     ) {
         let queue = self.block_queue.clone();
-        let config = self.config.clone();
+        let config = self.config;
         let url = url.to_string();
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
                 while reg.status.height <= cur_push_height {
-                    if let Some(msg) =
-                        is_post_msg(queue.clone(), reg.status.height, reg.prefix.clone())
-                    {
+                    if let Some(msg) = is_post_msg(&queue, reg.status.height, &reg.prefix) {
                         info!("should post!");
-                        if !post_msg(&url, msg, config.clone()) {
+                        if !post_msg(&url, msg, &config) {
                             warn!("post err");
                             reg.switch_off();
                             break;
@@ -161,20 +159,20 @@ impl PushClient {
             for url in rx {
                 info!("receive url: {:?}", url);
                 push_flag.write().remove(&url);
-                RegisterRecord::save(json!(list).to_string()).unwrap();
+                RegisterRecord::save(&json!(list).to_string()).expect("record save error");
             }
-            delete_msg(list, queue, cur_block_height);
+            delete_msg(&list, &queue, cur_block_height);
             debug!("receive end");
         });
     }
 }
 
-fn is_post_msg(queue: BlockQueue, height: u64, prefixes: Vec<String>) -> Option<Message> {
+fn is_post_msg(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<Message> {
     if let Some(msg) = queue.read().get(&height) {
         let mut push_msg = Message::new(height);
         for v in msg {
             let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
-            for prefix in &prefixes {
+            for prefix in prefixes {
                 debug!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
                 if *prefix == msg_prefix {
                     debug!("find prefix");
@@ -211,7 +209,7 @@ fn split_msg(msg: Message, slice_num: usize) -> Vec<Message> {
     }
 }
 
-fn post_msg(url: &str, msg: Message, config: Config) -> bool {
+fn post_msg(url: &str, msg: Message, config: &Config) -> bool {
     debug!("post");
     let slice_msg = split_msg(msg, 10);
     for msg in slice_msg {
@@ -228,7 +226,7 @@ fn post_msg(url: &str, msg: Message, config: Config) -> bool {
             }
             info!("retry count: {:?}", i);
             flag = false;
-            std::thread::sleep(config.retry_interval);
+            thread::sleep(config.retry_interval);
         }
         if !flag {
             return false;
@@ -237,7 +235,7 @@ fn post_msg(url: &str, msg: Message, config: Config) -> bool {
     true
 }
 
-fn delete_msg(list: RegisterList, queue: BlockQueue, cur_block_height: u64) {
+fn delete_msg(list: &RegisterList, queue: &BlockQueue, cur_block_height: u64) {
     let mut min_push_height = u64::max_value();
     for register in list.read().unwrap().values() {
         let reg = register.lock().unwrap();
