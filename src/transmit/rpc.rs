@@ -47,7 +47,6 @@ impl Rpc for RpcImpl {
             })
             .or_insert_with(|| Arc::new(Mutex::new(Info::new(vec![prefix], version))));
 
-        let register_list = self.register_list.read();
         if let Err(err) = RegisterRecord::save(&json!(self.register_list).to_string()) {
             error!("Save register record error: {}", err);
         }

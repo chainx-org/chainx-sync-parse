@@ -4,9 +4,8 @@ mod rpc;
 
 use std::collections::HashMap;
 use std::thread;
-use std::time::Duration;
 
-use self::push::{Config, PushClient};
+use self::push::{Config, PushService};
 use self::register::{RegisterInfo, RegisterList, RegisterRecord};
 use self::rpc::build_http_rpc_server;
 use crate::{BlockQueue, Result};
@@ -19,9 +18,8 @@ impl RegisterService {
         Self::load(&list)?;
 
         let thread = thread::spawn(move || {
-            let mut push_client =
-                PushClient::new(list, block_queue, Config::new(3, Duration::new(3, 0)));
-            push_client.start();
+            let mut push_service = PushService::new(list, block_queue, Config::default());
+            push_service.start();
             server.wait();
         });
 

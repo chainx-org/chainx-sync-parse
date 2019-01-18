@@ -16,7 +16,10 @@ struct JsonResponse<T> {
     result: T,
 }
 
-fn request<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> Result<T> {
+fn request<T>(url: &str, body: &serde_json::Value) -> Result<T>
+where
+    T: Debug + DeserializeOwned,
+{
     let resp: serde_json::Value = reqwest::Client::new()
         .post(url)
         .json(body)
@@ -82,25 +85,31 @@ impl Config {
     }
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self::new(3, Duration::new(3, 0))
+    }
+}
+
 type PushFlag = Arc<RwLock<HashMap<String, bool>>>;
 
 #[derive(Debug)]
-pub struct PushClient {
+pub struct PushService {
     register_list: RegisterList,
     block_queue: BlockQueue,
     config: Config,
     push_flag: PushFlag,
-    inner: reqwest::Client,
+    client: reqwest::Client,
 }
 
-impl PushClient {
+impl PushService {
     pub fn new(register_list: RegisterList, block_queue: BlockQueue, config: Config) -> Self {
         Self {
             register_list,
             block_queue,
             config,
             push_flag: Default::default(),
-            inner: reqwest::Client::new(),
+            client: reqwest::Client::new(),
         }
     }
 
@@ -125,7 +134,7 @@ impl PushClient {
                                 cur_block_height, push_height
                             );
                             have_new_push = true;
-                            self.push_msg(cur_block_height, url, info.clone(), tx.clone());
+                            self.push_message(cur_block_height, url, info.clone(), tx.clone());
                             true
                         });
                 }
@@ -137,20 +146,7 @@ impl PushClient {
         }
     }
 
-    fn request<T>(&self, url: &str, body: &serde_json::Value) -> Result<T>
-    where
-        T: Debug + DeserializeOwned,
-    {
-        let resp = self
-            .inner
-            .post(url)
-            .json(body)
-            .send()?
-            .json::<JsonResponse<T>>()?;
-        Ok(resp.result)
-    }
-
-    fn push_msg(
+    fn push_message(
         &self,
         cur_push_height: u64,
         url: &str,
@@ -163,9 +159,11 @@ impl PushClient {
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
                 while reg.status.height <= cur_push_height {
-                    if let Some(msg) = is_post_msg(&queue, reg.status.height, &reg.prefix) {
+                    if let Some(msg) =
+                        Self::build_message(&queue, reg.status.height, &reg.prefix)
+                    {
                         info!("should post!");
-                        if !post_msg(&url, msg, &config) {
+                        if !send_message(&url, msg, &config) {
                             warn!("post err");
                             reg.switch_off();
                             break;
@@ -204,31 +202,33 @@ impl PushClient {
             None => 0,
         }
     }
-}
 
-fn is_post_msg(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<Message> {
-    if let Some(msg) = queue.read().get(&height) {
-        let mut push_msg = Message::new(height);
-        for v in msg {
-            let msg_prefix: String = serde_json::from_str(&v["prefix"].to_string()).unwrap();
-            for prefix in prefixes {
-                debug!("prefix: {:?}, msg_prefix: {:?}", *prefix, msg_prefix);
-                if *prefix == msg_prefix {
-                    debug!("find prefix");
-                    push_msg.add(v.clone());
+    /// Find the values, in the queue, that match the prefixes from the registrant,
+    /// and construct push message for registrant.
+    fn build_message(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<Message> {
+        if let Some(values) = queue.read().get(&height) {
+            let mut push_msg = Message::new(height);
+            for value in values {
+                let msg_prefix: String = serde_json::from_value(value["prefix"].clone()).unwrap();
+                for prefix in prefixes {
+                    debug!("prefix: {:?}, msg_prefix: {:?}", prefix, msg_prefix);
+                    if *prefix == msg_prefix {
+                        debug!("Match prefix");
+                        push_msg.add(value.clone());
+                    }
                 }
             }
+            if !push_msg.data.is_empty() {
+                return Some(push_msg);
+            }
+        } else {
+            warn!("Cannot find info of block height : {:?}", height);
         }
-        if !push_msg.data.is_empty() {
-            return Some(push_msg);
-        }
-    } else {
-        warn!("can not find msg! height: {:?}", height);
+        None
     }
-    None
 }
 
-fn post_msg(url: &str, msg: Message, config: &Config) -> bool {
+fn send_message(url: &str, msg: Message, config: &Config) -> bool {
     debug!("post");
     let slice_msg = msg.split(10);
     for msg in slice_msg {
@@ -266,7 +266,7 @@ fn delete_msg(list: &RegisterList, queue: &BlockQueue, cur_block_height: u64) {
     if min_push_height <= cur_block_height {
         let mut h = *queue.read().keys().next().unwrap();
         info!(
-            "cur_block_height: {:?}, min_push_height: {:?},queue len: {:?}",
+            "cur_block_height: {:?}, min_push_height: {:?}, queue len: {:?}",
             h,
             min_push_height,
             queue.read().len()
@@ -294,14 +294,20 @@ mod tests {
     #[test]
     fn message_split() {
         macro_rules! value {
-            ($v:expr) => {{
+            ($v:expr) => {
                 serde_json::from_str::<serde_json::Value>($v).unwrap()
-            }};
+            };
         }
 
         let message = Message {
             height: 123,
-            data: vec![value!("1"), value!("2"), value!("3"), value!("4"), value!("5")],
+            data: vec![
+                value!("1"),
+                value!("2"),
+                value!("3"),
+                value!("4"),
+                value!("5"),
+            ],
         };
 
         assert_eq!(
@@ -322,9 +328,6 @@ mod tests {
             message.clone().split(2)
         );
 
-        assert_eq!(
-            vec![message.clone()],
-            message.split(5)
-        );
+        assert_eq!(vec![message.clone()], message.split(5));
     }
 }
