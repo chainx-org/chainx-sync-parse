@@ -14,7 +14,7 @@ use log4rs::{
 use chainx_sub_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
-const REGISTER_SERVER_URL: &str = "127.0.0.1:3030";
+const REGISTER_SERVER_URL: &str = "0.0.0.0:3030";
 const LOG_FILE_PATH: &str = "log/output.log";
 
 fn init_log_config() -> Result<()> {
