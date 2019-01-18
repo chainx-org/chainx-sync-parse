@@ -36,12 +36,12 @@ mod serde_ext;
 mod subscribe;
 mod transmit;
 
-pub use std::collections::{BTreeMap, HashMap};
-pub use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-pub use parking_lot::RwLock;
+use parking_lot::RwLock;
+
 pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;
-
 pub use self::error::{Error, Result};
 pub use self::parse::RuntimeStorage;
 pub use self::serde_ext::Bytes;

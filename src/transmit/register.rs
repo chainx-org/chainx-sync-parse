@@ -1,24 +1,21 @@
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
+use std::sync::{Arc, Mutex, RwLock};
 
-use jsonrpc_core::Result as RpcResult;
-use jsonrpc_http_server::{
-    AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
-};
+use crate::Result;
 
-use crate::{Arc, HashMap, Result, StdMutex, StdRwLock};
+const REGISTER_RECORD_PATH: &str = "register.json";
 
-const REGISTER_RECORD_PATH: &str = "record/reginfo.json";
+pub type RegisterInfo = Arc<Mutex<Info>>;
+pub type RegisterList = Arc<RwLock<HashMap<String, RegisterInfo>>>;
 
-pub type RegisterInfo = Arc<StdMutex<Info>>;
-pub type RegisterList = Arc<StdRwLock<HashMap<String, RegisterInfo>>>;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Info {
     pub prefix: Vec<String>,
     pub status: Status,
-    version: String,
+    pub version: String,
 }
 
 impl Info {
@@ -59,70 +56,10 @@ impl Info {
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct Status {
     pub height: u64,
     pub down: bool,
-}
-
-build_rpc_trait! {
-    pub trait Rpc {
-        #[rpc(name = "register")]
-        fn register(&self, String, String, String) -> RpcResult<String>;
-    }
-}
-
-#[derive(Default)]
-pub struct RpcImpl {
-    register_list: RegisterList,
-}
-
-impl Rpc for RpcImpl {
-    fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
-        let prefix: String = serde_json::from_str(&prefix).expect("prefix deserialize error");
-        info!(
-            "new register! prefix:{:?}, url:{:?}, version{:?}",
-            prefix, url, version
-        );
-        self.register_list
-            .write()
-            .unwrap()
-            .entry(url)
-            .and_modify(|info| {
-                let mut info = info.lock().unwrap();
-                if version.parse::<f64>().unwrap() > info.version.parse::<f64>().unwrap() {
-                    info.new_version(version.clone());
-                    info.add_prefix(prefix.clone());
-                } else {
-                    match info.prefix.iter().find(|&x| x == &prefix) {
-                        Some(_) => info.switch_on(),
-                        None => info.add_prefix(prefix.clone()),
-                    }
-                }
-            })
-            .or_insert_with(|| Arc::new(StdMutex::new(Info::new(vec![prefix], version))));
-
-        info!("register ok");
-        RegisterRecord::save(&json!(self.register_list).to_string()).expect("record save error");
-        Ok("OK".to_string())
-    }
-}
-
-pub fn build_http_rpc_server(rpc_http: &str) -> (Server, RegisterList) {
-    let mut io = jsonrpc_core::IoHandler::new();
-    let rpc = RpcImpl::default();
-    let registrant_list = rpc.register_list.clone();
-    io.extend_with(rpc.to_delegate());
-
-    let server = ServerBuilder::new(io)
-        .threads(3)
-        .rest_api(RestApi::Unsecure)
-        .cors(DomainsValidation::AllowOnly(vec![
-            AccessControlAllowOrigin::Any,
-        ]))
-        .start_http(&rpc_http.parse().unwrap())
-        .expect("Unable to start RPC server");
-    (server, registrant_list)
 }
 
 pub struct RegisterRecord;

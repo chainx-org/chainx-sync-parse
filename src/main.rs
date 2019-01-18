@@ -4,6 +4,8 @@ extern crate log4rs;
 
 extern crate chainx_sub_parse;
 
+use std::collections::HashMap;
+
 use log::LevelFilter;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
@@ -46,7 +48,7 @@ fn init_log_config() -> Result<()> {
 fn main() -> Result<()> {
     init_log_config()?;
 
-    let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
+    let block_queue: BlockQueue = BlockQueue::default();
     debug!("BlockQueue len: {}", block_queue.read().len());
 
     let register_service_thread = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;

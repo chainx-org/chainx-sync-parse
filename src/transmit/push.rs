@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use parking_lot::RwLock;
 use serde::de::DeserializeOwned;
 
 use super::register::{RegisterInfo, RegisterList, RegisterRecord};
-use crate::{Arc, BlockQueue, Result, RwLock};
+use crate::{BlockQueue, Result};
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 struct JsonResponse<T> {
     result: T,
 }
@@ -25,26 +26,48 @@ fn request<T: Debug + DeserializeOwned>(url: &str, body: &serde_json::Value) -> 
     Ok(resp.result)
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(PartialEq, Clone, Debug, Serialize)]
 pub struct Message {
     height: u64,
     data: Vec<serde_json::Value>,
 }
 
 impl Message {
-    pub fn new(num: u64) -> Self {
+    pub fn new(height: u64) -> Self {
         Self {
-            height: num,
+            height,
             data: vec![],
         }
     }
 
-    pub fn add(&mut self, date: serde_json::Value) {
-        self.data.push(date);
+    pub fn add(&mut self, value: serde_json::Value) {
+        self.data.push(value);
+    }
+
+    /// Split the message into multiple messages according to `chunk_size`.
+    pub fn split(self, chunk_size: usize) -> Vec<Self> {
+        debug!("The message was split into multiple messages");
+        if self.data.len() > chunk_size {
+            let mut messages = vec![];
+            let chunks = self
+                .data
+                .chunks(chunk_size)
+                .map(|value| value.to_vec())
+                .collect::<Vec<Vec<serde_json::Value>>>();
+            for chunk in chunks {
+                messages.push(Message {
+                    height: self.height,
+                    data: chunk,
+                });
+            }
+            messages
+        } else {
+            vec![self]
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Config {
     retry_count: u32,
     retry_interval: Duration,
@@ -67,6 +90,7 @@ pub struct PushClient {
     block_queue: BlockQueue,
     config: Config,
     push_flag: PushFlag,
+    inner: reqwest::Client,
 }
 
 impl PushClient {
@@ -75,14 +99,8 @@ impl PushClient {
             register_list,
             block_queue,
             config,
-            push_flag: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    fn get_block_height(&self) -> u64 {
-        match self.block_queue.read().keys().next_back() {
-            Some(s) => *s,
-            None => 0,
+            push_flag: Default::default(),
+            inner: reqwest::Client::new(),
         }
     }
 
@@ -117,6 +135,19 @@ impl PushClient {
                 self.receive(rx);
             }
         }
+    }
+
+    fn request<T>(&self, url: &str, body: &serde_json::Value) -> Result<T>
+    where
+        T: Debug + DeserializeOwned,
+    {
+        let resp = self
+            .inner
+            .post(url)
+            .json(body)
+            .send()?
+            .json::<JsonResponse<T>>()?;
+        Ok(resp.result)
     }
 
     fn push_msg(
@@ -165,6 +196,14 @@ impl PushClient {
             debug!("receive end");
         });
     }
+
+    /// Get the max key of BTreeMap, which is current block height.
+    fn get_block_height(&self) -> u64 {
+        match self.block_queue.read().keys().next_back() {
+            Some(s) => *s,
+            None => 0,
+        }
+    }
 }
 
 fn is_post_msg(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<Message> {
@@ -189,29 +228,9 @@ fn is_post_msg(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<M
     None
 }
 
-fn split_msg(msg: Message, slice_num: usize) -> Vec<Message> {
-    debug!("slice");
-    if msg.data.len() > slice_num {
-        let mut v = Vec::new();
-        for i in 0..msg.data.len() / slice_num {
-            let mut m = Message::new(msg.height);
-            for j in 0..slice_num {
-                match msg.data.get(i * slice_num + j) {
-                    Some(s) => m.add(s.clone()),
-                    None => break,
-                }
-            }
-            v.push(m);
-        }
-        v
-    } else {
-        vec![msg]
-    }
-}
-
 fn post_msg(url: &str, msg: Message, config: &Config) -> bool {
     debug!("post");
-    let slice_msg = split_msg(msg, 10);
+    let slice_msg = msg.split(10);
     for msg in slice_msg {
         debug!("msg:{:?}", msg);
         let json = json!(msg);
@@ -265,5 +284,47 @@ fn delete_msg(list: &RegisterList, queue: &BlockQueue, cur_block_height: u64) {
             min_push_height, cur_block_height
         );
         queue.write().clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn message_split() {
+        macro_rules! value {
+            ($v:expr) => {{
+                serde_json::from_str::<serde_json::Value>($v).unwrap()
+            }};
+        }
+
+        let message = Message {
+            height: 123,
+            data: vec![value!("1"), value!("2"), value!("3"), value!("4"), value!("5")],
+        };
+
+        assert_eq!(
+            vec![
+                Message {
+                    height: 123,
+                    data: vec![value!("1"), value!("2")]
+                },
+                Message {
+                    height: 123,
+                    data: vec![value!("3"), value!("4")]
+                },
+                Message {
+                    height: 123,
+                    data: vec![value!("5")]
+                },
+            ],
+            message.clone().split(2)
+        );
+
+        assert_eq!(
+            vec![message.clone()],
+            message.split(5)
+        );
     }
 }
