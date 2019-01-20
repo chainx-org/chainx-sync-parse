@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
@@ -9,32 +7,30 @@ use super::register::{Info, RegisterList, RegisterRecord};
 use crate::Result;
 
 build_rpc_trait! {
-    pub trait Rpc {
+    pub trait RegisterApi {
         #[rpc(name = "register")]
         fn register(&self, String, String, String) -> RpcResult<String>;
     }
 }
 
 #[derive(Default)]
-pub struct RpcImpl {
-    register_list: RegisterList,
-}
+struct Registers(pub RegisterList);
 
-impl Rpc for RpcImpl {
+impl RegisterApi for Registers {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
+        let prefix: String =
+            serde_json::from_str(&prefix).expect("Register deserialize error - prefix");
+        let url: String = serde_json::from_str(&url).expect("Register deserialize error - url");
+        let version: String =
+            serde_json::from_str(&version).expect("Register deserialize error - version");
         info!(
             "Register: [ url: {:?}, version: {:?}, prefix: {:?}  ]",
             url, version, prefix,
         );
-        let prefix: String =
-            serde_json::from_str(&prefix).expect("Register prefix deserialize error");
-        info!("Deserialize prefix: {:?}", prefix);
-        self.register_list
+        self.0
             .write()
-            .unwrap()
             .entry(url)
             .and_modify(|info| {
-                let mut info = info.lock().unwrap();
                 if version.parse::<f64>().unwrap() > info.version.parse::<f64>().unwrap() {
                     info.new_version(version.clone());
                     info.add_prefix(prefix.clone());
@@ -45,9 +41,10 @@ impl Rpc for RpcImpl {
                     }
                 }
             })
-            .or_insert_with(|| Arc::new(Mutex::new(Info::new(vec![prefix], version))));
+            .or_insert_with(|| Info::new(vec![prefix], version));
 
-        if let Err(err) = RegisterRecord::save(&json!(self.register_list).to_string()) {
+        let list = self.0.read().clone();
+        if let Err(err) = RegisterRecord::save(&json!(list).to_string()) {
             error!("Save register record error: {}", err);
         }
         info!("Register: ok");
@@ -57,9 +54,9 @@ impl Rpc for RpcImpl {
 
 pub fn build_http_rpc_server(rpc_http: &str) -> Result<(Server, RegisterList)> {
     let mut io = jsonrpc_core::IoHandler::new();
-    let rpc = RpcImpl::default();
-    let registrant_list = rpc.register_list.clone();
-    io.extend_with(rpc.to_delegate());
+    let register = Registers::default();
+    let register_list = register.0.clone();
+    io.extend_with(register.to_delegate());
 
     let server = ServerBuilder::new(io)
         .threads(3)
@@ -68,5 +65,41 @@ pub fn build_http_rpc_server(rpc_http: &str) -> Result<(Server, RegisterList)> {
             AccessControlAllowOrigin::Any,
         ]))
         .start_http(&rpc_http.parse().unwrap())?;
-    Ok((server, registrant_list))
+    Ok((server, register_list))
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate jsonrpc_test;
+
+    use super::*;
+    use crate::transmit::register::{Info, Status};
+
+    #[test]
+    fn test_register() {
+        let registers = Registers::default();
+        let list = registers.0.clone();
+        let rpc = jsonrpc_test::Rpc::new(registers.to_delegate());
+        assert_eq!(
+            rpc.request(
+                "register",
+                &[r#""FreeBalance""#, r#""127.0.0.1:12345""#, r#""1.0""#]
+            ),
+            r#""OK""#
+        );
+
+        let list = list.read();
+        let info = list.get("127.0.0.1:12345").unwrap().clone();
+        assert_eq!(
+            info,
+            Info {
+                prefix: vec!["FreeBalance".to_string()],
+                status: Status {
+                    height: 0,
+                    down: false
+                },
+                version: "1.0".to_string(),
+            }
+        )
+    }
 }

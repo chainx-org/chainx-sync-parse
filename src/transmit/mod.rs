@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::thread;
 
 use self::push::{Config, PushService};
-use self::register::{RegisterInfo, RegisterList, RegisterRecord};
+use self::register::{Info, RegisterList, RegisterRecord};
 use self::rpc::build_http_rpc_server;
 use crate::{BlockQueue, Result};
 
@@ -29,9 +29,9 @@ impl RegisterService {
     /// Load registrant records from the file `register.json`.
     fn load(list: &RegisterList) -> Result<()> {
         if let Some(record) = RegisterRecord::load()? {
-            let map: HashMap<String, RegisterInfo> = serde_json::from_str(record.as_str())?;
+            let map: HashMap<String, Info> = serde_json::from_str(record.as_str())?;
             for (k, v) in map {
-                list.write().unwrap().insert(k, v);
+                list.write().insert(k, v);
             }
         }
         Ok(())

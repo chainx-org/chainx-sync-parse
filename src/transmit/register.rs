@@ -2,16 +2,17 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
+
+use parking_lot::RwLock;
 
 use crate::Result;
 
 const REGISTER_RECORD_PATH: &str = "register.json";
 
-pub type RegisterInfo = Arc<Mutex<Info>>;
-pub type RegisterList = Arc<RwLock<HashMap<String, RegisterInfo>>>;
+pub type RegisterList = Arc<RwLock<HashMap<String, Info>>>;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Info {
     pub prefix: Vec<String>,
     pub status: Status,
@@ -56,7 +57,7 @@ impl Info {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct Status {
     pub height: u64,
     pub down: bool,

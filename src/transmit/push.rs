@@ -8,7 +8,7 @@ use std::time::Duration;
 use parking_lot::RwLock;
 use serde::de::DeserializeOwned;
 
-use super::register::{RegisterInfo, RegisterList, RegisterRecord};
+use super::register::{Info, RegisterList, RegisterRecord};
 use crate::{BlockQueue, Result};
 
 #[derive(Debug, Deserialize)]
@@ -121,9 +121,9 @@ impl PushService {
             let cur_block_height = self.get_block_height();
             let (tx, rx) = mpsc::channel();
             let mut have_new_push = false;
-            for (url, info) in self.register_list.read().unwrap().iter() {
-                let push_height = info.lock().unwrap().status.height;
-                let is_down = info.lock().unwrap().status.down;
+            for (url, info) in self.register_list.read().iter() {
+                let push_height = info.status.height;
+                let is_down = info.status.down;
                 if cur_block_height >= push_height && !is_down {
                     self.push_flag
                         .write()
@@ -150,31 +150,29 @@ impl PushService {
         &self,
         cur_push_height: u64,
         url: &str,
-        reg_data: RegisterInfo,
+        mut reg_data: Info,
         tx: Sender<String>,
     ) {
         let queue = self.block_queue.clone();
         let config = self.config;
         let url = url.to_string();
         thread::spawn(move || {
-            if let Ok(mut reg) = reg_data.lock() {
-                while reg.status.height <= cur_push_height {
-                    if let Some(msg) =
-                        Self::build_message(&queue, reg.status.height, &reg.prefix)
-                    {
-                        info!("should post!");
-                        if !send_message(&url, msg, &config) {
-                            warn!("post err");
-                            reg.switch_off();
-                            break;
-                        }
-                        debug!("post ok");
+            while reg_data.status.height <= cur_push_height {
+                if let Some(msg) =
+                    Self::build_message(&queue, reg_data.status.height, &reg_data.prefix)
+                {
+                    info!("should post!");
+                    if !send_message(&url, msg, &config) {
+                        warn!("post err");
+                        reg_data.switch_off();
+                        break;
                     }
-                    reg.add_height();
+                    debug!("post ok");
                 }
-                debug!("post end");
-                tx.send(url).unwrap();
-            };
+                reg_data.add_height();
+            }
+            debug!("post end");
+            tx.send(url).unwrap();
         });
     }
 
@@ -188,6 +186,7 @@ impl PushService {
             for url in rx {
                 info!("receive url: {:?}", url);
                 push_flag.write().remove(&url);
+                let list = list.read().clone();
                 RegisterRecord::save(&json!(list).to_string()).expect("record save error");
             }
             delete_msg(&list, &queue, cur_block_height);
@@ -230,8 +229,8 @@ impl PushService {
 
 fn send_message(url: &str, msg: Message, config: &Config) -> bool {
     debug!("post");
-    let slice_msg = msg.split(10);
-    for msg in slice_msg {
+    let messages = msg.split(10);
+    for msg in messages {
         debug!("msg:{:?}", msg);
         let json = json!(msg);
         let mut flag = true;
@@ -256,10 +255,9 @@ fn send_message(url: &str, msg: Message, config: &Config) -> bool {
 
 fn delete_msg(list: &RegisterList, queue: &BlockQueue, cur_block_height: u64) {
     let mut min_push_height = u64::max_value();
-    for register in list.read().unwrap().values() {
-        let reg = register.lock().unwrap();
-        if !reg.status.down && reg.status.height > 0 && reg.status.height - 1 < min_push_height {
-            min_push_height = reg.status.height - 1;
+    for info in list.read().values() {
+        if !info.status.down && info.status.height > 0 && info.status.height - 1 < min_push_height {
+            min_push_height = info.status.height - 1;
         }
     }
 
