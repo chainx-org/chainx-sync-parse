@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::Arc;
-
-use parking_lot::RwLock;
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::Result;
 
 const REGISTER_RECORD_PATH: &str = "register.json";
 
-pub type RegisterList = Arc<RwLock<HashMap<String, Info>>>;
+// HashMap: key - registrant url; value - registrant info.
+pub type RegisterList = Arc<RwLock<HashMap<String, RegisterInfo>>>;
+pub type RegisterInfo = Arc<Mutex<Info>>;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Info {

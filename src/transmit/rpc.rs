@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
@@ -29,8 +31,10 @@ impl RegisterApi for Registers {
         );
         self.0
             .write()
+            .unwrap()
             .entry(url)
             .and_modify(|info| {
+                let mut info = info.lock().unwrap();
                 if version.parse::<f64>().unwrap() > info.version.parse::<f64>().unwrap() {
                     info.new_version(version.clone());
                     info.add_prefix(prefix.clone());
@@ -41,10 +45,9 @@ impl RegisterApi for Registers {
                     }
                 }
             })
-            .or_insert_with(|| Info::new(vec![prefix], version));
+            .or_insert_with(|| Arc::new(Mutex::new(Info::new(vec![prefix], version))));
 
-        let list = self.0.read().clone();
-        if let Err(err) = RegisterRecord::save(&json!(list).to_string()) {
+        if let Err(err) = RegisterRecord::save(&json!(self.0).to_string()) {
             error!("Save register record error: {}", err);
         }
         info!("Register: ok");
@@ -88,8 +91,8 @@ mod tests {
             r#""OK""#
         );
 
-        let list = list.read();
-        let info = list.get("127.0.0.1:12345").unwrap().clone();
+        let list = list.read().unwrap();
+        let info = list.get("127.0.0.1:12345").unwrap().lock().unwrap().clone();
         assert_eq!(
             info,
             Info {

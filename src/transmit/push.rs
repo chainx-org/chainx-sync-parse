@@ -8,26 +8,10 @@ use std::time::Duration;
 use parking_lot::RwLock;
 use serde::de::DeserializeOwned;
 
-use super::register::{Info, RegisterList, RegisterRecord};
+use super::register::{RegisterInfo, RegisterList, RegisterRecord};
 use crate::{BlockQueue, Result};
 
-#[derive(Debug, Deserialize)]
-struct JsonResponse<T> {
-    result: T,
-}
-
-fn request<T>(url: &str, body: &serde_json::Value) -> Result<T>
-where
-    T: Debug + DeserializeOwned,
-{
-    let resp: serde_json::Value = reqwest::Client::new()
-        .post(url)
-        .json(body)
-        .send()?
-        .json::<serde_json::Value>()?;
-    let resp: JsonResponse<T> = serde_json::from_value(resp)?;
-    Ok(resp.result)
-}
+const MSG_CHUNK_SIZE_LIMIT: usize = 10;
 
 #[derive(PartialEq, Clone, Debug, Serialize)]
 pub struct Message {
@@ -50,23 +34,18 @@ impl Message {
     /// Split the message into multiple messages according to `chunk_size`.
     pub fn split(self, chunk_size: usize) -> Vec<Self> {
         debug!("The message was split into multiple messages");
-        if self.data.len() > chunk_size {
-            let mut messages = vec![];
-            let chunks = self
-                .data
-                .chunks(chunk_size)
-                .map(|value| value.to_vec())
-                .collect::<Vec<Vec<serde_json::Value>>>();
-            for chunk in chunks {
-                messages.push(Message {
-                    height: self.height,
-                    data: chunk,
-                });
-            }
-            messages
-        } else {
-            vec![self]
-        }
+        let chunks = self
+            .data
+            .chunks(chunk_size)
+            .map(|value| value.to_vec())
+            .collect::<Vec<Vec<serde_json::Value>>>();
+        chunks
+            .into_iter()
+            .map(|chunk| Message {
+                height: self.height,
+                data: chunk,
+            })
+            .collect()
     }
 }
 
@@ -121,9 +100,9 @@ impl PushService {
             let cur_block_height = self.get_block_height();
             let (tx, rx) = mpsc::channel();
             let mut have_new_push = false;
-            for (url, info) in self.register_list.read().iter() {
-                let push_height = info.status.height;
-                let is_down = info.status.down;
+            for (url, info) in self.register_list.read().unwrap().iter() {
+                let push_height = info.lock().unwrap().status.height;
+                let is_down = info.lock().unwrap().status.down;
                 if cur_block_height >= push_height && !is_down {
                     self.push_flag
                         .write()
@@ -150,29 +129,28 @@ impl PushService {
         &self,
         cur_push_height: u64,
         url: &str,
-        mut reg_data: Info,
+        reg_data: RegisterInfo,
         tx: Sender<String>,
     ) {
         let queue = self.block_queue.clone();
         let config = self.config;
         let url = url.to_string();
         thread::spawn(move || {
-            while reg_data.status.height <= cur_push_height {
-                if let Some(msg) =
-                    Self::build_message(&queue, reg_data.status.height, &reg_data.prefix)
-                {
-                    info!("should post!");
-                    if !send_message(&url, msg, &config) {
-                        warn!("post err");
-                        reg_data.switch_off();
-                        break;
+            if let Ok(mut reg) = reg_data.lock() {
+                while reg.status.height <= cur_push_height {
+                    if let Some(msg) =
+                    Self::build_message(&queue, reg.status.height, &reg.prefix)
+                    {
+                        if send_large_message(&url, msg, &config).is_err() {
+                            reg.switch_off();
+                            break;
+                        }
+                        debug!("Send messages ok, url: {}", url);
                     }
-                    debug!("post ok");
+                    reg.add_height();
                 }
-                reg_data.add_height();
-            }
-            debug!("post end");
-            tx.send(url).unwrap();
+                tx.send(url).unwrap();
+            };
         });
     }
 
@@ -186,7 +164,6 @@ impl PushService {
             for url in rx {
                 info!("receive url: {:?}", url);
                 push_flag.write().remove(&url);
-                let list = list.read().clone();
                 RegisterRecord::save(&json!(list).to_string()).expect("record save error");
             }
             delete_msg(&list, &queue, cur_block_height);
@@ -227,35 +204,60 @@ impl PushService {
     }
 }
 
-fn send_message(url: &str, msg: Message, config: &Config) -> bool {
-    debug!("post");
-    let messages = msg.split(10);
+fn send_large_message(url: &str, msg: Message, config: &Config) -> Result<()> {
+    let messages = msg.split(MSG_CHUNK_SIZE_LIMIT);
     for msg in messages {
-        debug!("msg:{:?}", msg);
-        let json = json!(msg);
-        let mut flag = true;
-        for i in 0..config.retry_count {
-            if let Ok(ok) = request::<String>(url, &json) {
-                info!("post res: {:?}", ok);
-                if ok == "OK" {
-                    flag = true;
-                    break;
-                }
-            }
-            info!("retry count: {:?}", i);
-            flag = false;
-            thread::sleep(config.retry_interval);
-        }
-        if !flag {
-            return false;
+        if let Err(err) =  send_message(url, msg, config) {
+            return Err(err);
         }
     }
-    true
+    Ok(())
+}
+
+fn send_message(url: &str, msg: Message, config: &Config) -> Result<()> {
+    let body = json!(msg);
+    debug!("Send message request: {:?}", body);
+    for i in 1..=config.retry_count {
+        let ok = request::<String>(url, &body)?;
+        info!("Receive message response: {:?}", ok);
+        if ok == "OK" {
+            return Ok(());
+        }
+        warn!(
+            "Send message request retry ({} / {})",
+            i, config.retry_count
+        );
+        thread::sleep(config.retry_interval);
+    }
+    warn!(
+        "Reach the limitation of retries, failed to send message: {:?}",
+        msg
+    );
+    Err("Reach the limitation of retries".into())
+}
+
+#[derive(Debug, Deserialize)]
+struct JsonResponse<T> {
+    result: T,
+}
+
+fn request<T>(url: &str, body: &serde_json::Value) -> Result<T>
+where
+    T: Debug + DeserializeOwned,
+{
+    let resp: serde_json::Value = reqwest::Client::new()
+        .post(url)
+        .json(body)
+        .send()?
+        .json::<serde_json::Value>()?;
+    let resp: JsonResponse<T> = serde_json::from_value(resp)?;
+    Ok(resp.result)
 }
 
 fn delete_msg(list: &RegisterList, queue: &BlockQueue, cur_block_height: u64) {
     let mut min_push_height = u64::max_value();
-    for info in list.read().values() {
+    for info in list.read().unwrap().values() {
+        let info = info.lock().unwrap();
         if !info.status.down && info.status.height > 0 && info.status.height - 1 < min_push_height {
             min_push_height = info.status.height - 1;
         }
@@ -290,7 +292,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn message_split() {
+    fn test_message_split() {
         macro_rules! value {
             ($v:expr) => {
                 serde_json::from_str::<serde_json::Value>($v).unwrap()
