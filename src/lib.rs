@@ -3,24 +3,24 @@ extern crate error_chain;
 #[macro_use]
 extern crate log;
 extern crate hex;
-extern crate parity_codec;
 #[macro_use]
 extern crate parity_codec_derive;
+extern crate parity_codec;
 extern crate parking_lot;
 extern crate redis;
 extern crate reqwest;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde;
 #[macro_use]
 extern crate serde_json;
-extern crate strum;
 #[macro_use]
 extern crate strum_macros;
-extern crate jsonrpc_core;
-extern crate jsonrpc_http_server;
+extern crate strum;
 #[macro_use]
 extern crate jsonrpc_macros;
+extern crate jsonrpc_core;
+extern crate jsonrpc_http_server;
 
 // substrate core
 extern crate sr_primitives;
@@ -36,12 +36,12 @@ mod serde_ext;
 mod subscribe;
 mod transmit;
 
-pub use std::collections::{BTreeMap, HashMap};
-pub use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-pub use parking_lot::RwLock;
+use parking_lot::RwLock;
+
 pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;
-
 pub use self::error::{Error, Result};
 pub use self::parse::RuntimeStorage;
 pub use self::serde_ext::Bytes;

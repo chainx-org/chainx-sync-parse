@@ -129,6 +129,7 @@ dependencies = [
  "jsonrpc-core 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-http-server 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-macros 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jsonrpc-test 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log4rs 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 2.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -632,6 +633,16 @@ dependencies = [
  "tokio 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicase 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "jsonrpc-test"
+version = "9.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "jsonrpc-core 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2202,6 +2213,7 @@ dependencies = [
 "checksum jsonrpc-macros 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8c9d25aa2af560453ffa9194e83bfc84b71dc9b1a1df6d2d2ba2a5167ce08077"
 "checksum jsonrpc-pubsub 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "37f809dddaf749229508c97efc8dcd7f3375a883ecbaedd6a9563eaff8b0e6d9"
 "checksum jsonrpc-server-utils 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "af60edf0926da92ddc453f55fcd02f461ea6efaa1d7ceb7334424ff261e379a7"
+"checksum jsonrpc-test 9.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f55dc1d480647d7865b763ddb9253ebcef40dfc7727963f267918009cf57a20d"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a374c89b9db55895453a74c1e38861d9deec0b01b405a82516e9d5de4820dea1"
 "checksum lazycell 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"

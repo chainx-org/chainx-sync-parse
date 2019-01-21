@@ -28,6 +28,9 @@ sr-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928
 srml-support = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 srml-metadata = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 
+[dev-dependencies]
+jsonrpc-test = "9.0"
+
 [features]
 default = ["std"]
 std = []

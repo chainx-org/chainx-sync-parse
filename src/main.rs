@@ -4,6 +4,8 @@ extern crate log4rs;
 
 extern crate chainx_sub_parse;
 
+use std::collections::HashMap;
+
 use log::LevelFilter;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
@@ -14,7 +16,7 @@ use log4rs::{
 use chainx_sub_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
-const REGISTER_SERVER_URL: &str = "127.0.0.1:3030";
+const REGISTER_SERVER_URL: &str = "0.0.0.0:3030";
 const LOG_FILE_PATH: &str = "log/output.log";
 
 fn init_log_config() -> Result<()> {
@@ -46,7 +48,7 @@ fn init_log_config() -> Result<()> {
 fn main() -> Result<()> {
     init_log_config()?;
 
-    let block_queue: BlockQueue = Arc::new(RwLock::new(BTreeMap::new()));
+    let block_queue: BlockQueue = BlockQueue::default();
     debug!("BlockQueue len: {}", block_queue.read().len());
 
     let register_service_thread = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
