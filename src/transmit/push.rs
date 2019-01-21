@@ -138,9 +138,7 @@ impl PushService {
         thread::spawn(move || {
             if let Ok(mut reg) = reg_data.lock() {
                 while reg.status.height <= cur_push_height {
-                    if let Some(msg) =
-                    Self::build_message(&queue, reg.status.height, &reg.prefix)
-                    {
+                    if let Some(msg) = build_message(&queue, reg.status.height, &reg.prefix) {
                         if send_large_message(&url, msg, &config).is_err() {
                             reg.switch_off();
                             break;
@@ -178,36 +176,36 @@ impl PushService {
             None => 0,
         }
     }
+}
 
-    /// Find the values, in the queue, that match the prefixes from the registrant,
-    /// and construct push message for registrant.
-    fn build_message(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<Message> {
-        if let Some(values) = queue.read().get(&height) {
-            let mut push_msg = Message::new(height);
-            for value in values {
-                let msg_prefix: String = serde_json::from_value(value["prefix"].clone()).unwrap();
-                for prefix in prefixes {
-                    debug!("prefix: {:?}, msg_prefix: {:?}", prefix, msg_prefix);
-                    if *prefix == msg_prefix {
-                        debug!("Match prefix");
-                        push_msg.add(value.clone());
-                    }
+/// Find the values, in the queue, that match the prefixes from the registrant,
+/// and construct push message for registrant.
+fn build_message(queue: &BlockQueue, height: u64, prefixes: &[String]) -> Option<Message> {
+    if let Some(values) = queue.read().get(&height) {
+        let mut push_msg = Message::new(height);
+        for value in values {
+            let msg_prefix: String = serde_json::from_value(value["prefix"].clone()).unwrap();
+            for prefix in prefixes {
+                debug!("prefix: {:?}, msg_prefix: {:?}", prefix, msg_prefix);
+                if *prefix == msg_prefix {
+                    debug!("Match prefix");
+                    push_msg.add(value.clone());
                 }
             }
-            if !push_msg.data.is_empty() {
-                return Some(push_msg);
-            }
-        } else {
-            warn!("Cannot find info of block height : {:?}", height);
         }
-        None
+        if !push_msg.data.is_empty() {
+            return Some(push_msg);
+        }
+    } else {
+        warn!("Cannot find info of block height : {:?}", height);
     }
+    None
 }
 
 fn send_large_message(url: &str, msg: Message, config: &Config) -> Result<()> {
     let messages = msg.split(MSG_CHUNK_SIZE_LIMIT);
     for msg in messages {
-        if let Err(err) =  send_message(url, msg, config) {
+        if let Err(err) = send_message(url, msg, config) {
             return Err(err);
         }
     }
