@@ -21,6 +21,7 @@ extern crate strum;
 extern crate jsonrpc_macros;
 extern crate jsonrpc_core;
 extern crate jsonrpc_http_server;
+extern crate rayon;
 
 // substrate core
 extern crate sr_primitives;

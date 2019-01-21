@@ -21,6 +21,7 @@ strum_macros = "0.13"
 jsonrpc-macros = "9.0"
 jsonrpc-core = "9.0"
 jsonrpc-http-server = "9.0"
+rayon = "1.0"
 
 substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 sr-std = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
