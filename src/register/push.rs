@@ -161,8 +161,10 @@ mod tests {
     #[test]
     fn test_build_message() {
         let queue = BlockQueue::default();
-        queue.write().insert(0, values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":100}, {"prefix":"ccc", "value":100}]"#));
-        println!("Insert height 0, queue: {:?}", queue);
+        queue.write().insert(
+            0,
+            values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":100}, {"prefix":"ccc", "value":100}]"#)
+        );
         assert_eq!(
             Message::build(&queue, 0, &["aaa", "bbb"]),
             Some(Message {
@@ -174,8 +176,10 @@ mod tests {
             })
         );
 
-        queue.write().insert(1, values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":200}, {"prefix":"ccc", "value":100}]"#));
-        println!("Insert height 1, queue: {:?}", queue);
+        queue.write().insert(
+            1,
+            values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":200}, {"prefix":"ccc", "value":100}]"#)
+        );
         assert_eq!(
             Message::build(&queue, 1, &["bbb", "ccc"]),
             Some(Message {
@@ -187,8 +191,10 @@ mod tests {
             })
         );
 
-        queue.write().insert(2, values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":200}, {"prefix":"ccc", "value":300}]"#));
-        println!("Insert height 2, queue: {:?}", queue);
+        queue.write().insert(
+            2,
+            values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":200}, {"prefix":"ccc", "value":300}]"#)
+        );
         assert_eq!(
             Message::build(&queue, 2, &["aaa", "ccc"]),
             Some(Message {
@@ -206,6 +212,7 @@ mod tests {
                 data: vec![value!(r#"{"prefix":"aaa", "value":100}"#),]
             })
         );
+        assert_eq!(Message::build(&queue, 2, &["ddd"]), None);
     }
 
     #[test]
