@@ -100,6 +100,7 @@ impl Default for Chain {
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Asset {
     token: Token,
+    token_name: Token,
     chain: Chain,
     precision: Precision,
     desc: Desc,

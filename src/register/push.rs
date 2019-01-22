@@ -1,14 +1,10 @@
+use std::fmt::Debug;
+use std::thread;
 use std::time::Duration;
 
-use jsonrpc_core::Result as RpcResult;
-use jsonrpc_http_server::{
-    AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
-};
+use serde::de::DeserializeOwned;
 
-use crate::{BlockQueue, Result};
-
-const THREAD_POOL_NUM_THREADS: usize = 8;
-const MSG_CHUNK_SIZE_LIMIT: usize = 10;
+use crate::Result;
 
 #[derive(PartialEq, Clone, Debug, Serialize)]
 pub struct Message {
@@ -67,28 +63,67 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+struct JsonResponse<T> {
+    result: T,
+}
+
+#[derive(Clone)]
 pub struct PushClient {
     /// The http rpc client for sending JSON-RPC request.
     client: reqwest::Client,
-    /// The block queue (BTreeMap: key - block height, value - json value).
-    block_queue: BlockQueue,
+    /// The config of sending JSON-RPC request.
+    config: Config,
+}
+
+impl Default for PushClient {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PushClient {
-    pub fn new(block_queue: BlockQueue) -> Self {
+    pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),
-            block_queue,
+            config: Config::default(),
         }
     }
 
-    pub fn run(&self) -> Result<()> {
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(THREAD_POOL_NUM_THREADS)
-            .build()?;
+    pub fn request<T>(&self, url: &str, body: &serde_json::Value) -> Result<T>
+        where
+            T: Debug + DeserializeOwned,
+    {
+        let resp: serde_json::Value = self
+            .client
+            .post(url)
+            .json(body)
+            .send()?
+            .json::<serde_json::Value>()?;
+        let resp: JsonResponse<T> = serde_json::from_value(resp)?;
+        Ok(resp.result)
+    }
 
-        Ok(())
+    pub fn request_with_config(&self, url: &str, msg: Message) -> Result<()> {
+        let body = json!(msg);
+        debug!("Send message request: {:?}", body);
+        for i in 1..=self.config.retry_count {
+            let ok = self.request::<String>(url, &body)?;
+            info!("Receive message response: {:?}", ok);
+            if ok == "OK" {
+                return Ok(());
+            }
+            warn!(
+                "Send message request retry ({} / {})",
+                i, self.config.retry_count
+            );
+            thread::sleep(self.config.retry_interval);
+        }
+        warn!(
+            "Reach the limitation of retries, failed to send message: {:?}",
+            msg
+        );
+        Err("Reach the limitation of retries".into())
     }
 }
 

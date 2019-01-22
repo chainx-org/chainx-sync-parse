@@ -1,17 +1,18 @@
+mod push;
+mod util;
+
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 
-use jsonrpc_core::{Error as RpcError, Result as RpcResult};
+use jsonrpc_core::Result as RpcResult;
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
 use parking_lot::RwLock;
-use serde::de::{Deserialize, DeserializeOwned};
 
+use self::push::{Config, Message, PushClient};
 use crate::{BlockQueue, Result};
 
 const MSG_CHUNK_SIZE_LIMIT: usize = 10;
@@ -47,7 +48,7 @@ impl RegisterContext {
         self.prefix.push(prefix);
     }
 
-    pub fn handle_new_version(&mut self, prefix: &str, version: &str) {
+    pub fn handle_existing_url(&mut self, prefix: &str, version: &str) {
         let prefix = prefix.to_string();
         let version = version.to_string();
         if version > self.version {
@@ -67,98 +68,25 @@ impl RegisterContext {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Config {
-    retry_count: u32,
-    retry_interval: Duration,
-}
-
-impl Config {
-    pub fn new(retry_count: u32, retry_interval: Duration) -> Self {
-        Self {
-            retry_count,
-            retry_interval,
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self::new(3, Duration::new(3, 0))
-    }
-}
-
-#[derive(PartialEq, Clone, Debug, Serialize)]
-pub struct Message {
-    height: u64,
-    data: Vec<serde_json::Value>,
-}
-
-impl Message {
-    pub fn new(height: u64) -> Self {
-        Self {
-            height,
-            data: vec![],
-        }
-    }
-
-    pub fn add(&mut self, value: serde_json::Value) {
-        self.data.push(value);
-    }
-
-    /// Split the message into multiple messages according to `chunk_size`.
-    pub fn split(self, chunk_size: usize) -> Vec<Self> {
-        debug!("The message was split into multiple messages");
-        let chunks = self
-            .data
-            .chunks(chunk_size)
-            .map(|value| value.to_vec())
-            .collect::<Vec<Vec<serde_json::Value>>>();
-        chunks
-            .into_iter()
-            .map(|chunk| Message {
-                height: self.height,
-                data: chunk,
-            })
-            .collect()
-    }
-}
-
-struct Register {
-    /// The map of register url and register context.
-    map: RegisterMap,
+pub struct Register {
     /// The block queue (BTreeMap: key - block height, value - json value).
     block_queue: BlockQueue,
-    /// The thread pool for handling request.
-    pool: rayon::ThreadPool,
+    /// The map of register url and register context.
+    map: RegisterMap,
     /// The client for pushing JSON-RPC request.
     client: PushClient,
 }
 
 impl Register {
-    fn new(block_queue: BlockQueue) -> Self {
+    pub fn new(block_queue: BlockQueue) -> Self {
         Self {
-            map: Arc::new(RwLock::new(HashMap::new())),
             block_queue,
+            map: Arc::new(RwLock::new(HashMap::new())),
             client: PushClient::new(),
-            pool: rayon::ThreadPoolBuilder::new()
-                .num_threads(NUM_THREADS_FOR_SENDING_REQUEST)
-                .build()
-                .unwrap(),
         }
     }
 
-    fn handle_register(&self, url: String, prefix: String, version: String) {
-        self.map
-            .write()
-            .entry(url)
-            .and_modify(|ctxt| ctxt.handle_new_version(&prefix, &version))
-            .or_insert_with(|| RegisterContext::new(vec![prefix], version));
-        let client = self.client.clone();
-        self.pool.install(|| loop {
-
-        });
-    }
+    pub fn run_service(&self, _url: String, _prefix: String, _version: String) {}
 
     /// Get the max key of BTreeMap, which is current block height.
     fn get_block_height(&self) -> u64 {
@@ -167,73 +95,18 @@ impl Register {
             None => 0,
         }
     }
-}
 
-#[derive(Debug, Deserialize)]
-struct JsonResponse<T> {
-    result: T,
-}
-
-#[derive(Clone)]
-struct PushClient {
-    /// The http rpc client for sending JSON-RPC request.
-    client: reqwest::Client,
-    /// The config of sending JSON-RPC request.
-    config: Config,
-}
-
-impl PushClient {
-    fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            config: Config::default(),
-        }
-    }
-
-    fn request<T>(&self, url: &str, body: &serde_json::Value) -> Result<T>
-    where
-        T: Debug + DeserializeOwned,
-    {
-        let resp: serde_json::Value = self
-            .client
-            .post(url)
-            .json(body)
-            .send()?
-            .json::<serde_json::Value>()?;
-        let resp: JsonResponse<T> = serde_json::from_value(resp)?;
-        Ok(resp.result)
-    }
-
-    fn request_with_config(&self, url: &str, msg: Message) -> Result<()> {
-        let body = json!(msg);
-        debug!("Send message request: {:?}", body);
-        for i in 1..=self.config.retry_count {
-            let ok = self.request::<String>(url, &body)?;
-            info!("Receive message response: {:?}", ok);
-            if ok == "OK" {
-                return Ok(());
+    fn remove_from_queue(&self) {
+        let mut min_push_height = u64::max_value();
+        for ctxt in self.map.read().values() {
+            if ctxt.is_handling && ctxt.push_height < min_push_height {
+                min_push_height = ctxt.push_height - 1;
             }
-            warn!(
-                "Send message request retry ({} / {})",
-                i, self.config.retry_count
-            );
-            thread::sleep(self.config.retry_interval);
         }
-        warn!(
-            "Reach the limitation of retries, failed to send message: {:?}",
-            msg
-        );
-        Err("Reach the limitation of retries".into())
-    }
-}
 
-fn from_json_str<'a, T>(s: &'a str) -> RpcResult<T>
-where
-    T: Deserialize<'a>,
-{
-    match serde_json::from_str(s) {
-        Ok(value) => Ok(value),
-        Err(_) => Err(RpcError::parse_error()),
+        if min_push_height <= self.get_block_height() {
+
+        }
     }
 }
 
@@ -246,9 +119,9 @@ build_rpc_trait! {
 
 impl RegisterApi for Register {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
-        let url: String = from_json_str(&url)?;
-        let prefix: String = from_json_str(&prefix)?;
-        let version: String = from_json_str(&version)?;
+        let url: String = util::from_json_str(&url)?;
+        let prefix: String = util::from_json_str(&prefix)?;
+        let version: String = util::from_json_str(&version)?;
         let register_detail = format!(
             "url: {:?}, prefix: {:?}, version: {:?}",
             &url, &prefix, &version
@@ -256,9 +129,23 @@ impl RegisterApi for Register {
 
         self.map
             .write()
-            .entry(url)
-            .and_modify(|ctxt| ctxt.handle_new_version(&prefix, &version))
+            .entry(url.clone())
+            .and_modify(|ctxt| ctxt.handle_existing_url(&prefix, &version))
             .or_insert_with(|| RegisterContext::new(vec![prefix], version));
+
+//                let ctxt = value.clone();
+//                let client = self.client.clone();
+//                let block_queue = self.block_queue.clone();
+//                let map = self.map.clone();
+//                self.pool.spawn(move || loop {
+//                    if block_queue.read().is_empty() {
+//                        continue;
+//                    }
+//                    let cur_block_height = util::get_max_height(&block_queue);
+//                    if cur_block_height >= ctxt.push_height && ctxt.is_handling {
+//
+//                    }
+//                });
 
         info!("Register Ok: [ {} ]", register_detail);
         Ok("OK".to_string())
@@ -290,8 +177,8 @@ mod tests {
 
     #[test]
     fn test_single_register_request() {
-        let register = Register::default();
-        let register_map = register.0.clone();
+        let register = Register::new(BlockQueue::default());
+        let register_map = register.map.clone();
         let rpc = jsonrpc_test::Rpc::new(register.to_delegate());
 
         assert_eq!(
@@ -317,8 +204,8 @@ mod tests {
 
     #[test]
     fn test_multiple_register_requests() {
-        let register = Register::default();
-        let register_map = register.0.clone();
+        let register = Register::new(BlockQueue::default());
+        let register_map = register.map.clone();
         let rpc = jsonrpc_test::Rpc::new(register.to_delegate());
 
         assert_eq!(
@@ -352,8 +239,8 @@ mod tests {
 
     #[test]
     fn test_new_version_register_request() {
-        let register = Register::default();
-        let register_map = register.0.clone();
+        let register = Register::new(BlockQueue::default());
+        let register_map = register.map.clone();
         let rpc = jsonrpc_test::Rpc::new(register.to_delegate());
 
         assert_eq!(
@@ -391,45 +278,5 @@ mod tests {
                 is_handling: true,
             }
         );
-    }
-
-    #[test]
-    fn test_message_split() {
-        macro_rules! value {
-            ($v:expr) => {
-                serde_json::from_str::<serde_json::Value>($v).unwrap()
-            };
-        }
-
-        let message = Message {
-            height: 123,
-            data: vec![
-                value!("1"),
-                value!("2"),
-                value!("3"),
-                value!("4"),
-                value!("5"),
-            ],
-        };
-
-        assert_eq!(
-            vec![
-                Message {
-                    height: 123,
-                    data: vec![value!("1"), value!("2")]
-                },
-                Message {
-                    height: 123,
-                    data: vec![value!("3"), value!("4")]
-                },
-                Message {
-                    height: 123,
-                    data: vec![value!("5")]
-                },
-            ],
-            message.clone().split(2)
-        );
-
-        assert_eq!(vec![message.clone()], message.split(5));
     }
 }

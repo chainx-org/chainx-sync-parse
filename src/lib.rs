@@ -36,6 +36,7 @@ mod parse;
 mod serde_ext;
 mod subscribe;
 mod transmit;
+mod register;   // refactor version of transmit module
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
