@@ -51,7 +51,8 @@ fn main() -> Result<()> {
     let block_queue: BlockQueue = BlockQueue::default();
     debug!("BlockQueue len: {}", block_queue.read().len());
 
-    let register_service_thread = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
+    let register_service = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
+    //    let register_service = Register::run_service(REGISTER_SERVER_URL, block_queue.clone())?;
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
@@ -109,9 +110,13 @@ fn main() -> Result<()> {
         .join()
         .expect("Couldn't join on the subscribe thread");
 
-    register_service_thread
+    register_service
         .join()
         .expect("Couldn't join on the transmit thread");
+
+    //    register_service
+    //        .join()
+    //        .expect("Couldn't join on the transmit thread");
 
     Ok(())
 }

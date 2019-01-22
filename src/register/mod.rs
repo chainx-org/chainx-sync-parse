@@ -15,7 +15,6 @@ use parking_lot::RwLock;
 use self::push::{Config, Message, PushClient};
 use crate::{BlockQueue, Result};
 
-const MSG_CHUNK_SIZE_LIMIT: usize = 10;
 const NUM_THREADS_FOR_REGISTERING: usize = 4;
 const NUM_THREADS_FOR_SENDING_REQUEST: usize = 8;
 
@@ -63,9 +62,9 @@ impl RegisterContext {
         self.is_handling = true;
     }
 
-    pub fn add_height(&mut self) {
-        self.push_height += 1;
-    }
+    //    pub fn add_height(&mut self) {
+    //        self.push_height += 1;
+    //    }
 }
 
 pub struct Register {
@@ -73,20 +72,26 @@ pub struct Register {
     block_queue: BlockQueue,
     /// The map of register url and register context.
     map: RegisterMap,
-    /// The client for pushing JSON-RPC request.
-    client: PushClient,
+    /// The thread pool for posting JSON-RPC request.
+    pool: rayon::ThreadPool,
 }
 
 impl Register {
+    pub fn run_service(url: &str, block_queue: BlockQueue) -> Result<thread::JoinHandle<()>> {
+        let server = start_http_rpc_server(url, block_queue)?;
+        Ok(thread::spawn(move || server.wait()))
+    }
+
     pub fn new(block_queue: BlockQueue) -> Self {
         Self {
             block_queue,
             map: Arc::new(RwLock::new(HashMap::new())),
-            client: PushClient::new(),
+            pool: rayon::ThreadPoolBuilder::new()
+                .num_threads(NUM_THREADS_FOR_SENDING_REQUEST)
+                .build()
+                .unwrap(),
         }
     }
-
-    pub fn run_service(&self, _url: String, _prefix: String, _version: String) {}
 
     /// Get the max key of BTreeMap, which is current block height.
     fn get_block_height(&self) -> u64 {
@@ -104,9 +109,7 @@ impl Register {
             }
         }
 
-        if min_push_height <= self.get_block_height() {
-
-        }
+        if min_push_height <= self.get_block_height() {}
     }
 }
 
@@ -133,19 +136,19 @@ impl RegisterApi for Register {
             .and_modify(|ctxt| ctxt.handle_existing_url(&prefix, &version))
             .or_insert_with(|| RegisterContext::new(vec![prefix], version));
 
-//                let ctxt = value.clone();
-//                let client = self.client.clone();
-//                let block_queue = self.block_queue.clone();
-//                let map = self.map.clone();
-//                self.pool.spawn(move || loop {
-//                    if block_queue.read().is_empty() {
-//                        continue;
-//                    }
-//                    let cur_block_height = util::get_max_height(&block_queue);
-//                    if cur_block_height >= ctxt.push_height && ctxt.is_handling {
-//
-//                    }
-//                });
+        //                let ctxt = value.clone();
+        //                let client = self.client.clone();
+        //                let block_queue = self.block_queue.clone();
+        //                let map = self.map.clone();
+        //                self.pool.spawn(move || loop {
+        //                    if block_queue.read().is_empty() {
+        //                        continue;
+        //                    }
+        //                    let cur_block_height = util::get_max_height(&block_queue);
+        //                    if cur_block_height >= ctxt.push_height && ctxt.is_handling {
+        //
+        //                    }
+        //                });
 
         info!("Register Ok: [ {} ]", register_detail);
         Ok("OK".to_string())
@@ -172,8 +175,6 @@ mod tests {
     extern crate jsonrpc_test;
 
     use super::*;
-    use std::thread;
-    use std::time::Duration;
 
     #[test]
     fn test_single_register_request() {

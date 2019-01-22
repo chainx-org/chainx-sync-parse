@@ -4,8 +4,8 @@ use serde::de::Deserialize;
 use crate::BlockQueue;
 
 pub fn from_json_str<'a, T>(s: &'a str) -> RpcResult<T>
-    where
-        T: Deserialize<'a>,
+where
+    T: Deserialize<'a>,
 {
     match serde_json::from_str(s) {
         Ok(value) => Ok(value),
@@ -13,13 +13,7 @@ pub fn from_json_str<'a, T>(s: &'a str) -> RpcResult<T>
     }
 }
 
-pub fn get_max_height(queue: &BlockQueue) -> u64 {
-    match queue.read().keys().next_back() {
-        Some(key) => *key,
-        None => 0,
-    }
-}
-
-pub fn get_min_height(queue: &BlockQueue) -> u64 {
-    *queue.read().keys().next().unwrap()
+pub fn get_value_prefix(value: &serde_json::Value) -> String {
+    // unwrap() always not be panic, because the value is from block queue.
+    serde_json::from_value(value["prefix"].clone()).unwrap()
 }
