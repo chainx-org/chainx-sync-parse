@@ -122,9 +122,6 @@ build_rpc_trait! {
 
 impl RegisterApi for Register {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
-        let url: String = util::from_json_str(&url)?;
-        let prefix: String = util::from_json_str(&prefix)?;
-        let version: String = util::from_json_str(&version)?;
         let register_detail = format!(
             "url: {:?}, prefix: {:?}, version: {:?}",
             &url, &prefix, &version
@@ -185,7 +182,7 @@ mod tests {
         assert_eq!(
             rpc.request(
                 "register",
-                &[r#""FreeBalance""#, r#""127.0.0.1:12345""#, r#""1.0""#]
+                &["FreeBalance", "127.0.0.1:12345", "1.0"]
             ),
             r#""OK""#
         );
@@ -212,7 +209,7 @@ mod tests {
         assert_eq!(
             rpc.request(
                 "register",
-                &[r#""FreeBalance1""#, r#""127.0.0.1:12345""#, r#""1.0""#]
+                &["FreeBalance1", "127.0.0.1:12345", "1.0"]
             ),
             r#""OK""#
         );
@@ -220,7 +217,7 @@ mod tests {
         assert_eq!(
             rpc.request(
                 "register",
-                &[r#""FreeBalance2""#, r#""127.0.0.1:12345""#, r#""1.0""#]
+                &["FreeBalance2", "127.0.0.1:12345", "1.0"]
             ),
             r#""OK""#
         );
@@ -247,7 +244,7 @@ mod tests {
         assert_eq!(
             rpc.request(
                 "register",
-                &[r#""FreeBalance1""#, r#""127.0.0.1:12345""#, r#""1.0""#]
+                &["FreeBalance1", "127.0.0.1:12345", "1.0"]
             ),
             r#""OK""#
         );
@@ -255,7 +252,7 @@ mod tests {
         assert_eq!(
             rpc.request(
                 "register",
-                &[r#""FreeBalance2""#, r#""127.0.0.1:12345""#, r#""2.0""#]
+                &["FreeBalance2", "127.0.0.1:12345", "2.0"]
             ),
             r#""OK""#
         );
@@ -263,7 +260,7 @@ mod tests {
         assert_eq!(
             rpc.request(
                 "register",
-                &[r#""FreeBalance3""#, r#""127.0.0.1:12345""#, r#""2.0""#]
+                &["FreeBalance3", "127.0.0.1:12345", "2.0"]
             ),
             r#""OK""#
         );
