@@ -20,11 +20,6 @@ struct Registers(pub RegisterList);
 
 impl RegisterApi for Registers {
     fn register(&self, prefix: String, url: String, version: String) -> RpcResult<String> {
-//        let prefix: String =
-//            serde_json::from_str(&prefix).expect("Register deserialize error - prefix");
-//        let url: String = serde_json::from_str(&url).expect("Register deserialize error - url");
-//        let version: String =
-//            serde_json::from_str(&version).expect("Register deserialize error - version");
         info!(
             "Register: [ url: {:?}, version: {:?}, prefix: {:?}  ]",
             url, version, prefix,
