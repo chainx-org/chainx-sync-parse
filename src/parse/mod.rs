@@ -469,8 +469,9 @@ mod tests {
     pub fn test_parse_match_map_option() {
         let key = "XAssets AssetInfo\u{c}PCX".as_bytes();
         let value = vec![
-            12, 80, 67, 88, 0, 3, 0, 68, 80, 67, 88, 32, 111, 110, 99, 104, 97, 105, 110, 32, 116,
-            111, 107, 101, 110, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+            12, 80, 67, 88, 56, 80, 111, 108, 107, 97, 100, 111, 116, 67, 104, 97, 105, 110, 88, 0,
+            3, 0, 68, 80, 67, 88, 32, 111, 110, 99, 104, 97, 105, 110, 32, 116, 111, 107, 101, 110,
+            1, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
         let exp = serde_json::Value::from_str(
@@ -481,6 +482,7 @@ mod tests {
                 "value":[
                     {
                         "token":"PCX",
+                        "token_name":"PolkadotChainX",
                         "chain":"ChainX",
                         "precision":3,
                         "desc":"PCX onchain token"
