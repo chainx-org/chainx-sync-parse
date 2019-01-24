@@ -43,7 +43,6 @@ error_chain! {
         Redis(redis::RedisError);
         Reqwest(reqwest::Error);
         SerdeJson(serde_json::Error);
-        ThreadPool(rayon::ThreadPoolBuildError);
     }
 
     // Define additional `ErrorKind` variants.  Define custom responses with the

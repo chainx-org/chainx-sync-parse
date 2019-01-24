@@ -3,39 +3,38 @@ use std::thread;
 use std::time::Duration;
 
 use serde::de::DeserializeOwned;
+use serde_json::Value;
 
 use super::util;
-use crate::{BlockQueue, Result};
+use crate::Result;
 
 const MSG_CHUNK_SIZE_LIMIT: usize = 10;
 
 #[derive(PartialEq, Clone, Debug, Serialize)]
 pub struct Message {
     height: u64,
-    data: Vec<serde_json::Value>,
+    data: Vec<Value>,
 }
 
 impl Message {
     /// Build a message with all json value that match the prefix successfully.
-    pub fn build(block_queue: &BlockQueue, height: u64, prefixes: &[&str]) -> Option<Self> {
-        if let Some(values) = block_queue.read().get(&height) {
-            let mut data = vec![];
-            values.iter().for_each(|value| {
-                let need = util::get_value_prefix(value);
-                prefixes.iter().for_each(|need| {
-                    if *need == &util::get_value_prefix(value) {
-                        data.push(value.clone());
-                    }
-                });
+    /// The data of message may be empty.
+    #[allow(clippy::match_bool)]
+    pub fn build(height: u64, values: &[Value], prefixes: &[String]) -> Self {
+        let mut data = vec![];
+        values.iter().for_each(|value| {
+            let prefix = util::get_value_prefix(&value);
+            prefixes.iter().for_each(|need| {
+                if need == &prefix {
+                    data.push(value.clone());
+                }
             });
-            match data.is_empty() {
-                false => Some(Self { height, data }),
-                true => None,
-            }
-        } else {
-            warn!("Cannot find the block whose height: {:?}", height);
-            None
-        }
+        });
+        Self { height, data }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 
     /// Split the message into multiple messages according to `chunk_size`.
@@ -79,38 +78,32 @@ struct JsonResponse<T> {
 
 #[derive(Clone)]
 pub struct PushClient {
-    url: String,
-    /// The http rpc client for sending JSON-RPC request.
+    pub url: String,
     client: reqwest::Client,
-    /// The config of sending JSON-RPC request.
     config: Config,
 }
 
 impl PushClient {
-    pub fn new(url: &str) -> Self {
+    pub fn new(url: String) -> Self {
         Self {
-            url: url.to_string(),
+            url,
             client: reqwest::Client::new(),
             config: Config::default(),
         }
     }
 
-    pub fn post<T>(&self, body: &serde_json::Value) -> Result<T>
-    where
-        T: Debug + DeserializeOwned,
-    {
-        let resp: serde_json::Value = self
-            .client
-            .post(&self.url)
-            .json(body)
-            .send()?
-            .json::<serde_json::Value>()?;
-        let resp: JsonResponse<T> = serde_json::from_value(resp)?;
-        Ok(resp.result)
+    pub fn post_big_message(&self, msg: Message) -> Result<()> {
+        let messages = msg.split(MSG_CHUNK_SIZE_LIMIT);
+        for msg in messages {
+            if let Err(err) = self.post_message(&msg) {
+                return Err(err);
+            }
+        }
+        Ok(())
     }
 
     pub fn post_message(&self, msg: &Message) -> Result<()> {
-        let body: serde_json::Value = json!(msg);
+        let body: Value = json!(msg);
         debug!("Send message request: {:?}", body);
         for i in 1..=self.config.retry_count {
             let ok = self.post::<String>(&body)?;
@@ -131,14 +124,18 @@ impl PushClient {
         Err("Reach the limitation of retries".into())
     }
 
-    pub fn post_big_message(&self, msg: Message) -> Result<()> {
-        let messages = msg.split(MSG_CHUNK_SIZE_LIMIT);
-        for msg in messages {
-            if let Err(err) = self.post_message(&msg) {
-                return Err(err);
-            }
-        }
-        Ok(())
+    fn post<T>(&self, body: &Value) -> Result<T>
+    where
+        T: Debug + DeserializeOwned,
+    {
+        let resp = self
+            .client
+            .post(&self.url)
+            .json(body)
+            .send()?
+            .json::<Value>()?;
+        let resp: JsonResponse<T> = serde_json::from_value(resp)?;
+        Ok(resp.result)
     }
 }
 
@@ -148,75 +145,89 @@ mod tests {
 
     macro_rules! value {
         ($v:expr) => {
-            serde_json::from_str::<serde_json::Value>($v).unwrap()
+            serde_json::from_str::<Value>($v).unwrap()
         };
     }
 
     macro_rules! values {
         ($v:expr) => {
-            serde_json::from_str::<Vec<serde_json::Value>>($v).unwrap()
+            serde_json::from_str::<Vec<Value>>($v).unwrap()
         };
     }
 
     #[test]
-    fn test_build_message() {
-        let queue = BlockQueue::default();
-        queue.write().insert(
-            0,
-            values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":100}, {"prefix":"ccc", "value":100}]"#)
+    fn test_message_build() {
+        let values0 = values!(
+            r#"[
+            {"prefix":"aaa", "value":100},
+            {"prefix":"bbb", "value":100},
+            {"prefix":"ccc", "value":100}
+        ]"#
         );
         assert_eq!(
-            Message::build(&queue, 0, &["aaa", "bbb"]),
-            Some(Message {
+            Message::build(0, &values0, &["aaa".into(), "bbb".into()]),
+            Message {
                 height: 0,
                 data: vec![
                     value!(r#"{"prefix":"aaa", "value":100}"#),
                     value!(r#"{"prefix":"bbb", "value":100}"#)
                 ]
-            })
+            }
         );
 
-        queue.write().insert(
-            1,
-            values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":200}, {"prefix":"ccc", "value":100}]"#)
+        let values1 = values!(
+            r#"[
+            {"prefix":"aaa", "value":100},
+            {"prefix":"bbb", "value":200},
+            {"prefix":"ccc", "value":100}
+        ]"#
         );
         assert_eq!(
-            Message::build(&queue, 1, &["bbb", "ccc"]),
-            Some(Message {
+            Message::build(1, &values1, &["bbb".into(), "ccc".into()]),
+            Message {
                 height: 1,
                 data: vec![
                     value!(r#"{"prefix":"bbb", "value":200}"#),
                     value!(r#"{"prefix":"ccc", "value":100}"#)
                 ]
-            })
+            }
         );
 
-        queue.write().insert(
-            2,
-            values!(r#"[{"prefix":"aaa", "value":100}, {"prefix":"bbb", "value":200}, {"prefix":"ccc", "value":300}]"#)
+        let values2 = values!(
+            r#"[
+            {"prefix":"aaa", "value":100},
+            {"prefix":"bbb", "value":200},
+            {"prefix":"ccc", "value":300}
+        ]"#
         );
         assert_eq!(
-            Message::build(&queue, 2, &["aaa", "ccc"]),
-            Some(Message {
+            Message::build(2, &values2, &["aaa".into(), "ccc".into()]),
+            Message {
                 height: 2,
                 data: vec![
                     value!(r#"{"prefix":"aaa", "value":100}"#),
                     value!(r#"{"prefix":"ccc", "value":300}"#)
                 ]
-            })
+            }
         );
         assert_eq!(
-            Message::build(&queue, 2, &["aaa", "ddd"]),
-            Some(Message {
+            Message::build(2, &values2, &["aaa".into(), "ddd".into()]),
+            Message {
                 height: 2,
                 data: vec![value!(r#"{"prefix":"aaa", "value":100}"#),]
-            })
+            }
         );
-        assert_eq!(Message::build(&queue, 2, &["ddd"]), None);
+        assert_eq!(
+            Message::build(2, &values2, &["ddd".into()]),
+            Message {
+                height: 2,
+                data: vec![]
+            }
+        );
     }
 
     #[test]
-    fn test_split_message() {
+    fn test_message_split() {
         let message = Message {
             height: 123,
             data: vec![

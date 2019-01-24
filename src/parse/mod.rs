@@ -179,7 +179,7 @@ pub enum RuntimeStorage {
     #[strum(message = "XSpot AccountOrdersLen", detailed_message = "map")]
     XSpotAccountOrdersLen(AccountId, ID),
     #[strum(message = "XSpot AccountOrder", detailed_message = "map")]
-    XSpotAccountOrder((AccountId, ID), Order<OrderPairID, AccountId, Balance, Price, BlockNumber>),
+    XSpotAccountOrder((AccountId, ID), Order<OrderPairID, AccountId, Amount, Price, BlockNumber>),
     #[strum(message = "XSpot Quotations", detailed_message = "map")]
     XSpotQuotations((OrderPairID, Price), Vec<(AccountId, ID)>),
     #[strum(message = "XSpot HandicapMap", detailed_message = "map")]

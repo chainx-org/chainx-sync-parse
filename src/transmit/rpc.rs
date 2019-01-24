@@ -79,10 +79,7 @@ mod tests {
         let list = registers.0.clone();
         let rpc = jsonrpc_test::Rpc::new(registers.to_delegate());
         assert_eq!(
-            rpc.request(
-                "register",
-                &["FreeBalance", "127.0.0.1:12345", "1.0"]
-            ),
+            rpc.request("register", &["FreeBalance", "127.0.0.1:12345", "1.0"]),
             r#""OK""#
         );
 

@@ -23,7 +23,7 @@ pub type AccountId = substrate_primitives::H256;
 
 /// The type for looking up accounts. We don't expect more than 4 billion of them, but you
 /// never know...
-pub type AccountIndex = u64;
+pub type AccountIndex = u64; // TODO: u32
 
 /// Index of a transaction in the relay chain. 32-bit should be plenty.
 pub type Index = u64;
@@ -206,9 +206,10 @@ pub struct DepositVoteWeight<BlockNumber: Default> {
 // xdex - spot runtime module definitions.
 // ============================================================================
 
-pub type Price = u128;
+pub type Price = Balance;
+pub type Amount = Balance;
 
-pub type ID = u128;
+pub type ID = u64;
 pub type OrderPairID = u32;
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
