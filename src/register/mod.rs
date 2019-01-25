@@ -215,8 +215,6 @@ fn start_http_rpc_server(url: &str, io: IoHandler) -> Result<Server> {
 
 #[cfg(test)]
 mod tests {
-    extern crate jsonrpc_test;
-
     use super::*;
 
     #[test]

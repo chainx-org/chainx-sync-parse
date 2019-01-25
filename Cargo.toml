@@ -25,7 +25,6 @@ sr-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928
 substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 
 [dev-dependencies]
-jsonrpc-test = "9.0"
 hyper = "0.12"
 
 [features]
