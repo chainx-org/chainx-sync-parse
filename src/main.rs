@@ -49,9 +49,8 @@ fn main() -> Result<()> {
     init_log_config()?;
 
     let block_queue: BlockQueue = BlockQueue::default();
-    debug!("BlockQueue len: {}", block_queue.read().len());
 
-    let register_service_thread = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
+    let server = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
 
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_thread = client.start_subscription()?;
@@ -92,13 +91,14 @@ fn main() -> Result<()> {
             if block_queue
                 .write()
                 .insert(cur_block_height, values)
-                .is_some()
+                .is_none()
             {
-                warn!("Failed to insert the block into block queue");
+                debug!(
+                    "Insert the block [#{}] into block queue successfully",
+                    cur_block_height
+                );
             }
             stat.clear();
-
-            debug!("BlockQueue len: {}", block_queue.read().len());
         } else {
             error!("Redis query error");
             break;
@@ -109,9 +109,7 @@ fn main() -> Result<()> {
         .join()
         .expect("Couldn't join on the subscribe thread");
 
-    register_service_thread
-        .join()
-        .expect("Couldn't join on the transmit thread");
+    server.wait();
 
     Ok(())
 }

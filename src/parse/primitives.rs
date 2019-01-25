@@ -7,11 +7,15 @@ use super::linked_node::NodeT;
 // Substrate primitives.
 // ================================================================================================
 
-pub use sr_primitives::Perbill;
+pub use sr_primitives::Permill;
 pub use substrate_primitives::H256;
 
 /// A hash of some data used by the relay chain.
 pub type Hash = substrate_primitives::H256;
+
+/// The Ed25519 pub key of an session that belongs to an authority of the relay chain. This is
+/// exactly equivalent to what the substrate calls an "authority".
+pub type SessionKey = substrate_primitives::Ed25519AuthorityId;
 
 /// An index to a block.
 /// 32-bits will allow for 136 years of blocks assuming 1 block per second.
@@ -23,7 +27,7 @@ pub type AccountId = substrate_primitives::H256;
 
 /// The type for looking up accounts. We don't expect more than 4 billion of them, but you
 /// never know...
-pub type AccountIndex = u64;
+pub type AccountIndex = u32;
 
 /// Index of a transaction in the relay chain. 32-bit should be plenty.
 pub type Index = u64;
@@ -59,11 +63,8 @@ pub struct CertImmutableProps<BlockNumber: Default, Moment: Default> {
 /// Intention Immutable properties
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct IntentionImmutableProps<Moment> {
+pub struct IntentionImmutableProps {
     pub name: Name,
-    pub activator: Name,
-    pub initial_shares: u32,
-    pub registered_at: Moment,
 }
 
 /// Intention mutable properties
@@ -72,6 +73,7 @@ pub struct IntentionImmutableProps<Moment> {
 pub struct IntentionProps {
     pub url: URL,
     pub is_active: bool,
+    pub about: XString,
 }
 
 // ============================================================================
@@ -88,6 +90,7 @@ pub enum Chain {
     ChainX,
     Bitcoin,
     Ethereum,
+    Polkadot,
 }
 
 impl Default for Chain {
@@ -133,10 +136,11 @@ pub type Memo = XString;
 /// application for withdrawal
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct Application<AccountId, Balance>
+pub struct Application<AccountId, Balance, Moment>
 where
     AccountId: Codec + Clone,
     Balance: Codec + Copy,
+    Moment: Codec + Copy,
 {
     id: u32,
     applicant: AccountId,
@@ -144,12 +148,14 @@ where
     balance: Balance,
     addr: AddrStr,
     ext: Memo,
+    time: Moment,
 }
 
-impl<AccountId, Balance> NodeT for Application<AccountId, Balance>
+impl<AccountId, Balance> NodeT for Application<AccountId, Balance, Moment>
 where
     AccountId: Codec + Clone,
     Balance: Codec + Copy,
+    Moment: Codec + Copy,
 {
     type Index = u32;
     fn index(&self) -> Self::Index {
@@ -165,7 +171,6 @@ where
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct IntentionProfs<Balance: Default, BlockNumber: Default> {
-    pub jackpot: Balance,
     pub total_nomination: Balance,
     pub last_total_vote_weight: u64,
     pub last_total_vote_weight_update: BlockNumber,
@@ -189,8 +194,7 @@ pub struct NominationRecord<Balance: Default, BlockNumber: Default> {
 /// All the amount related has been taken care by assets module.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct PseduIntentionVoteWeight<Balance: Default, BlockNumber: Default> {
-    pub jackpot: Balance,
+pub struct PseduIntentionVoteWeight<BlockNumber: Default> {
     pub last_total_deposit_weight: u64,
     pub last_total_deposit_weight_update: BlockNumber,
 }
@@ -206,9 +210,10 @@ pub struct DepositVoteWeight<BlockNumber: Default> {
 // xdex - spot runtime module definitions.
 // ============================================================================
 
-pub type Price = u128;
+pub type Price = Balance;
+pub type Amount = Balance;
 
-pub type ID = u128;
+pub type ID = u64;
 pub type OrderPairID = u32;
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
@@ -217,7 +222,8 @@ pub struct OrderPair {
     pub id: OrderPairID,
     pub first: Token,
     pub second: Token,
-    pub precision: u32, //价格精度
+    pub precision: u32,      //价格精度
+    pub unit_precision: u32, //最小单位精度
     pub used: bool,
 }
 
