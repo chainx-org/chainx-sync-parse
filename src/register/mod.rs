@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use jsonrpc_core::{Params, IoHandler};
+use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
@@ -32,7 +32,7 @@ struct Context {
 }
 
 impl Context {
-    fn new(prefixes: Vec<String>, version: String) -> Self {
+    pub fn new(prefixes: Vec<String>, version: String) -> Self {
         Self {
             prefixes,
             version,
@@ -41,11 +41,7 @@ impl Context {
         }
     }
 
-    fn add_prefix(&mut self, prefix: String) {
-        self.prefixes.push(prefix);
-    }
-
-    fn handle_existing_url(&mut self, prefix: String, version: String) {
+    pub fn handle_existing_url(&mut self, prefix: String, version: String) {
         if version > self.version {
             self.prefixes.clear();
             self.add_prefix(prefix);
@@ -59,6 +55,10 @@ impl Context {
             info!("New prefixes: [{:?}]", &self.prefixes);
         }
         self.is_normal = true;
+    }
+
+    fn add_prefix(&mut self, prefix: String) {
+        self.prefixes.push(prefix);
     }
 }
 
@@ -220,32 +220,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_version_register_request() {
-        let register = RegisterService::new(BlockQueue::default());
-        let register_map = register.map.clone();
-        let rpc = jsonrpc_test::Rpc::new(register.to_delegate());
-
+    fn test_context_handle_existing_url() {
+        let mut ctxt = Context::new(vec!["Balances FreeBalance1".into()], "1.0".into());
+        ctxt.handle_existing_url("Balances FreeBalance2".into(), "1.0".into());
         assert_eq!(
-            rpc.request("register", &["FreeBalance1", "127.0.0.1:12345", "1.0"]),
-            r#""OK""#
+            ctxt.prefixes,
+            vec![
+                "Balances FreeBalance1".to_string(),
+                "Balances FreeBalance2".to_string()
+            ]
         );
+        assert_eq!(ctxt.version, "1.0".to_string());
 
-        assert_eq!(
-            rpc.request("register", &["FreeBalance2", "127.0.0.1:12345", "2.0"]),
-            r#""OK""#
-        );
+        ctxt.handle_existing_url("Balances FreeBalance3".into(), "2.0".into());
+        assert_eq!(ctxt.prefixes, vec!["Balances FreeBalance3".to_string(),]);
+        assert_eq!(ctxt.version, "2.0".to_string());
 
+        ctxt.handle_existing_url("Balances FreeBalance4".into(), "2.0".into());
         assert_eq!(
-            rpc.request("register", &["FreeBalance3", "127.0.0.1:12345", "2.0"]),
-            r#""OK""#
+            ctxt.prefixes,
+            vec![
+                "Balances FreeBalance3".to_string(),
+                "Balances FreeBalance4".to_string(),
+            ]
         );
-
-        let map = register_map.read();
-        let ctxt = map.get("127.0.0.1:12345").unwrap().clone();
-        assert_eq!(
-            ctxt.lock().prefixes,
-            vec!["FreeBalance2".to_string(), "FreeBalance3".to_string()]
-        );
-        assert_eq!(ctxt.lock().version, "2.0".to_string());
+        assert_eq!(ctxt.version, "2.0".to_string());
     }
 }
