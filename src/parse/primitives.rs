@@ -222,8 +222,8 @@ pub struct OrderPair {
     pub id: OrderPairID,
     pub first: Token,
     pub second: Token,
-    pub precision: u32, //价格精度
-    pub unit_precision: u32,//最小单位精度
+    pub precision: u32,      //价格精度
+    pub unit_precision: u32, //最小单位精度
     pub used: bool,
 }
 
