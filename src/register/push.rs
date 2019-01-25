@@ -110,10 +110,10 @@ impl PushClient {
         debug!("Send message request: {:?}", body);
         for i in 1..=self.config.retry_count {
             let ok = self.post::<String>(&body).unwrap_or_default();
-            debug!("Receive message response: {:?}", ok);
             if ok == "OK" {
                 return Ok(());
             }
+            warn!("Receive message response: {:?}", ok);
             warn!(
                 "Send message request retry ({} / {})",
                 i, self.config.retry_count

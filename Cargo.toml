@@ -26,6 +26,7 @@ substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = 
 
 [dev-dependencies]
 jsonrpc-test = "9.0"
+hyper = "0.12"
 
 [features]
 default = ["std"]
