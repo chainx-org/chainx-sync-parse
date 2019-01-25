@@ -22,11 +22,7 @@ extern crate strum;
 
 // substrate core
 extern crate sr_primitives;
-extern crate sr_std;
 extern crate substrate_primitives;
-// substrate runtime module.
-extern crate srml_metadata;
-extern crate srml_support;
 
 mod error;
 mod parse;

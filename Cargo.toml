@@ -21,11 +21,8 @@ strum_macros = "0.13"
 jsonrpc-core = "9.0"
 jsonrpc-http-server = "9.0"
 
-substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
-sr-std = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 sr-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
-srml-support = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
-srml-metadata = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
+substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 
 [dev-dependencies]
 jsonrpc-test = "9.0"
