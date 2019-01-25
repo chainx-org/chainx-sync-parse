@@ -18,8 +18,7 @@ pub struct Message {
 
 impl Message {
     /// Build a message with all json value that match the prefix successfully.
-    /// The data of message may be empty.
-    #[allow(clippy::match_bool)]
+    /// The data of message may be empty, and empty message don't need to be pushed.
     pub fn build(height: u64, values: &[Value], prefixes: &[String]) -> Self {
         let mut data = vec![];
         values.iter().for_each(|value| {
@@ -39,7 +38,6 @@ impl Message {
 
     /// Split the message into multiple messages according to `chunk_size`.
     pub fn split(self, chunk_size: usize) -> Vec<Self> {
-        debug!("The message was split into multiple messages");
         self.data
             .chunks(chunk_size)
             .map(|value| Message {
@@ -93,9 +91,14 @@ impl PushClient {
     }
 
     pub fn post_big_message(&self, msg: Message) -> Result<()> {
+        info!("Post message: {:?}", &msg);
         let messages = msg.split(MSG_CHUNK_SIZE_LIMIT);
+        if messages.len() != 1 {
+            info!("The message was split into {} messages", messages.len());
+        }
         for msg in messages {
             if let Err(err) = self.post_message(&msg) {
+                error!("Post message error: {:?}", &msg);
                 return Err(err);
             }
         }
@@ -106,7 +109,7 @@ impl PushClient {
         let body: Value = json!(msg);
         debug!("Send message request: {:?}", body);
         for i in 1..=self.config.retry_count {
-            let ok = self.post::<String>(&body)?;
+            let ok = self.post::<String>(&body).unwrap_or_default();
             debug!("Receive message response: {:?}", ok);
             if ok == "OK" {
                 return Ok(());
@@ -117,10 +120,7 @@ impl PushClient {
             );
             thread::sleep(self.config.retry_interval);
         }
-        warn!(
-            "Reach the limitation of retries, failed to send message: {:?}",
-            msg
-        );
+        error!("Reach the limitation of retries");
         Err("Reach the limitation of retries".into())
     }
 

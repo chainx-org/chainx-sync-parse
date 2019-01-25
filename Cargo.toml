@@ -9,7 +9,6 @@ log4rs = "0.8"
 error-chain = "0.12"
 redis = "0.9"
 hex = "0.3"
-#lazy_static = "1.2"
 parity-codec = "2.1"
 parity-codec-derive = "2.1"
 parking_lot = "0.7"
@@ -19,10 +18,8 @@ serde_derive = "1.0"
 serde_json = "1.0"
 strum = "0.13"
 strum_macros = "0.13"
-jsonrpc-macros = "9.0"
 jsonrpc-core = "9.0"
 jsonrpc-http-server = "9.0"
-rayon = "1.0"
 
 substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
 sr-std = { git = "https://github.com/paritytech/substrate", rev = "4ee928f" }
