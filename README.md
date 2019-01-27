@@ -31,6 +31,26 @@ Subscribe to the prefixes of needed runtime storage by registering api.
 
 The structure of Runtime storage is consistent with the [ChainX stage/test](https://github.com/chainpool/ChainX/tree/stage/test) and [substrate](https://github.com/chainpool/substrate).
 
+**For example**:
+
+Postman: `POST 0.0.0.0:3030`
+
+```
+Headers:
+Content-Type: application/json
+
+Body: raw JSON (application/json)
+{"jsonrpc":"2.0","id":1,"method":"register","params":["System BlockHash", "http://127.0.0.1:12345/write","1"]}
+```
+
+You can run the example (a simple http server) to simulate the situation 
+that registrant receives the block data successfully, 
+before sending a register request through Postman.
+
+```bash
+cargo run --example register
+```
+
 ### 3. Sync block
 
 ```bash
