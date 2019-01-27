@@ -48,6 +48,7 @@ that registrant receives the block data successfully,
 before sending a register request through Postman.
 
 ```bash
+cd chainx-sub-parse
 cargo run --example register
 ```
 
