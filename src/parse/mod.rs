@@ -134,6 +134,8 @@ pub enum RuntimeStorage {
     XStakingSessionsPerEra(BlockNumber),
     #[strum(message = "XStaking BondingDuration", detailed_message = "value")]
     XStakingBondingDuration(BlockNumber),
+    #[strum(message = "XStaking ValidatorStakeThreshold", detailed_message = "value")]
+    XStakingValidatorStakeThreshold(Balance),
     #[strum(message = "XStaking CurrentEra", detailed_message = "value")]
     XStakingCurrentEra(BlockNumber),
     #[strum(message = "XStaking Intentions", detailed_message = "value")]
@@ -374,6 +376,7 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingBondingDuration(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingValidatorStakeThreshold(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingCurrentEra(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingNextSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
