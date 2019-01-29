@@ -25,8 +25,6 @@ struct Context {
     pub prefixes: Vec<String>,
     /// The representation that used to distinguish whether the storage info matches the requirements.
     pub version: String,
-    /// The flag that represents whether registrant is normal.
-    pub is_normal: bool,
     /// The block height of the block that has been pushed.
     pub push_height: u64,
 }
@@ -36,7 +34,6 @@ impl Context {
         Self {
             prefixes,
             version,
-            is_normal: true,
             push_height: 0,
         }
     }
@@ -54,7 +51,6 @@ impl Context {
             self.add_prefix(prefix);
             info!("New prefixes: [{:?}]", &self.prefixes);
         }
-        self.is_normal = true;
     }
 
     fn add_prefix(&mut self, prefix: String) {
@@ -156,12 +152,13 @@ impl RegisterService {
     // Spawn a thread for removing pushed block for all register.
     fn spawn_remove_block(&self, rx: PushReceiver) {
         let queue = self.block_queue.clone();
+        let map = self.map.clone();
         thread::spawn(move || {
             info!("Register service starts thread for removing block from queue");
             let mut stat = HashMap::new();
             loop {
                 match rx.try_recv() {
-                    Ok(data) => remove_block_from_queue(&queue, &mut stat, data),
+                    Ok(data) => remove_block_from_queue(&queue, &mut stat, &map, data),
                     Err(TryRecvError::Empty) => (),
                     Err(TryRecvError::Disconnected) => {
                         error!("Register: remove block thread terminated");
@@ -173,7 +170,7 @@ impl RegisterService {
     }
 }
 
-fn remove_block_from_queue(queue: &BlockQueue, stat: &mut HashMap<String, u64>, data: PushData) {
+fn remove_block_from_queue(queue: &BlockQueue, stat: &mut HashMap<String, u64>, map: &RegisterMap, data: PushData) {
     let (url, push_height, is_normal) = data;
     if is_normal {
         stat.entry(url)
@@ -182,6 +179,7 @@ fn remove_block_from_queue(queue: &BlockQueue, stat: &mut HashMap<String, u64>, 
     } else {
         error!("Register: [{}] 's push thread terminated", &url);
         stat.remove(&url);
+        map.write().remove(&url);
     }
 
     let queue_len = util::get_block_queue_len(queue);
