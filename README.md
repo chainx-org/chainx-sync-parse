@@ -24,15 +24,17 @@ Follow the stage/test branch of ChainX.
 git clone https://github.com/chainpool/chainx-sub-parse.git
 cd chainx-sub-parse
 cargo build --release
+
 # run
-nohup ./target/release/chainx-sub-parse &
+cp /target/release/chainx-sub-parse .
+./start.sh
 ```
 
 ### 2. Register
 
 Subscribe to the prefixes of needed runtime storage by registering api.
 
-The structure of Runtime storage is consistent with the [ChainX stage/test](https://github.com/chainpool/ChainX/tree/stage/test) and [substrate](https://github.com/chainpool/substrate).
+The structure of Runtime storage is consistent with the [ChainX - stage/test](https://github.com/chainpool/ChainX/tree/stage/test) and [substrate](https://github.com/chainpool/substrate).
 
 **For example**:
 
@@ -62,7 +64,8 @@ cargo run --example register
 cd ChainX
 git checkout stage/test.
 cargo build --release --features msgbus-redis
-# sync script
-rm -rf data
-nohup ./target/release/chainx --dev -d data --port 200001 --bootnodes=/ip4/127.0.0.1/tcp/20000/p2p/QmbQFPV5kfteEAFjWnaKpHh446AgPtaAY1cyyim3F5KV8i &
+
+# run
+cp target/release/chainx .
+./sync-block.sh  # need to modify `bootnodes` manually.
 ```
