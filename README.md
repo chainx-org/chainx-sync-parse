@@ -20,9 +20,12 @@ Follow the stage/test branch of ChainX.
 ### 1. Run the program
 
 ```bash
+# compile
 git clone https://github.com/chainpool/chainx-sub-parse.git
 cd chainx-sub-parse
-cargo run
+cargo build --release
+# run
+nohup ./target/release/chainx-sub-parse &
 ```
 
 ### 2. Register
@@ -55,7 +58,11 @@ cargo run --example register
 ### 3. Sync block
 
 ```bash
+# compile
 cd ChainX
 git checkout stage/test.
-cargo run --features msgbus-redis -- --dev -d .sub --port 20001 --bootnodes=/ip4/127.0.0.1/tcp/20000/p2p/QmbQFPV5kfteEAFjWnaKpHh446AgPtaAY1cyyim3F5KV8i
+cargo build --release --features msgbus-redis
+# sync script
+rm -rf data
+nohup ./target/release/chainx --dev -d data --port 200001 --bootnodes=/ip4/127.0.0.1/tcp/20000/p2p/QmbQFPV5kfteEAFjWnaKpHh446AgPtaAY1cyyim3F5KV8i &
 ```
