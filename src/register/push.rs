@@ -65,7 +65,7 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self::new(3, Duration::new(3, 0))
+        Self::new(60, Duration::new(2, 0))
     }
 }
 
