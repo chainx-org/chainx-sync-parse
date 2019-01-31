@@ -133,17 +133,18 @@ impl RegisterService {
             }
             let max_block_height = util::get_max_block_height(&queue);
             for h in push_height..max_block_height {
-                if let Some(values) = queue.read().get(&h) {
-                    let msg = Message::build(h, values, &ctxt.lock().prefixes);
-                    if !msg.is_empty() && client.post_big_message(msg).is_err() {
-                        tx.send((client.url.clone(), h, false))
-                            .expect("Unable to send context");
-                        // TODO: save abnormal register in the disk.
-                        break 'outer;
-                    } else {
-                        tx.send((client.url.clone(), h, true))
-                            .expect("Unable to send context");
-                    }
+                let msg = match queue.read().get(&h) {
+                    Some(values) => Message::build(h, values, &ctxt.lock().prefixes),
+                    None => Message::empty(h),
+                };
+                if !msg.is_empty() && client.post_big_message(msg).is_err() {
+                    tx.send((client.url.clone(), h, false))
+                        .expect("Unable to send context");
+                    // TODO: save abnormal register in the disk.
+                    break 'outer;
+                } else {
+                    tx.send((client.url.clone(), h, true))
+                        .expect("Unable to send context");
                 }
             }
         });

@@ -32,6 +32,13 @@ impl Message {
         Self { height, data }
     }
 
+    pub fn empty(height: u64) -> Message {
+        Message {
+            height,
+            data: vec![],
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
