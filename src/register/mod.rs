@@ -170,7 +170,12 @@ impl RegisterService {
     }
 }
 
-fn remove_block_from_queue(queue: &BlockQueue, stat: &mut HashMap<String, u64>, map: &RegisterMap, data: PushData) {
+fn remove_block_from_queue(
+    queue: &BlockQueue,
+    stat: &mut HashMap<String, u64>,
+    map: &RegisterMap,
+    data: PushData,
+) {
     let (url, push_height, is_normal) = data;
     if is_normal {
         stat.entry(url)
