@@ -52,21 +52,6 @@ pub type XString = String;
 pub type Name = XString;
 pub type URL = XString;
 
-/// Cert immutable properties
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct CertImmutableProps<BlockNumber: Default, Moment: Default> {
-    pub issued_at: (BlockNumber, Moment),
-    pub frozen_duration: u32,
-}
-
-/// Intention Immutable properties
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct IntentionImmutableProps {
-    pub name: Name,
-}
-
 /// Intention mutable properties
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -74,6 +59,33 @@ pub struct IntentionProps {
     pub url: URL,
     pub is_active: bool,
     pub about: XString,
+}
+
+#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum TrusteeEntity {
+    Bitcoin(Vec<u8>),
+}
+
+impl Default for TrusteeEntity {
+    fn default() -> Self {
+        TrusteeEntity::Bitcoin(Vec::default())
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeIntentionProps {
+    pub about: XString,
+    pub hot_entity: TrusteeEntity,
+    pub cold_entity: TrusteeEntity,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeAddressPair {
+    pub hot_address: Vec<u8>,
+    pub cold_address: Vec<u8>,
 }
 
 // ============================================================================
@@ -138,9 +150,9 @@ pub type Memo = XString;
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Application<AccountId, Balance, Moment>
 where
-    AccountId: Codec + Clone,
-    Balance: Codec + Copy,
-    Moment: Codec + Copy,
+    AccountId: Clone + Default + Codec,
+    Balance: Copy + Default + Codec,
+    Moment: Copy + Default + Codec,
 {
     id: u32,
     applicant: AccountId,
@@ -153,9 +165,9 @@ where
 
 impl<AccountId, Balance> NodeT for Application<AccountId, Balance, Moment>
 where
-    AccountId: Codec + Clone,
-    Balance: Codec + Copy,
-    Moment: Codec + Copy,
+    AccountId: Clone + Default + Codec,
+    Balance: Copy + Default + Codec,
+    Moment: Copy + Default + Codec,
 {
     type Index = u32;
     fn index(&self) -> Self::Index {
@@ -170,7 +182,11 @@ where
 /// Intention mutable properties
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct IntentionProfs<Balance: Default, BlockNumber: Default> {
+pub struct IntentionProfs<Balance, BlockNumber>
+where
+    Balance: Copy + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
+{
     pub total_nomination: Balance,
     pub last_total_vote_weight: u64,
     pub last_total_vote_weight_update: BlockNumber,
@@ -179,7 +195,11 @@ pub struct IntentionProfs<Balance: Default, BlockNumber: Default> {
 /// Nomination record of one of the nominator's nominations.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct NominationRecord<Balance: Default, BlockNumber: Default> {
+pub struct NominationRecord<Balance, BlockNumber>
+where
+    Balance: Copy + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
+{
     pub nomination: Balance,
     pub last_vote_weight: u64,
     pub last_vote_weight_update: BlockNumber,
@@ -194,14 +214,20 @@ pub struct NominationRecord<Balance: Default, BlockNumber: Default> {
 /// All the amount related has been taken care by assets module.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct PseduIntentionVoteWeight<BlockNumber: Default> {
+pub struct PseduIntentionVoteWeight<BlockNumber>
+where
+    BlockNumber: Copy + Default + Codec,
+{
     pub last_total_deposit_weight: u64,
     pub last_total_deposit_weight_update: BlockNumber,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct DepositVoteWeight<BlockNumber: Default> {
+pub struct DepositVoteWeight<BlockNumber>
+where
+    BlockNumber: Copy + Default + Codec,
+{
     pub last_deposit_weight: u64,
     pub last_deposit_weight_update: BlockNumber,
 }
@@ -274,11 +300,11 @@ impl Default for OrderStatus {
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Order<Pair, AccountId, Amount, Price, BlockNumber>
 where
-    Pair: Clone,
-    AccountId: Clone,
-    Amount: Copy,
-    Price: Copy,
-    BlockNumber: Copy,
+    Pair: Clone + Default + Codec,
+    AccountId: Clone + Default + Codec,
+    Amount: Copy + Default + Codec,
+    Price: Copy + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
 {
     pub pair: Pair,
     pub price: Price,
@@ -301,7 +327,7 @@ where
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Handicap<Price>
 where
-    Price: Copy,
+    Price: Copy + Default + Codec,
 {
     pub buy: Price,
     pub sell: Price,
@@ -363,16 +389,9 @@ pub struct Params {
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct UTXOKey {
+pub struct DepositCache {
     pub txid: H256,
     pub index: u32,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct UTXOStatus {
-    pub balance: u64,
-    pub status: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
@@ -381,3 +400,19 @@ pub struct CandidateTx {
     pub tx: btc::Transaction,
     pub outs: Vec<u32>,
 }
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct VoteStatus<AccountId>
+where
+    AccountId: Clone + Codec,
+{
+    pub account: AccountId,
+    pub vote: bool,
+}
+
+// ============================================================================
+// xbridge - xdot runtime module definitions.
+// ============================================================================
+
+pub type EthereumAddress = [u8; 20];
