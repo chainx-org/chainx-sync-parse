@@ -1,3 +1,6 @@
+use parity_codec_derive::{Decode, Encode};
+use serde_derive::{Deserialize, Serialize};
+
 use crate::serde_ext::Bytes;
 
 #[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]

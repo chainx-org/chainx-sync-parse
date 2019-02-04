@@ -1,12 +1,6 @@
-#[macro_use]
-extern crate log;
-extern crate log4rs;
-
-extern crate chainx_sub_parse;
-
 use std::collections::HashMap;
 
-use log::LevelFilter;
+use log::{debug, error, info, LevelFilter};
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
     config::{Appender, Config, Root},

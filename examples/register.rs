@@ -1,10 +1,5 @@
-#[macro_use]
-extern crate serde_json;
-extern crate hyper;
-
-use hyper::rt::Future;
-use hyper::service::service_fn_ok;
-use hyper::{Body, Method, Request, Response, Server};
+use hyper::{rt::Future, service::service_fn_ok, Body, Method, Request, Response, Server};
+use serde_json::json;
 
 fn echo(req: Request<Body>) -> Response<Body> {
     match (req.method(), req.uri().path()) {

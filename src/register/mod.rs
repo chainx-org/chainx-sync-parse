@@ -11,6 +11,7 @@ use jsonrpc_core::{IoHandler, Params};
 use jsonrpc_http_server::{
     AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
 };
+use log::{error, info};
 use parking_lot::{Mutex, RwLock};
 use serde_json::Value;
 
@@ -19,7 +20,7 @@ use crate::{BlockQueue, Result};
 
 const NUM_THREADS_FOR_REGISTERING: usize = 4;
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug)]
 struct Context {
     /// The prefixes of block storage that required by registrant.
     pub prefixes: Vec<String>,
