@@ -46,7 +46,10 @@ fn config_ip_port() -> ([u8; 4], u16) {
         .get_matches();
 
     let ip_addr = matches.value_of("ip").unwrap_or("127.0.0.1");
-    let ip_addr: Vec<u8> = ip_addr.split(".").map(|x| x.parse::<u8>().unwrap()).collect();
+    let ip_addr: Vec<u8> = ip_addr
+        .split(".")
+        .map(|x| x.parse::<u8>().unwrap())
+        .collect();
     let mut ip = [0u8; 4];
     ip.copy_from_slice(ip_addr.as_slice());
     let port = matches.value_of("port").unwrap_or("12345");
