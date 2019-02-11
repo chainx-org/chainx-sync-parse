@@ -27,6 +27,7 @@ sr-primitives = { git = "https://github.com/paritytech/substrate", rev = "e8b558
 substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "e8b558c" }
 
 [dev-dependencies]
+clap = "2"
 hyper = "0.12"
 
 [features]
