@@ -1,5 +1,6 @@
 use std::fmt;
 
+use parity_codec_derive::{Decode, Encode};
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
@@ -63,6 +64,9 @@ impl<'de> Visitor<'de> for BytesVisitor {
 
 #[cfg(test)]
 mod tests {
+    use serde_derive::{Deserialize, Serialize};
+    use serde_json::json;
+
     use super::*;
 
     #[test]

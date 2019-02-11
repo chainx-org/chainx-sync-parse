@@ -1,7 +1,8 @@
 use parity_codec::Codec;
+use parity_codec_derive::{Decode, Encode};
+use serde_derive::{Deserialize, Serialize};
 
-use super::btc;
-use super::linked_node::NodeT;
+use super::{btc, linked_node::NodeT};
 
 // ================================================================================================
 // Substrate primitives.

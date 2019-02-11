@@ -1,6 +1,8 @@
 use std::sync::mpsc;
 use std::thread;
 
+use log::{debug, error, warn};
+
 use crate::Result;
 
 const REDIS_KEY_EVENT_NOTIFICATION: &str = "__keyevent@0__:zadd";

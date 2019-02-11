@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use parity_codec::{Decode, Encode, Input, Output};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Default, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]

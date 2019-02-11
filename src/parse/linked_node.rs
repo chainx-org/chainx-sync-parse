@@ -1,6 +1,8 @@
 // Copyright 2019 Chainpool.
 
 use parity_codec::Codec;
+use parity_codec_derive::{Decode, Encode};
+use serde_derive::{Deserialize, Serialize};
 use sr_primitives::traits::MaybeSerializeDebug;
 
 pub trait NodeT {
