@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     let block_queue: BlockQueue = BlockQueue::default();
 
-    let register_service = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
+    let register_server = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_service = client.start_subscription()?;
 
@@ -109,7 +109,7 @@ fn main() -> Result<()> {
         .join()
         .expect("Couldn't join on the subscribe thread");
 
-    register_service.wait();
+    register_server.wait();
 
     Ok(())
 }
