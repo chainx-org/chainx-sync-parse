@@ -34,12 +34,13 @@ pub fn insert_block_with_height(conn: &PgConnection, h: u64, stat: &HashMap<Stri
             value: v,
         })
         .collect();
-    let size = insert_block(conn, new_blocks);
-    if size != new_blocks.len() {
+    let expect_size = new_blocks.len();
+    let actual_size = insert_block(conn, new_blocks);
+    if actual_size != expect_size {
         warn!(
             "PostgreSQL: insert size (actual/expect) - ({}/{})",
-            size,
-            new_blocks.len()
+            actual_size,
+            expect_size
         );
     } else {
         info!(
