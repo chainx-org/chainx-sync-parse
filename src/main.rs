@@ -44,10 +44,12 @@ fn main() -> Result<()> {
 
     let block_queue: BlockQueue = BlockQueue::default();
 
-    let server = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
-
+    let register_service = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
-    let subscribe_thread = client.start_subscription()?;
+    let subscribe_service = client.start_subscription()?;
+
+    #[cfg(feature = "pgsql")]
+    let pg_conn = establish_connection();
 
     let mut next_block_height: u64 = 0;
     let mut cur_block_height: u64 = 0;
@@ -88,10 +90,14 @@ fn main() -> Result<()> {
                 .is_none()
             {
                 debug!(
-                    "Insert the block [#{}] into block queue successfully",
+                    "Insert the block #{} into block queue successfully",
                     cur_block_height
                 );
             }
+
+            #[cfg(feature = "pgsql")]
+            insert_block_with_height(&pg_conn, cur_block_height, &stat);
+
             stat.clear();
         } else {
             error!("Redis query error");
@@ -99,11 +105,11 @@ fn main() -> Result<()> {
         }
     }
 
-    subscribe_thread
+    subscribe_service
         .join()
         .expect("Couldn't join on the subscribe thread");
 
-    server.wait();
+    register_service.wait();
 
     Ok(())
 }
