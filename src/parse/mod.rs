@@ -35,6 +35,8 @@ pub enum RuntimeStorage {
     BalancesTransferFee(Balance),
     #[strum(message = "Balances CreationFee", detailed_message = "value")]
     BalancesCreationFee(Balance),
+    #[strum(message = "Balances Vesting", detailed_message = "map")]
+    BalancesVesting(AccountId, VestingSchedule<Balance>),
     #[strum(message = "Balances FreeBalance", detailed_message = "map")]
     BalancesFreeBalance(AccountId, Balance),
     #[strum(message = "Balances ReservedBalance", detailed_message = "map")]
@@ -217,8 +219,8 @@ pub enum RuntimeStorage {
     // XDOT
     #[strum(message = "XBridgeXDOT Claims", detailed_message = "map")]
     XBridgeXDOTClaims(EthereumAddress, Balance),
-    #[strum(message = "XBridgeXdot Total", detailed_message = "value")]
-    XBridgeXDOTTotal(Vec<(EthereumAddress, Balance)>),
+    #[strum(message = "XBridgeXDOT Total", detailed_message = "value")]
+    XBridgeXDOTTotal(Balance),
 }
 
 macro_rules! build_json {
@@ -319,6 +321,7 @@ impl RuntimeStorage {
             RuntimeStorage::BalancesExistentialDeposit(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesTransferFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesCreationFee(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BalancesVesting(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesFreeBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesReservedBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
