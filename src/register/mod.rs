@@ -123,7 +123,6 @@ impl RegisterService {
     fn spawn_new_push(&self, url: String, ctxt: RegisterContext, tx: PushSender) {
         let queue = self.block_queue.clone();
         let client = PushClient::new(url);
-        let push_height = ctxt.lock().push_height;
         info!("Register: start push thread of url: [{}]", &client.url);
 
         thread::spawn(move || 'outer: loop {
@@ -132,6 +131,7 @@ impl RegisterService {
                 thread::sleep(Duration::from_secs(1));
                 continue;
             }
+            let push_height = ctxt.lock().push_height;
             let max_block_height = util::get_max_block_height(&queue);
             for h in push_height..max_block_height {
                 let msg = match queue.read().get(&h) {
@@ -144,6 +144,7 @@ impl RegisterService {
                     // TODO: save abnormal register in the disk.
                     break 'outer;
                 } else {
+                    ctxt.lock().push_height = h + 1; // next push height
                     tx.send((client.url.clone(), h, true))
                         .expect("Unable to send context");
                 }
