@@ -11,6 +11,20 @@ use super::{btc, linked_node::NodeT};
 pub use sr_primitives::Permill;
 pub use substrate_primitives::H256;
 
+//pub use srml_balances::VestingSchedule;
+/// Struct to encode the vesting schedule of an individual account.
+#[derive(Copy, Clone, PartialEq, Eq, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct VestingSchedule<Balance>
+where
+    Balance: Copy + Default + Codec,
+{
+    /// Locked amount at genesis.
+    pub offset: Balance,
+    /// Amount that gets unlocked every block from genesis.
+    pub per_block: Balance,
+}
+
 /// A hash of some data used by the relay chain.
 pub type Hash = substrate_primitives::H256;
 
