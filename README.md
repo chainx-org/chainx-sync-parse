@@ -55,6 +55,7 @@ before sending a register request through Postman.
 ```bash
 cd chainx-sub-parse
 cargo run --example register
+# please run `cargo run --example register -- -h` to see the specific usage.
 ```
 
 ### 3. Sync block
@@ -72,7 +73,7 @@ cp target/release/chainx .
 
 ## Feature/pgsql
 
-Add the feature for inserting syncing blocks into PostgreSQL.
+Add the feature for inserting syncing block information into PostgreSQL.
  
 See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for details of the database table `blocks`.
 
