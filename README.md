@@ -55,6 +55,7 @@ before sending a register request through Postman.
 ```bash
 cd chainx-sub-parse
 cargo run --example register
+# please run `cargo run --example register -- -h` to see the specific usage.
 ```
 
 ### 3. Sync block
@@ -68,4 +69,30 @@ cargo build --release --features msgbus-redis
 # run
 cp target/release/chainx .
 ./sync-block.sh  # need to modify `bootnodes` manually.
+```
+
+## Feature/pgsql
+
+Add the feature for inserting syncing block information into PostgreSQL.
+ 
+See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for details of the database table `blocks`.
+
+### 0. Requirement
+
+- PostgreSQL, use your own PostgreSQL configuration in the [.env](./.env) file, like:
+    ```bash
+    DATABASE_URL=postgres://username:password@localhost/database_name
+    ```
+
+### 1. Usage
+
+```bash
+# compile
+git clone https://github.com/chainpool/chainx-sub-parse.git
+cd chainx-sub-parse
+cargo build --release --features pgsql
+
+# run
+cp /target/release/chainx-sub-parse .
+./start.sh
 ```
