@@ -92,10 +92,14 @@ pub struct PushClient {
 
 impl PushClient {
     pub fn new(url: String) -> Self {
+        Self::with_config(url, Config::default())
+    }
+
+    pub fn with_config(url: String, config: Config) -> Self {
         Self {
             url,
             client: reqwest::Client::new(),
-            config: Config::default(),
+            config,
         }
     }
 
@@ -124,7 +128,7 @@ impl PushClient {
             }
             warn!("Receive message response: {:?}", ok);
             warn!(
-                "Send message request retry ({} / {})",
+                "Send message request retry ({}/{})",
                 i, self.config.retry_count
             );
             thread::sleep(self.config.retry_interval);
