@@ -1,6 +1,6 @@
 # chainx-sub-parse
 
-Follow the stage/test branch of ChainX.
+Follow the tags/v0.9.0 of ChainX.
 
 ## Usage
 
@@ -15,7 +15,7 @@ Follow the stage/test branch of ChainX.
     notify-keyspace-events "Ez"
     ```
 
-- Latest version of Rust.
+- Rust stable
 
 ### 1. Run the program
 
@@ -34,7 +34,7 @@ cp /target/release/chainx-sub-parse .
 
 Subscribe to the prefixes of needed runtime storage by registering api.
 
-The structure of Runtime storage is consistent with the [ChainX - stage/test](https://github.com/chainpool/ChainX/tree/stage/test) and [substrate](https://github.com/chainpool/substrate).
+The structure of Runtime storage is consistent with the [ChainX - tags/v0.9.0](https://github.com/chainpool/ChainX/tree/v0.9.0) and [substrate](https://github.com/chainpool/substrate).
 
 **For example**:
 
@@ -63,12 +63,12 @@ cargo run --example register
 ```bash
 # compile
 cd ChainX
-git checkout stage/test.
+git checkout tags/v0.9.0
 cargo build --release --features msgbus-redis
 
 # run
 cp target/release/chainx .
-./sync-block.sh  # need to modify `bootnodes` manually.
+./sync-block.sh  # need to modify configuration manually.
 ```
 
 ## Feature/pgsql
