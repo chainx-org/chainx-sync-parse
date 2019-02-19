@@ -3,7 +3,7 @@ mod btree_map;
 mod linked_node;
 mod primitives;
 
-use log::{debug, error, info};
+use log::{debug, error};
 use parity_codec::Decode;
 use serde_json::json;
 use strum::{EnumMessage, IntoEnumIterator};
@@ -263,7 +263,7 @@ macro_rules! to_map_json {
 macro_rules! to_value_json_impl {
     ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
         if $value.is_empty() {
-            info!("Empty Value: [{:?}] may have been removed", $prefix);
+            debug!("Empty Value: [{:?}] may have been removed", $prefix);
             return Ok(build_json!($type, $prefix, $k, null));
         }
         *$v = match Decode::decode(&mut $value.as_slice()) {

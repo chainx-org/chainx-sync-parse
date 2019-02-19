@@ -6,6 +6,7 @@ use log4rs::{
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
+use serde_json::Value;
 
 use chainx_sub_parse::*;
 
@@ -39,20 +40,27 @@ fn init_log_config() -> Result<()> {
     Ok(())
 }
 
+fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<String, Value>) {
+    let values: Vec<Value> = stat.values().cloned().collect();
+    if queue.write().insert(h, values.clone()).is_none() {
+        info!("Insert the block #{} into block queue successfully", h);
+        info!("block info: {:?}", Value::Array(values).to_string());
+    }
+}
+
 fn main() -> Result<()> {
     init_log_config()?;
 
     let block_queue: BlockQueue = BlockQueue::default();
+    #[cfg(feature = "pgsql")]
+    let pg_conn = establish_connection();
 
     let register_server = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_service = client.start_subscription()?;
 
-    #[cfg(feature = "pgsql")]
-    let pg_conn = establish_connection();
-
-    let mut next_block_height: u64 = 0;
-    let mut cur_block_height: u64 = 0;
+    let mut next_block_height: u64 = 1;
+    let mut cur_block_height: u64;
     let mut stat = HashMap::new();
 
     while let Ok(key) = client.recv_key() {
@@ -63,6 +71,12 @@ fn main() -> Result<()> {
                 ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"),
                 value
             );
+
+            if height < next_block_height {
+                continue;
+            }
+            assert!(height >= 1);
+
             if height == next_block_height {
                 match RuntimeStorage::parse(&key, value) {
                     Ok((prefix, value)) => {
@@ -72,31 +86,13 @@ fn main() -> Result<()> {
                 }
                 continue;
             }
-            assert!(height >= 1);
-            next_block_height = height;
-            if next_block_height <= cur_block_height {
-                continue;
-            }
-            cur_block_height = next_block_height - 1;
-            let values: Vec<serde_json::Value> = stat.values().cloned().collect();
-            info!(
-                "Current block height: {:?}, block info: {:?}",
-                cur_block_height,
-                serde_json::Value::Array(values.clone()).to_string()
-            );
-            if block_queue
-                .write()
-                .insert(cur_block_height, values)
-                .is_none()
-            {
-                debug!(
-                    "Insert the block #{} into block queue successfully",
-                    cur_block_height
-                );
-            }
 
+            next_block_height = height;
+            cur_block_height = next_block_height - 1;
+
+            insert_block_into_queue(&block_queue, cur_block_height, &stat);
             #[cfg(feature = "pgsql")]
-            insert_block_with_height(&pg_conn, cur_block_height, &stat);
+            insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
 
             stat.clear();
         } else {
