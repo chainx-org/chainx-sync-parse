@@ -133,6 +133,10 @@ pub enum RuntimeStorage {
     XStakingSessionsPerEra(BlockNumber),
     #[strum(message = "XStaking BondingDuration", detailed_message = "value")]
     XStakingBondingDuration(BlockNumber),
+    #[strum(message = "XStaking IntentionBondingDuration", detailed_message = "value")]
+    XStakingIntentionBondingDuration(BlockNumber),
+    #[strum(message = "XStaking SessionsPerEpoch", detailed_message = "value")]
+    XStakingSessionsPerEpoch(BlockNumber),
     #[strum(message = "XStaking ValidatorStakeThreshold", detailed_message = "value")]
     XStakingValidatorStakeThreshold(Balance),
     #[strum(message = "XStaking CurrentEra", detailed_message = "value")]
@@ -151,8 +155,10 @@ pub enum RuntimeStorage {
     XStakingIntentionProfiles(AccountId, IntentionProfs<Balance, BlockNumber>),
     #[strum(message = "XStaking NominationRecords", detailed_message = "map")]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
-    #[strum(message = "XStaking Funding", detailed_message = "value")]
-    XStakingFunding(AccountId),
+    #[strum(message = "XStaking TeamAddress", detailed_message = "value")]
+    XStakingTeamAddress(AccountId),
+    #[strum(message = "XStaking CouncilAddress", detailed_message = "value")]
+    XStakingCouncilAddress(AccountId),
     #[strum(message = "XStaking Penalty", detailed_message = "value")]
     XStakingPenalty(Balance),
     #[strum(message = "XStaking PunishList", detailed_message = "value")]
@@ -211,16 +217,16 @@ pub enum RuntimeStorage {
     #[strum(message = "XBridgeOfBTC MaxWithdrawAmount", detailed_message = "value")]
     XBridgeOfBTCMaxWithdrawAmount(u32),
     #[strum(message = "XBridgeOfBTC TxProposal", detailed_message = "value")]
-    XBridgeOfBTCTxProposal(CandidateTx),
+    XBridgeOfBTCTxProposal(CandidateTx<AccountId>),
     #[strum(message = "XBridgeOfBTC PendingDepositMap", detailed_message = "map")]
     XBridgeOfBTCPendingDepositMap(btc::Address, Vec<DepositCache>),
-    #[strum(message = "XBridgeOfBTC VoteNode", detailed_message = "value")]
-    XBridgeOfBTCVoteNode(Vec<VoteStatus<AccountId>>),
-    // XDOT
-    #[strum(message = "XBridgeXDOT Claims", detailed_message = "map")]
-    XBridgeXDOTClaims(EthereumAddress, Balance),
-    #[strum(message = "XBridgeXDOT Total", detailed_message = "value")]
-    XBridgeXDOTTotal(Balance),
+    #[strum(message = "XBridgeOfBTC TrusteeRedeemScript", detailed_message = "value")]
+    XBridgeOfBTCTrusteeRedeemScript(TrusteeScriptInfo),
+    // SDOT
+    #[strum(message = "XBridgeOfSDOT Claims", detailed_message = "map")]
+    XBridgeOfSDOTClaims(EthereumAddress, Balance),
+    #[strum(message = "XBridgeOfSDOT Total", detailed_message = "value")]
+    XBridgeOfSDOTTotal(Balance),
 }
 
 macro_rules! build_json {
@@ -364,6 +370,8 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingBondingDuration(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingIntentionBondingDuration(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingSessionsPerEpoch(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingValidatorStakeThreshold(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingCurrentEra(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingIntentions(ref mut v) => to_value_json!(prefix, value => v),
@@ -373,7 +381,8 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingStakeWeight(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XStakingIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XStakingNominationRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XStakingFunding(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingTeamAddress(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingCouncilAddress(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingPenalty(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingPunishList(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensTokenDiscount(ref mut v) => to_value_json!(prefix, value => v),
@@ -403,10 +412,10 @@ impl RuntimeStorage {
             RuntimeStorage::XBridgeOfBTCMaxWithdrawAmount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCTxProposal(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XBridgeOfBTCVoteNode(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XBridgeOfBTCTrusteeRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
             // bridge - xdot
-            RuntimeStorage::XBridgeXDOTClaims(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XBridgeXDOTTotal(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XBridgeOfSDOTTotal(ref mut v) => to_value_json!(prefix, value => v),
         }
     }
 }

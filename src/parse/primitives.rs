@@ -409,25 +409,40 @@ pub struct DepositCache {
     pub index: u32,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct CandidateTx {
-    pub tx: btc::Transaction,
-    pub outs: Vec<u32>,
+pub enum VoteResult {
+    Unfinish,
+    Finish,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode)]
+impl Default for VoteResult {
+    fn default() -> Self {
+        VoteResult::Unfinish
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct VoteStatus<AccountId>
+pub struct CandidateTx<AccountId>
 where
-    AccountId: Clone + Codec,
+    AccountId: Clone + Default + Codec,
 {
-    pub account: AccountId,
-    pub vote: bool,
+    pub withdraw_id: Vec<u32>,
+    pub tx: btc::Transaction,
+    pub sig_status: VoteResult,
+    pub sig_node: Vec<(AccountId, bool)>,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeScriptInfo {
+    pub hot_redeem_script: Vec<u8>,
+    pub cold_redeem_script: Vec<u8>,
 }
 
 // ============================================================================
-// xbridge - xdot runtime module definitions.
+// xbridge - sdot runtime module definitions.
 // ============================================================================
 
 pub type EthereumAddress = [u8; 20];
