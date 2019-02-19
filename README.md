@@ -15,7 +15,7 @@ Follow the tags/v0.9.0 of ChainX.
     notify-keyspace-events "Ez"
     ```
 
-- Latest version of Rust.
+- Rust stable
 
 ### 1. Run the program
 
