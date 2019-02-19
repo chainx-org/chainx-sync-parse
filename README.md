@@ -1,6 +1,6 @@
 # chainx-sub-parse
 
-Follow the stage/test branch of ChainX.
+Follow the tags/v0.9.0 of ChainX.
 
 ## Usage
 
@@ -63,12 +63,12 @@ cargo run --example register
 ```bash
 # compile
 cd ChainX
-git checkout stage/test.
+git checkout tags/v0.9.0
 cargo build --release --features msgbus-redis
 
 # run
 cp target/release/chainx .
-./sync-block.sh  # need to modify `bootnodes` manually.
+./sync-block.sh  # need to modify configuration manually.
 ```
 
 ## Feature/pgsql
