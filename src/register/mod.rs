@@ -162,7 +162,7 @@ impl RegisterService {
             loop {
                 match rx.try_recv() {
                     Ok(data) => remove_block_from_queue(&queue, &mut stat, &map, data),
-                    Err(TryRecvError::Empty) => (),
+                    Err(TryRecvError::Empty) => thread::sleep(Duration::from_millis(50)),
                     Err(TryRecvError::Disconnected) => {
                         error!("Register: remove block thread terminated");
                         break;
