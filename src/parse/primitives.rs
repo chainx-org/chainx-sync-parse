@@ -10,6 +10,7 @@ use super::{btc, linked_node::NodeT};
 
 pub use sr_primitives::Permill;
 pub use substrate_primitives::H256;
+use crate::Bytes;
 
 //pub use srml_balances::VestingSchedule;
 /// Struct to encode the vesting schedule of an individual account.
@@ -79,12 +80,12 @@ pub struct IntentionProps {
 #[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum TrusteeEntity {
-    Bitcoin(Vec<u8>),
+    Bitcoin(Bytes),
 }
 
 impl Default for TrusteeEntity {
     fn default() -> Self {
-        TrusteeEntity::Bitcoin(Vec::default())
+        TrusteeEntity::Bitcoin(Bytes::default())
     }
 }
 
@@ -99,8 +100,21 @@ pub struct TrusteeIntentionProps {
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeAddressPair {
-    pub hot_address: Vec<u8>,
-    pub cold_address: Vec<u8>,
+    pub hot_address: Bytes,
+    pub cold_address: Bytes,
+}
+
+// ============================================================================
+// xfee - manager runtime module definitions.
+// ============================================================================
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct SwitchStore {
+    pub global: bool,
+    pub spot: bool,
+    pub xbtc: bool,
+    pub sdot: bool,
 }
 
 // ============================================================================
@@ -422,8 +436,8 @@ where
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeScriptInfo {
-    pub hot_redeem_script: Vec<u8>,
-    pub cold_redeem_script: Vec<u8>,
+    pub hot_redeem_script: Bytes,
+    pub cold_redeem_script: Bytes,
 }
 
 // ============================================================================

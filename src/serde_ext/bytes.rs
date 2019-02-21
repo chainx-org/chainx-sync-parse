@@ -4,7 +4,8 @@ use parity_codec_derive::{Decode, Encode};
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
-#[derive(PartialEq, Eq, Clone, Default, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Bytes(pub Vec<u8>);
 
 impl Bytes {
@@ -35,6 +36,7 @@ impl<T: Into<Vec<u8>>> From<T> for Bytes {
     }
 }
 
+#[cfg(feature = "std")]
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -45,6 +47,7 @@ impl Serialize for Bytes {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for Bytes {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
