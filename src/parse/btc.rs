@@ -5,6 +5,52 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::serde_ext::Bytes;
 
+/// A type of variable-length integer commonly used in the Bitcoin P2P protocol and Bitcoin serialized data structures.
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
+pub struct CompactInteger(u64);
+
+impl From<CompactInteger> for usize {
+    fn from(i: CompactInteger) -> Self {
+        i.0 as usize
+    }
+}
+
+impl From<CompactInteger> for u64 {
+    fn from(i: CompactInteger) -> Self {
+        i.0
+    }
+}
+
+impl From<u8> for CompactInteger {
+    fn from(i: u8) -> Self {
+        CompactInteger(i as u64)
+    }
+}
+
+impl From<u16> for CompactInteger {
+    fn from(i: u16) -> Self {
+        CompactInteger(i as u64)
+    }
+}
+
+impl From<u32> for CompactInteger {
+    fn from(i: u32) -> Self {
+        CompactInteger(i as u64)
+    }
+}
+
+impl From<usize> for CompactInteger {
+    fn from(i: usize) -> Self {
+        CompactInteger(i as u64)
+    }
+}
+
+impl From<u64> for CompactInteger {
+    fn from(i: u64) -> Self {
+        CompactInteger(i)
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Compact(u32);
@@ -232,22 +278,21 @@ mod io {
         }
     }
 
-
     impl<'a, R: Read + ?Sized> Read for &'a mut R {
         #[inline]
         fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
             (**self).read(buf)
         }
 
-//        #[inline]
-//        unsafe fn initializer(&self) -> Initializer {
-//            (**self).initializer()
-//        }
+        //        #[inline]
+        //        unsafe fn initializer(&self) -> Initializer {
+        //            (**self).initializer()
+        //        }
 
-//        #[inline]
-//        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize, Error> {
-//            (**self).read_to_end(buf)
-//        }
+        //        #[inline]
+        //        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize, Error> {
+        //            (**self).read_to_end(buf)
+        //        }
 
         #[inline]
         fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), Error> {
@@ -257,7 +302,9 @@ mod io {
 
     impl<'a, W: Write + ?Sized> Write for &'a mut W {
         #[inline]
-        fn write(&mut self, buf: &[u8]) -> Result<usize, Error> { (**self).write(buf) }
+        fn write(&mut self, buf: &[u8]) -> Result<usize, Error> {
+            (**self).write(buf)
+        }
 
         #[inline]
         fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> {
@@ -265,7 +312,9 @@ mod io {
         }
 
         #[inline]
-        fn flush(&mut self) -> Result<(), Error> { (**self).flush() }
+        fn flush(&mut self) -> Result<(), Error> {
+            (**self).flush()
+        }
     }
 
     impl<'a> Read for &'a [u8] {
@@ -287,10 +336,10 @@ mod io {
             Ok(amt)
         }
 
-//        #[inline]
-//        unsafe fn initializer(&self) -> Initializer {
-//            Initializer::nop()
-//        }
+        //        #[inline]
+        //        unsafe fn initializer(&self) -> Initializer {
+        //            Initializer::nop()
+        //        }
 
         #[inline]
         fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), Error> {
@@ -312,13 +361,13 @@ mod io {
             Ok(())
         }
 
-//        #[inline]
-//        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize, Error> {
-//            buf.extend_from_slice(*self);
-//            let len = self.len();
-//            *self = &self[len..];
-//            Ok(len)
-//        }
+        //        #[inline]
+        //        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize, Error> {
+        //            buf.extend_from_slice(*self);
+        //            let len = self.len();
+        //            *self = &self[len..];
+        //            Ok(len)
+        //        }
     }
 
     impl<'a> Write for &'a mut [u8] {
@@ -341,7 +390,9 @@ mod io {
         }
 
         #[inline]
-        fn flush(&mut self) -> Result<(), Error> { Ok(()) }
+        fn flush(&mut self) -> Result<(), Error> {
+            Ok(())
+        }
     }
 
     impl Write for Vec<u8> {
@@ -358,12 +409,21 @@ mod io {
         }
 
         #[inline]
-        fn flush(&mut self) -> Result<(), Error> { Ok(()) }
+        fn flush(&mut self) -> Result<(), Error> {
+            Ok(())
+        }
     }
 }
 
 mod stream {
-    use super::{io::{self, Write}, Bytes};
+    use super::{
+        io::{self, Write},
+        Bytes, CompactInteger,
+    };
+    use std::borrow::Borrow;
+
+    /// Do not serialize transaction witness data.
+    pub const SERIALIZE_TRANSACTION_WITNESS: u32 = 0x40000000;
 
     pub trait Serializable {
         /// Serialize the struct and appends it to the end of stream.
@@ -383,10 +443,15 @@ mod stream {
     #[derive(Default)]
     pub struct Stream {
         buffer: Vec<u8>,
-//        flags: u32,
+        flags: u32,
     }
 
     impl Stream {
+        /// Are transactions written to this stream with witness data?
+        pub fn include_transaction_witness(&self) -> bool {
+            (self.flags & SERIALIZE_TRANSACTION_WITNESS) != 0
+        }
+
         /// Serializes the struct and appends it to the end of stream.
         pub fn append<T>(&mut self, t: &T) -> &mut Self
         where
@@ -400,6 +465,19 @@ mod stream {
         pub fn append_slice(&mut self, bytes: &[u8]) -> &mut Self {
             // discard error for now, since we write to simple vector
             self.buffer.write(bytes);
+            self
+        }
+
+        /// Appends a list of serializable structs to the end of the stream.
+        pub fn append_list<T, K>(&mut self, t: &[K]) -> &mut Self
+        where
+            T: Serializable,
+            K: Borrow<T>,
+        {
+            CompactInteger::from(t.len()).serialize(self);
+            for i in t {
+                i.borrow().serialize(self);
+            }
             self
         }
 
@@ -433,6 +511,7 @@ mod stream {
 
 mod reader {
     use super::io;
+    use super::CompactInteger;
 
     pub trait Deserializable {
         fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
@@ -485,16 +564,19 @@ mod reader {
             io::Read::read_exact(self, bytes).map_err(|_| io::ErrorKind::UnexpectedEnd)
         }
 
-        //    pub fn read_list<T>(&mut self) -> Result<Vec<T>, io::Error> where T: Deserializable {
-        //        let len: usize = self.read::<CompactInteger>()?.into();
-        //        let mut result = Vec::with_capacity(len);
-        //
-        //        for _ in 0..len {
-        //            result.push(self.read()?);
-        //        }
-        //
-        //        Ok(result)
-        //    }
+        pub fn read_list<T>(&mut self) -> Result<Vec<T>, io::Error>
+        where
+            T: Deserializable,
+        {
+            let len: usize = self.read::<CompactInteger>()?.into();
+            let mut result = Vec::with_capacity(len);
+
+            for _ in 0..len {
+                result.push(self.read()?);
+            }
+
+            Ok(result)
+        }
 
         //    pub fn read_list_max<T>(&mut self, max: usize) -> Result<Vec<T>, io::Error> where T: Deserializable {
         //        let len: usize = self.read::<CompactInteger>()?.into();
@@ -568,10 +650,84 @@ mod reader {
 
 mod impls {
     use super::byteorder::LittleEndian;
-    use super::io::{self, Write, Read};
-    use super::{Compact, BlockHeader};
+    use super::io::{self, Read, Write};
     use super::reader::{Deserializable, Reader};
     use super::stream::{Serializable, Stream};
+    use super::{
+        BlockHeader, Bytes, Compact, CompactInteger, OutPoint, Transaction, TransactionInput,
+        TransactionOutput,
+    };
+
+    /// Must be zero.
+    const WITNESS_MARKER: u8 = 0;
+    /// Must be nonzero.
+    const WITNESS_FLAG: u8 = 1;
+
+    impl Serializable for i32 {
+        #[inline]
+        fn serialize(&self, s: &mut Stream) {
+            s.write_i32::<LittleEndian>(*self);
+        }
+
+        #[inline]
+        fn serialized_size(&self) -> usize {
+            4
+        }
+    }
+
+    impl Deserializable for i32 {
+        #[inline]
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            T: io::Read,
+        {
+            Ok(reader.read_i32::<LittleEndian>()?)
+        }
+    }
+
+    impl Serializable for u8 {
+        #[inline]
+        fn serialize(&self, s: &mut Stream) {
+            s.write_u8(*self);
+        }
+
+        #[inline]
+        fn serialized_size(&self) -> usize {
+            1
+        }
+    }
+
+    impl Deserializable for u8 {
+        #[inline]
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            T: io::Read,
+        {
+            Ok(reader.read_u8()?)
+        }
+    }
+
+    impl Serializable for u16 {
+        #[inline]
+        fn serialize(&self, s: &mut Stream) {
+            s.write_u16::<LittleEndian>(*self);
+        }
+
+        #[inline]
+        fn serialized_size(&self) -> usize {
+            2
+        }
+    }
+
+    impl Deserializable for u16 {
+        #[inline]
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            T: io::Read,
+        {
+            Ok(reader.read_u16::<LittleEndian>()?)
+        }
+    }
 
     impl Serializable for u32 {
         #[inline]
@@ -592,6 +748,97 @@ mod impls {
             T: io::Read,
         {
             Ok(reader.read_u32::<LittleEndian>()?)
+        }
+    }
+
+    impl Serializable for u64 {
+        #[inline]
+        fn serialize(&self, s: &mut Stream) {
+            s.write_u64::<LittleEndian>(*self);
+        }
+
+        #[inline]
+        fn serialized_size(&self) -> usize {
+            8
+        }
+    }
+
+    impl Deserializable for u64 {
+        #[inline]
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            T: io::Read,
+        {
+            Ok(reader.read_u64::<LittleEndian>()?)
+        }
+    }
+
+    impl Serializable for Bytes {
+        fn serialize(&self, stream: &mut Stream) {
+            stream
+                .append(&CompactInteger::from(self.len()))
+                .append_slice(self.as_ref());
+        }
+
+        #[inline]
+        fn serialized_size(&self) -> usize {
+            CompactInteger::from(self.len()).serialized_size() + self.len()
+        }
+    }
+
+    impl Deserializable for Bytes {
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            T: io::Read,
+        {
+            let len = reader.read::<CompactInteger>()?;
+            let mut bytes = Bytes::new_with_len(len.into());
+            reader.read_slice(bytes.as_mut())?;
+            Ok(bytes)
+        }
+    }
+
+    impl Serializable for CompactInteger {
+        fn serialize(&self, stream: &mut Stream) {
+            match self.0 {
+                0...0xfc => {
+                    stream.append(&(self.0 as u8));
+                }
+                0xfd...0xffff => {
+                    stream.append(&0xfdu8).append(&(self.0 as u16));
+                }
+                0x10000...0xffff_ffff => {
+                    stream.append(&0xfeu8).append(&(self.0 as u32));
+                }
+                _ => {
+                    stream.append(&0xffu8).append(&self.0);
+                }
+            }
+        }
+
+        fn serialized_size(&self) -> usize {
+            match self.0 {
+                0...0xfc => 1,
+                0xfd...0xffff => 3,
+                0x10000...0xffff_ffff => 5,
+                _ => 9,
+            }
+        }
+    }
+
+    impl Deserializable for CompactInteger {
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            T: io::Read,
+        {
+            let result = match reader.read::<u8>()? {
+                i @ 0...0xfc => i.into(),
+                0xfd => reader.read::<u16>()?.into(),
+                0xfe => reader.read::<u32>()?.into(),
+                _ => reader.read::<u64>()?.into(),
+            };
+
+            Ok(result)
         }
     }
 
@@ -639,7 +886,6 @@ mod impls {
     use substrate_primitives::H256;
     impl_ser_for_hash!(H256, 32);
 
-
     impl Serializable for BlockHeader {
         fn serialize(&self, stream: &mut Stream) {
             stream
@@ -654,8 +900,8 @@ mod impls {
 
     impl Deserializable for BlockHeader {
         fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
-            where
-                T: io::Read,
+        where
+            T: io::Read,
         {
             Ok(BlockHeader {
                 version: reader.read()?,
@@ -664,6 +910,129 @@ mod impls {
                 time: reader.read()?,
                 bits: reader.read()?,
                 nonce: reader.read()?,
+            })
+        }
+    }
+
+    impl Serializable for OutPoint {
+        fn serialize(&self, stream: &mut Stream) {
+            stream.append(&self.hash).append(&self.index);
+        }
+    }
+
+    impl Deserializable for OutPoint {
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            Self: Sized,
+            T: io::Read,
+        {
+            Ok(OutPoint {
+                hash: reader.read()?,
+                index: reader.read()?,
+            })
+        }
+    }
+
+    impl Serializable for TransactionInput {
+        fn serialize(&self, stream: &mut Stream) {
+            stream
+                .append(&self.previous_output)
+                .append(&self.script_sig)
+                .append(&self.sequence);
+        }
+    }
+
+    impl Deserializable for TransactionInput {
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            Self: Sized,
+            T: io::Read,
+        {
+            Ok(TransactionInput {
+                previous_output: reader.read()?,
+                script_sig: reader.read()?,
+                sequence: reader.read()?,
+                script_witness: vec![],
+            })
+        }
+    }
+
+    impl Serializable for TransactionOutput {
+        fn serialize(&self, stream: &mut Stream) {
+            stream.append(&self.value).append(&self.script_pubkey);
+        }
+    }
+
+    impl Deserializable for TransactionOutput {
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            Self: Sized,
+            T: io::Read,
+        {
+            Ok(TransactionOutput {
+                value: reader.read()?,
+                script_pubkey: reader.read()?,
+            })
+        }
+    }
+
+    impl Serializable for Transaction {
+        fn serialize(&self, stream: &mut Stream) {
+            let include_transaction_witness =
+                stream.include_transaction_witness() && self.has_witness();
+            match include_transaction_witness {
+                false => stream
+                    .append(&self.version)
+                    .append_list(&self.inputs)
+                    .append_list(&self.outputs)
+                    .append(&self.lock_time),
+                true => {
+                    stream
+                        .append(&self.version)
+                        .append(&WITNESS_MARKER)
+                        .append(&WITNESS_FLAG)
+                        .append_list(&self.inputs)
+                        .append_list(&self.outputs);
+                    for input in &self.inputs {
+                        stream.append_list(&input.script_witness);
+                    }
+                    stream.append(&self.lock_time)
+                }
+            };
+        }
+    }
+
+    impl Deserializable for Transaction {
+        fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+        where
+            Self: Sized,
+            T: io::Read,
+        {
+            let version = reader.read()?;
+            let mut inputs: Vec<TransactionInput> = reader.read_list()?;
+            let read_witness = if inputs.is_empty() {
+                let witness_flag: u8 = reader.read()?;
+                if witness_flag != WITNESS_FLAG {
+                    return Err(io::ErrorKind::MalformedData);
+                }
+
+                inputs = reader.read_list()?;
+                true
+            } else {
+                false
+            };
+            let outputs = reader.read_list()?;
+            if read_witness {
+                for input in inputs.iter_mut() {
+                    input.script_witness = reader.read_list()?;
+                }
+            }
+
+            Ok(Transaction {
+                version,
+                inputs,
+                outputs,
+                lock_time: reader.read()?,
             })
         }
     }
@@ -713,7 +1082,7 @@ pub struct Address {
     pub hash: substrate_primitives::H160,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Transaction {
     pub version: i32,
@@ -722,13 +1091,43 @@ pub struct Transaction {
     pub lock_time: u32,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+impl Transaction {
+    pub fn has_witness(&self) -> bool {
+        self.inputs.iter().any(TransactionInput::has_witness)
+    }
+}
+
+impl Encode for Transaction {
+    fn encode(&self) -> Vec<u8> {
+        let value = stream::serialize::<Transaction>(&self);
+        value.encode()
+    }
+}
+
+impl Decode for Transaction {
+    fn decode<I: Input>(input: &mut I) -> Option<Self> {
+        let value: Vec<u8> = Decode::decode(input).unwrap();
+        if let Ok(tx) = reader::deserialize(reader::Reader::new(&value)) {
+            Some(tx)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TransactionInput {
     pub previous_output: OutPoint,
     pub script_sig: Bytes,
     pub sequence: u32,
     pub script_witness: Vec<Bytes>,
+}
+
+impl TransactionInput {
+    pub fn has_witness(&self) -> bool {
+        !self.script_witness.is_empty()
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
@@ -738,7 +1137,7 @@ pub struct OutPoint {
     pub index: u32,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TransactionOutput {
     pub value: u64,

@@ -11,6 +11,22 @@ impl Bytes {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn new_with_len(len: usize) -> Self {
+        Bytes(vec![0; len])
+    }
+}
+
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsMut<[u8]> for Bytes {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl<T: Into<Vec<u8>>> From<T> for Bytes {

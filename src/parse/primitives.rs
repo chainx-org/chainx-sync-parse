@@ -430,4 +430,4 @@ pub struct TrusteeScriptInfo {
 // xbridge - sdot runtime module definitions.
 // ============================================================================
 
-pub type EthereumAddress = [u8; 20];
+pub type EthereumAddress = substrate_primitives::H160;
