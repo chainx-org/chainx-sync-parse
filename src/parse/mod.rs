@@ -203,7 +203,7 @@ pub enum RuntimeStorage {
     #[strum(message = "XBridgeOfBTC TxFor", detailed_message = "map")]
     XBridgeOfBTCTxFor(H256, TxInfo),
     #[strum(message = "XBridgeOfBTC GenesisInfo", detailed_message = "value")]
-    XBridgeOfBTCGenesisInfo((BlockHeader, u32)),
+    XBridgeOfBTCGenesisInfo((btc::BlockHeader, u32)),
     #[strum(message = "XBridgeOfBTC ParamsInfo", detailed_message = "value")]
     XBridgeOfBTCParamsInfo(Params),
     #[strum(message = "XBridgeOfBTC NetworkId", detailed_message = "value")]
@@ -426,7 +426,7 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    pub fn test_parse_match_value() {
+    fn test_parse_match_value() {
         let key = "Balances TotalIssuance".as_bytes();
         let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -443,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_match_map() {
+    fn test_parse_match_map() {
         let key = "Balances FreeBalance12345678901234567890123456789012".as_bytes();
         let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -460,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_match_map_option() {
+    fn test_parse_match_map_option() {
         let key = "XAssets AssetInfo\u{c}PCX".as_bytes();
         let value = vec![
             12, 80, 67, 88, 56, 80, 111, 108, 107, 97, 100, 111, 116, 67, 104, 97, 105, 110, 88, 0,
@@ -491,7 +491,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_match_codec_btree_map() {
+    fn test_parse_match_codec_btree_map() {
         let key = "XAssets TotalAssetBalance\u{c}BTC".as_bytes();
         let value = vec![1, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -508,7 +508,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_remove_value() {
+    fn test_parse_remove_value() {
         let key = "XSystem BlockProducer".as_bytes();
         let value = vec![];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -522,5 +522,24 @@ mod tests {
         )
         .unwrap();
         assert_eq!(got, exp);
+    }
+
+    #[test]
+    fn test_parse_btc_block_header_for() {
+        let key: Vec<u8> = vec![
+            88, 66, 114, 105, 100, 103, 101, 79, 102, 66, 84, 67, 32, 66, 108, 111, 99, 107, 72,
+            101, 97, 100, 101, 114, 70, 111, 114, 17, 236, 67, 232, 134, 149, 88, 40, 181, 65, 17,
+            172, 232, 106, 54, 152, 241, 119, 229, 70, 94, 82, 120, 156, 200, 250, 63, 0, 0, 0, 0,
+            0,
+        ];
+        let value: Vec<u8> = vec![
+            65, 1, 0, 0, 0, 32, 191, 83, 119, 194, 61, 87, 214, 213, 139, 39, 29, 18, 205, 101, 29,
+            83, 9, 195, 158, 83, 121, 181, 78, 71, 27, 115, 48, 0, 0, 0, 0, 0, 219, 155, 212, 181,
+            234, 26, 130, 11, 1, 93, 226, 194, 250, 71, 254, 219, 120, 195, 110, 151, 175, 123,
+            188, 204, 169, 122, 189, 43, 13, 4, 106, 3, 113, 81, 106, 92, 4, 252, 0, 29, 201, 117,
+            178, 119, 31, 64, 22, 0, 0, 0,
+        ];
+        let (_, got) = RuntimeStorage::parse(&key, value).unwrap();
+        println!("{:?}", got);
     }
 }

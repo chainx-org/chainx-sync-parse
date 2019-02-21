@@ -65,12 +65,18 @@ fn main() -> Result<()> {
 
     while let Ok(key) = client.recv_key() {
         if let Ok((height, value)) = client.query(&key) {
-            debug!(
-                "block_height: {:?}, prefix+key: {:?}, value: {:?}",
-                height,
-                ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"),
-                value
-            );
+            // for debug
+            if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
+                debug!(
+                    "block_height: {:?}, prefix+key: {:?} (hex: {:?}), value: {:?}",
+                    height, prefix_key, key, value
+                );
+            } else {
+                debug!(
+                    "block_height: {:?}, prefix+key: Invalid UTF8 (hex: {:?}), value: {:?}",
+                    height, key, value
+                );
+            }
 
             if height < next_block_height {
                 continue;

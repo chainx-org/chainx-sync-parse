@@ -7,6 +7,12 @@ use serde::ser::{Serialize, Serializer};
 #[derive(PartialEq, Eq, Clone, Default, Debug, Encode, Decode)]
 pub struct Bytes(pub Vec<u8>);
 
+impl Bytes {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 impl<T: Into<Vec<u8>>> From<T> for Bytes {
     fn from(data: T) -> Bytes {
         Bytes(data.into())

@@ -355,25 +355,10 @@ where
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BlockHeaderInfo {
-    pub header: BlockHeader,
+    pub header: btc::BlockHeader,
     pub height: u32,
     pub confirmed: bool,
     pub txid: Vec<H256>,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct Compact(u32);
-
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct BlockHeader {
-    pub version: u32,
-    pub previous_header_hash: substrate_primitives::H256,
-    pub merkle_root_hash: substrate_primitives::H256,
-    pub time: u32,
-    pub bits: Compact,
-    pub nonce: u32,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
