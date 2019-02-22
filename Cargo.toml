@@ -26,8 +26,8 @@ jsonrpc-http-server = "10.0"
 diesel = { version = "1.4", optional = true }
 dotenv = { version = "0.13", optional = true }
 
-sr-primitives = { git = "https://github.com/paritytech/substrate", rev = "e8b558c" }
-substrate-primitives = { git = "https://github.com/paritytech/substrate", rev = "e8b558c" }
+sr-primitives = { git = "https://github.com/chainpool/substrate" }
+substrate-primitives = { git = "https://github.com/chainpool/substrate" }
 
 [dev-dependencies]
 clap = "2"
