@@ -430,6 +430,7 @@ where
     pub withdraw_id: Vec<u32>,
     pub tx: btc::Transaction,
     pub sig_status: VoteResult,
+    pub sig_num: u32,
     pub sig_node: Vec<(AccountId, bool)>,
 }
 
