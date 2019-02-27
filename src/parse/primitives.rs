@@ -2,15 +2,13 @@ use parity_codec::Codec;
 use parity_codec_derive::{Decode, Encode};
 use serde_derive::{Deserialize, Serialize};
 
-use super::{btc, linked_node::NodeT};
+use crate::types::{btc, Bytes, NodeT};
 
 // ================================================================================================
 // Substrate primitives.
 // ================================================================================================
 
-pub use sr_primitives::Permill;
 pub use substrate_primitives::H256;
-use crate::Bytes;
 
 //pub use srml_balances::VestingSchedule;
 /// Struct to encode the vesting schedule of an individual account.

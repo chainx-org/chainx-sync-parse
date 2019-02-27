@@ -7,8 +7,8 @@ mod parse;
 #[cfg(feature = "pgsql")]
 mod pgsql;
 mod register;
-mod serde_ext;
 mod subscribe;
+mod types;
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -20,7 +20,6 @@ pub use self::parse::RuntimeStorage;
 #[cfg(feature = "pgsql")]
 pub use self::pgsql::*;
 pub use self::register::RegisterService;
-pub use self::serde_ext::Bytes;
 pub use self::subscribe::RedisClient;
 
 pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;

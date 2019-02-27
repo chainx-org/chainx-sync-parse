@@ -1,6 +1,3 @@
-mod btc;
-mod btree_map;
-mod linked_node;
 mod primitives;
 
 use log::{debug, error};
@@ -9,10 +6,9 @@ use serde_json::json;
 use strum::{EnumMessage, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage};
 
-use self::btree_map::CodecBTreeMap;
-use self::linked_node::{MultiNodeIndex, Node};
 use self::primitives::*;
-use crate::{Result, Bytes};
+use crate::types::{btc, Bytes, CodecBTreeMap, MultiNodeIndex, Node};
+use crate::Result;
 
 #[rustfmt::skip]
 #[allow(clippy::large_enum_variant)]
