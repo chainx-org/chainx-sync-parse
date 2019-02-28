@@ -123,6 +123,35 @@ impl Deserializable for u64 {
     }
 }
 
+macro_rules! impl_ser_for_hash {
+    ($name: ident, $size: expr) => {
+        impl Serializable for $name {
+            fn serialize(&self, stream: &mut Stream) {
+                stream.append_slice(&self.as_ref());
+            }
+
+            #[inline]
+            fn serialized_size(&self) -> usize {
+                $size
+            }
+        }
+
+        impl Deserializable for $name {
+            fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
+            where
+                T: io::Read,
+            {
+                let mut result = Self::default();
+                reader.read_slice(&mut result.as_mut())?;
+                Ok(result)
+            }
+        }
+    };
+}
+
+use substrate_primitives::H256;
+impl_ser_for_hash!(H256, 32);
+
 impl Serializable for Bytes {
     fn serialize(&self, stream: &mut Stream) {
         stream
@@ -206,35 +235,6 @@ impl Deserializable for Compact {
         reader.read::<u32>().map(Compact::new)
     }
 }
-
-macro_rules! impl_ser_for_hash {
-    ($name: ident, $size: expr) => {
-        impl Serializable for $name {
-            fn serialize(&self, stream: &mut Stream) {
-                stream.append_slice(&self.as_ref());
-            }
-
-            #[inline]
-            fn serialized_size(&self) -> usize {
-                $size
-            }
-        }
-
-        impl Deserializable for $name {
-            fn deserialize<T>(reader: &mut Reader<T>) -> Result<Self, io::Error>
-            where
-                T: io::Read,
-            {
-                let mut result = Self::default();
-                reader.read_slice(&mut result.as_mut())?;
-                Ok(result)
-            }
-        }
-    };
-}
-
-use substrate_primitives::H256;
-impl_ser_for_hash!(H256, 32);
 
 impl Serializable for BlockHeader {
     fn serialize(&self, stream: &mut Stream) {
@@ -330,25 +330,24 @@ impl Serializable for Transaction {
     fn serialize(&self, stream: &mut Stream) {
         let include_transaction_witness =
             stream.include_transaction_witness() && self.has_witness();
-        match include_transaction_witness {
-            false => stream
+        if include_transaction_witness {
+            stream
+                .append(&self.version)
+                .append(&WITNESS_MARKER)
+                .append(&WITNESS_FLAG)
+                .append_list(&self.inputs)
+                .append_list(&self.outputs);
+            for input in &self.inputs {
+                stream.append_list(&input.script_witness);
+            }
+            stream.append(&self.lock_time);
+        } else {
+            stream
                 .append(&self.version)
                 .append_list(&self.inputs)
                 .append_list(&self.outputs)
-                .append(&self.lock_time),
-            true => {
-                stream
-                    .append(&self.version)
-                    .append(&WITNESS_MARKER)
-                    .append(&WITNESS_FLAG)
-                    .append_list(&self.inputs)
-                    .append_list(&self.outputs);
-                for input in &self.inputs {
-                    stream.append_list(&input.script_witness);
-                }
-                stream.append(&self.lock_time)
-            }
-        };
+                .append(&self.lock_time);
+        }
     }
 }
 

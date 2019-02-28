@@ -16,19 +16,19 @@ impl From<CompactInteger> for u64 {
 
 impl From<u8> for CompactInteger {
     fn from(i: u8) -> Self {
-        CompactInteger(i as u64)
+        CompactInteger(u64::from(i))
     }
 }
 
 impl From<u16> for CompactInteger {
     fn from(i: u16) -> Self {
-        CompactInteger(i as u64)
+        CompactInteger(u64::from(i))
     }
 }
 
 impl From<u32> for CompactInteger {
     fn from(i: u32) -> Self {
-        CompactInteger(i as u64)
+        CompactInteger(u64::from(i))
     }
 }
 

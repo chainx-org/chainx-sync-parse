@@ -1,3 +1,5 @@
+#![allow(unused_must_use)]
+
 use parity_codec::{Decode, Encode, Input};
 use parity_codec_derive::{Decode, Encode};
 use serde_derive::{Deserialize, Serialize};
@@ -153,7 +155,7 @@ impl TransactionInput {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct OutPoint {
     pub hash: substrate_primitives::H256,

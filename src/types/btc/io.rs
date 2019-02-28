@@ -1,5 +1,6 @@
 use byteorder::ByteOrder;
 
+#[allow(dead_code)]
 pub enum ErrorKind {
     Interrupted,
     UnexpectedEof,

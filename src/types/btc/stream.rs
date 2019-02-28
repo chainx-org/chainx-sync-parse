@@ -5,7 +5,7 @@ use super::io;
 use super::Bytes;
 
 /// Do not serialize transaction witness data.
-pub const SERIALIZE_TRANSACTION_WITNESS: u32 = 0x40000000;
+pub const SERIALIZE_TRANSACTION_WITNESS: u32 = 0x4000_0000;
 
 pub trait Serializable {
     /// Serialize the struct and appends it to the end of stream.
