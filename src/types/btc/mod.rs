@@ -12,7 +12,7 @@ mod stream;
 
 use super::Bytes;
 
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Compact(u32);
 
