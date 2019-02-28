@@ -3,9 +3,11 @@ use hyper::{rt::Future, service::service_fn_ok, Body, Method, Request, Response,
 use serde_json::json;
 
 fn echo(req: Request<Body>) -> Response<Body> {
-    match (req.method(), req.uri().path()) {
+    let (parts, _body) = req.into_parts();
+
+    match (parts.method, parts.uri.path()) {
         // Simply echo the body back to the client.
-        (&Method::POST, "/write") => {
+        (Method::POST, "/write") => {
             let body = json!({"result":"OK"});
             let body = serde_json::to_string(&body).unwrap();
             println!("Response body: {}", &body);

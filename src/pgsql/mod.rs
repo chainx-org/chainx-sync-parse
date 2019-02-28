@@ -25,7 +25,7 @@ fn insert_block(conn: &PgConnection, new_blocks: Vec<NewBlock>) -> usize {
         .expect("Error saving new block")
 }
 
-pub fn insert_block_with_height(conn: &PgConnection, h: u64, stat: &HashMap<String, Value>) {
+pub fn insert_block_into_pgsql(conn: &PgConnection, h: u64, stat: &HashMap<String, Value>) {
     let new_blocks: Vec<NewBlock> = stat
         .iter()
         .map(|(k, v)| NewBlock {
@@ -39,8 +39,7 @@ pub fn insert_block_with_height(conn: &PgConnection, h: u64, stat: &HashMap<Stri
     if actual_size != expect_size {
         warn!(
             "PostgreSQL: insert size (actual/expect) - ({}/{})",
-            actual_size,
-            expect_size
+            actual_size, expect_size
         );
     } else {
         info!(

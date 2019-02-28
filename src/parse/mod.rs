@@ -1,17 +1,13 @@
-mod btc;
-mod btree_map;
-mod linked_node;
 mod primitives;
 
-use log::{debug, error, info};
+use log::{debug, error};
 use parity_codec::Decode;
 use serde_json::json;
 use strum::{EnumMessage, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage};
 
-use self::btree_map::CodecBTreeMap;
-use self::linked_node::{MultiNodeIndex, Node};
 use self::primitives::*;
+use crate::types::{btc, Bytes, CodecBTreeMap, MultiNodeIndex, Node};
 use crate::Result;
 
 #[rustfmt::skip]
@@ -22,6 +18,8 @@ pub enum RuntimeStorage {
     // Substrate
     // ============================================================================================
     // system -------------------------------------------------------------------------------------
+//    #[strum(message = "System Number", detailed_message = "value")]
+//    SystemNumber(BlockNumber),
     #[strum(message = "System AccountNonce", detailed_message = "map")]
     SystemAccountNonce(AccountId, Index),
     #[strum(message = "System BlockHash", detailed_message = "map")]
@@ -76,8 +74,6 @@ pub enum RuntimeStorage {
     XSystemBlockProducer(AccountId),
     #[strum(message = "XSystem DeathAccount", detailed_message = "value")]
     XSystemDeathAccount(AccountId),
-    #[strum(message = "XSystem BannedAccount", detailed_message = "value")]
-    XSystemBannedAccount(AccountId),
     #[strum(message = "XSystem BurnAccount", detailed_message = "value")]
     XSystemBurnAccount(AccountId),
     // xaccounts ----------------------------------------------------------------------------------
@@ -92,14 +88,14 @@ pub enum RuntimeStorage {
     #[strum(message = "XAccounts TrusteeIntentionPropertiesOf", detailed_message = "map")]
     XAccountsTrusteeIntentionPropertiesOf((AccountId, Chain), TrusteeIntentionProps),
     #[strum(message = "XAccounts CrossChainAddressMapOf", detailed_message = "map")]
-    XAccountsCrossChainAddressMapOf((Chain, Vec<u8>), (AccountId, AccountId)),
+    XAccountsCrossChainAddressMapOf((Chain, Bytes), (AccountId, AccountId)),
     #[strum(message = "XAccounts CrossChainBindOf", detailed_message = "map")]
-    XAccountsCrossChainBindOf((Chain, AccountId), Vec<Vec<u8>>),
+    XAccountsCrossChainBindOf((Chain, AccountId), Vec<Bytes>),
     #[strum(message = "XAccounts TrusteeAddress", detailed_message = "map")]
     XAccountsTrusteeAddress(Chain, TrusteeAddressPair),
     // xfee ---------------------------------------------------------------------------------------
     #[strum(message = "XFeeManager Switch", detailed_message = "value")]
-    XFeeManagerSwitch(bool),
+    XFeeManagerSwitch(SwitchStore),
     #[strum(message = "XFeeManager ProducerFeeProportion", detailed_message = "value")]
     XFeeManagerProducerFeeProportion((u32, u32)),
     // xassets ------------------------------------------------------------------------------------
@@ -125,6 +121,13 @@ pub enum RuntimeStorage {
     XAssetsRecordsSerialNumber(u32),
     // xmining ------------------------------------------------------------------------------------
     // XStaking
+
+    #[strum(message = "XStaking InitialReward", detailed_message = "value")]
+    XStakingInitialReward(Balance),
+    #[strum(message = "XStaking TrusteeCount", detailed_message = "value")]
+    XStakingTrusteeCount(u32),
+    #[strum(message = "XStaking MinimumTrusteeCount", detailed_message = "value")]
+    XStakingMinimumTrusteeCount(u32),
     #[strum(message = "XStaking ValidatorCount", detailed_message = "value")]
     XStakingValidatorCount(u32),
     #[strum(message = "XStaking MinimumValidatorCount", detailed_message = "value")]
@@ -165,7 +168,7 @@ pub enum RuntimeStorage {
     XStakingPunishList(Vec<AccountId>),
     // XTokens
     #[strum(message = "XTokens TokenDiscount", detailed_message = "value")]
-    XTokensTokenDiscount(Permill),
+    XTokensTokenDiscount(u32),
     #[strum(message = "XTokens PseduIntentions", detailed_message = "value")]
     XTokensPseduIntentions(Vec<Token>),
     #[strum(message = "XTokens PseduIntentionProfiles", detailed_message = "map")]
@@ -203,7 +206,7 @@ pub enum RuntimeStorage {
     #[strum(message = "XBridgeOfBTC TxFor", detailed_message = "map")]
     XBridgeOfBTCTxFor(H256, TxInfo),
     #[strum(message = "XBridgeOfBTC GenesisInfo", detailed_message = "value")]
-    XBridgeOfBTCGenesisInfo((BlockHeader, u32)),
+    XBridgeOfBTCGenesisInfo((btc::BlockHeader, u32)),
     #[strum(message = "XBridgeOfBTC ParamsInfo", detailed_message = "value")]
     XBridgeOfBTCParamsInfo(Params),
     #[strum(message = "XBridgeOfBTC NetworkId", detailed_message = "value")]
@@ -263,7 +266,7 @@ macro_rules! to_map_json {
 macro_rules! to_value_json_impl {
     ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
         if $value.is_empty() {
-            info!("Empty Value: [{:?}] may have been removed", $prefix);
+            debug!("Empty Value: [{:?}] may have been removed", $prefix);
             return Ok(build_json!($type, $prefix, $k, null));
         }
         *$v = match Decode::decode(&mut $value.as_slice()) {
@@ -345,7 +348,6 @@ impl RuntimeStorage {
             // ChainX
             RuntimeStorage::XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSystemDeathAccount(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XSystemBannedAccount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSystemBurnAccount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XAccountsIntentionOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAccountsIntentionNameOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -366,6 +368,9 @@ impl RuntimeStorage {
             RuntimeStorage::XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsRecordsSerialNumber(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingInitialReward(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingTrusteeCount(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingMinimumTrusteeCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
@@ -426,7 +431,7 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    pub fn test_parse_match_value() {
+    fn test_parse_match_value() {
         let key = "Balances TotalIssuance".as_bytes();
         let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -443,7 +448,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_match_map() {
+    fn test_parse_match_map() {
         let key = "Balances FreeBalance12345678901234567890123456789012".as_bytes();
         let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -460,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_match_map_option() {
+    fn test_parse_match_map_option() {
         let key = "XAssets AssetInfo\u{c}PCX".as_bytes();
         let value = vec![
             12, 80, 67, 88, 56, 80, 111, 108, 107, 97, 100, 111, 116, 67, 104, 97, 105, 110, 88, 0,
@@ -491,7 +496,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_match_codec_btree_map() {
+    fn test_parse_match_codec_btree_map() {
         let key = "XAssets TotalAssetBalance\u{c}BTC".as_bytes();
         let value = vec![1, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 0];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -508,7 +513,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_parse_remove_value() {
+    fn test_parse_remove_value() {
         let key = "XSystem BlockProducer".as_bytes();
         let value = vec![];
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
@@ -522,5 +527,24 @@ mod tests {
         )
         .unwrap();
         assert_eq!(got, exp);
+    }
+
+    #[test]
+    fn test_parse_btc_block_header_for() {
+        let key: Vec<u8> = vec![
+            88, 66, 114, 105, 100, 103, 101, 79, 102, 66, 84, 67, 32, 66, 108, 111, 99, 107, 72,
+            101, 97, 100, 101, 114, 70, 111, 114, 17, 236, 67, 232, 134, 149, 88, 40, 181, 65, 17,
+            172, 232, 106, 54, 152, 241, 119, 229, 70, 94, 82, 120, 156, 200, 250, 63, 0, 0, 0, 0,
+            0,
+        ];
+        let value: Vec<u8> = vec![
+            65, 1, 0, 0, 0, 32, 191, 83, 119, 194, 61, 87, 214, 213, 139, 39, 29, 18, 205, 101, 29,
+            83, 9, 195, 158, 83, 121, 181, 78, 71, 27, 115, 48, 0, 0, 0, 0, 0, 219, 155, 212, 181,
+            234, 26, 130, 11, 1, 93, 226, 194, 250, 71, 254, 219, 120, 195, 110, 151, 175, 123,
+            188, 204, 169, 122, 189, 43, 13, 4, 106, 3, 113, 81, 106, 92, 4, 252, 0, 29, 201, 117,
+            178, 119, 31, 64, 22, 0, 0, 0,
+        ];
+        let (_, got) = RuntimeStorage::parse(&key, value).unwrap();
+        println!("{:?}", got);
     }
 }

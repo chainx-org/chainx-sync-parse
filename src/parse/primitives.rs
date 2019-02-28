@@ -2,13 +2,12 @@ use parity_codec::Codec;
 use parity_codec_derive::{Decode, Encode};
 use serde_derive::{Deserialize, Serialize};
 
-use super::{btc, linked_node::NodeT};
+use crate::types::{btc, Bytes, NodeT};
 
 // ================================================================================================
 // Substrate primitives.
 // ================================================================================================
 
-pub use sr_primitives::Permill;
 pub use substrate_primitives::H256;
 
 //pub use srml_balances::VestingSchedule;
@@ -79,12 +78,12 @@ pub struct IntentionProps {
 #[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum TrusteeEntity {
-    Bitcoin(Vec<u8>),
+    Bitcoin(Bytes),
 }
 
 impl Default for TrusteeEntity {
     fn default() -> Self {
-        TrusteeEntity::Bitcoin(Vec::default())
+        TrusteeEntity::Bitcoin(Bytes::default())
     }
 }
 
@@ -99,8 +98,21 @@ pub struct TrusteeIntentionProps {
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeAddressPair {
-    pub hot_address: Vec<u8>,
-    pub cold_address: Vec<u8>,
+    pub hot_address: Bytes,
+    pub cold_address: Bytes,
+}
+
+// ============================================================================
+// xfee - manager runtime module definitions.
+// ============================================================================
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct SwitchStore {
+    pub global: bool,
+    pub spot: bool,
+    pub xbtc: bool,
+    pub sdot: bool,
 }
 
 // ============================================================================
@@ -355,25 +367,10 @@ where
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BlockHeaderInfo {
-    pub header: BlockHeader,
+    pub header: btc::BlockHeader,
     pub height: u32,
     pub confirmed: bool,
     pub txid: Vec<H256>,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct Compact(u32);
-
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct BlockHeader {
-    pub version: u32,
-    pub previous_header_hash: substrate_primitives::H256,
-    pub merkle_root_hash: substrate_primitives::H256,
-    pub time: u32,
-    pub bits: Compact,
-    pub nonce: u32,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
@@ -431,18 +428,19 @@ where
     pub withdraw_id: Vec<u32>,
     pub tx: btc::Transaction,
     pub sig_status: VoteResult,
+    pub sig_num: u32,
     pub sig_node: Vec<(AccountId, bool)>,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeScriptInfo {
-    pub hot_redeem_script: Vec<u8>,
-    pub cold_redeem_script: Vec<u8>,
+    pub hot_redeem_script: Bytes,
+    pub cold_redeem_script: Bytes,
 }
 
 // ============================================================================
 // xbridge - sdot runtime module definitions.
 // ============================================================================
 
-pub type EthereumAddress = [u8; 20];
+pub type EthereumAddress = substrate_primitives::H160;
