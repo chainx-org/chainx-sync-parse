@@ -68,8 +68,8 @@ fn main() -> Result<()> {
             // for debug
             if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
                 debug!(
-                    "block_height: {:?}, prefix+key: {:?} (hex: {:?}), value: {:?}",
-                    height, prefix_key, key, value
+                    "block_height: {:?}, prefix+key: {:?}, value: {:?}",
+                    height, prefix_key, value
                 );
             } else {
                 debug!(

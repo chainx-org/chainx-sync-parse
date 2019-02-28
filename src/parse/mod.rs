@@ -18,6 +18,8 @@ pub enum RuntimeStorage {
     // Substrate
     // ============================================================================================
     // system -------------------------------------------------------------------------------------
+//    #[strum(message = "System Number", detailed_message = "value")]
+//    SystemNumber(BlockNumber),
     #[strum(message = "System AccountNonce", detailed_message = "map")]
     SystemAccountNonce(AccountId, Index),
     #[strum(message = "System BlockHash", detailed_message = "map")]
