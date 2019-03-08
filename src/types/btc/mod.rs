@@ -1,7 +1,6 @@
 #![allow(unused_must_use)]
 
 use parity_codec::{Decode, Encode, Input};
-use parity_codec_derive::{Decode, Encode};
 use serde_derive::{Deserialize, Serialize};
 
 mod compact_integer;
