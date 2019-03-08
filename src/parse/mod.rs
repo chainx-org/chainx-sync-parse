@@ -169,10 +169,6 @@ pub enum RuntimeStorage {
     XStakingSlashedPerSession(Vec<AccountId>),
     #[strum(message = "XStaking TotalSlashOfPerSession", detailed_message = "map")]
     XStakingTotalSlashOfPerSession(AccountId, Balance),
-//    #[strum(message = "XStaking Penalty", detailed_message = "value")]
-//    XStakingPenalty(Balance),
-//    #[strum(message = "XStaking PunishList", detailed_message = "value")]
-//    XStakingPunishList(Vec<AccountId>),
     // XTokens
     #[strum(message = "XTokens TokenDiscount", detailed_message = "value")]
     XTokensTokenDiscount(u32),
