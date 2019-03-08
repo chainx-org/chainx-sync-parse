@@ -73,6 +73,7 @@ pub struct IntentionProps {
     pub url: URL,
     pub is_active: bool,
     pub about: XString,
+//    pub session_key: Option<SessionKey>, # TODO: add the field in next testnet version.
 }
 
 #[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
