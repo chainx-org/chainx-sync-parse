@@ -39,10 +39,6 @@ pub enum RuntimeStorage {
     BalancesFreeBalance(AccountId, Balance),
     #[strum(message = "Balances ReservedBalance", detailed_message = "map")]
     BalancesReservedBalance(AccountId, Balance),
-    #[strum(message = "Balances TransactionBaseFee", detailed_message = "value")]
-    BalancesTransactionBaseFee(Balance),
-    #[strum(message = "Balances TransactionByteFee", detailed_message = "value")]
-    BalancesTransactionByteFee(Balance),
     // indices ------------------------------------------------------------------------------------
     #[strum(message = "Indices NextEnumSet", detailed_message = "value")]
     IndicesNextEnumSet(AccountIndex),
@@ -64,6 +60,8 @@ pub enum RuntimeStorage {
     SessionCurrentStart(Moment),
     #[strum(message = "Session ForcingNewSession", detailed_message = "value")]
     SessionForcingNewSession(bool),
+    #[strum(message = "Session SessionKeys", detailed_message = "map")]
+    SessionSessionKeys(AccountId, SessionKey),
     #[strum(message = "Session NextKeyFor", detailed_message = "map")]
     SessionNextKeyFor(AccountId, SessionKey),
     // ============================================================================================
@@ -98,6 +96,10 @@ pub enum RuntimeStorage {
     XFeeManagerSwitch(SwitchStore),
     #[strum(message = "XFeeManager ProducerFeeProportion", detailed_message = "value")]
     XFeeManagerProducerFeeProportion((u32, u32)),
+    #[strum(message = "XFeeManager TransactionBaseFee", detailed_message = "value")]
+    XFeeManagerTransactionBaseFee(Balance),
+    #[strum(message = "XFeeManager TransactionByteFee", detailed_message = "value")]
+    XFeeManagerTransactionByteFee(Balance),
     // xassets ------------------------------------------------------------------------------------
     // XAssets
     #[strum(message = "XAssets AssetList", detailed_message = "map")]
@@ -121,7 +123,6 @@ pub enum RuntimeStorage {
     XAssetsRecordsSerialNumber(u32),
     // xmining ------------------------------------------------------------------------------------
     // XStaking
-
     #[strum(message = "XStaking InitialReward", detailed_message = "value")]
     XStakingInitialReward(Balance),
     #[strum(message = "XStaking TrusteeCount", detailed_message = "value")]
@@ -162,10 +163,16 @@ pub enum RuntimeStorage {
     XStakingTeamAddress(AccountId),
     #[strum(message = "XStaking CouncilAddress", detailed_message = "value")]
     XStakingCouncilAddress(AccountId),
-    #[strum(message = "XStaking Penalty", detailed_message = "value")]
-    XStakingPenalty(Balance),
-    #[strum(message = "XStaking PunishList", detailed_message = "value")]
-    XStakingPunishList(Vec<AccountId>),
+    #[strum(message = "XStaking MinimumPenalty", detailed_message = "value")]
+    XStakingMinimumPenalty(Balance),
+    #[strum(message = "XStaking SlashedPerSession", detailed_message = "value")]
+    XStakingSlashedPerSession(Vec<AccountId>),
+    #[strum(message = "XStaking TotalSlashOfPerSession", detailed_message = "map")]
+    XStakingTotalSlashOfPerSession(AccountId, Balance),
+//    #[strum(message = "XStaking Penalty", detailed_message = "value")]
+//    XStakingPenalty(Balance),
+//    #[strum(message = "XStaking PunishList", detailed_message = "value")]
+//    XStakingPunishList(Vec<AccountId>),
     // XTokens
     #[strum(message = "XTokens TokenDiscount", detailed_message = "value")]
     XTokensTokenDiscount(u32),
@@ -333,8 +340,6 @@ impl RuntimeStorage {
             RuntimeStorage::BalancesVesting(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesFreeBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesReservedBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::BalancesTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::BalancesTransactionByteFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::IndicesNextEnumSet(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::IndicesEnumSet(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::TimestampNow(ref mut v) => to_value_json!(prefix, value => v),
@@ -344,6 +349,7 @@ impl RuntimeStorage {
             RuntimeStorage::SessionCurrentIndex(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::SessionCurrentStart(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::SessionForcingNewSession(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::SessionSessionKeys(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::SessionNextKeyFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             // ChainX
             RuntimeStorage::XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
@@ -359,6 +365,8 @@ impl RuntimeStorage {
             RuntimeStorage::XAccountsTrusteeAddress(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XFeeManagerSwitch(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XFeeManagerProducerFeeProportion(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XFeeManagerTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XFeeManagerTransactionByteFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XAssetsAssetList(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsAssetInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -388,8 +396,9 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingNominationRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XStakingTeamAddress(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingCouncilAddress(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XStakingPenalty(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XStakingPunishList(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingMinimumPenalty(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingSlashedPerSession(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingTotalSlashOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensTokenDiscount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
