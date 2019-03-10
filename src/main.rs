@@ -59,8 +59,8 @@ fn main() -> Result<()> {
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_service = client.start_subscription()?;
 
-    let mut next_block_height: u64 = 1;
-    let mut cur_block_height: u64;
+    let mut next_block_height: u64 = 0;
+    let mut cur_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
     while let Ok(key) = client.recv_key() {
@@ -78,10 +78,9 @@ fn main() -> Result<()> {
                 );
             }
 
-            if height < next_block_height {
+            if height < cur_block_height {
                 continue;
             }
-            assert!(height >= 1);
 
             if height == next_block_height {
                 match RuntimeStorage::parse(&key, value) {
@@ -93,6 +92,8 @@ fn main() -> Result<()> {
                 continue;
             }
 
+            // when height > nex_block_height
+            assert!(height >= 1);
             next_block_height = height;
             cur_block_height = next_block_height - 1;
 
