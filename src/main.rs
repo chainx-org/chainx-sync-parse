@@ -40,7 +40,7 @@ fn init_log_config() -> Result<()> {
     Ok(())
 }
 
-fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<String, Value>) {
+fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<Vec<u8>, Value>) {
     let values: Vec<Value> = stat.values().cloned().collect();
     if queue.write().insert(h, values.clone()).is_none() {
         info!("Insert the block #{} into block queue successfully", h);
@@ -79,12 +79,15 @@ fn main() -> Result<()> {
             }
 
             if height < cur_block_height {
-                continue;
+                next_block_height = height;
+                stat.clear();
             }
 
             if height == next_block_height {
                 match RuntimeStorage::parse(&key, value) {
                     Ok((prefix, value)) => {
+                        let mut prefix = prefix.into_bytes();
+                        prefix.append(&mut key.clone());
                         stat.insert(prefix, value);
                     }
                     Err(_) => continue,
@@ -93,7 +96,6 @@ fn main() -> Result<()> {
             }
 
             // when height > nex_block_height
-            assert!(height >= 1);
             next_block_height = height;
             cur_block_height = next_block_height - 1;
 
