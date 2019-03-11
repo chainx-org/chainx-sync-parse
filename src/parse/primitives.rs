@@ -73,7 +73,7 @@ pub struct IntentionProps {
     pub url: URL,
     pub is_active: bool,
     pub about: XString,
-//    pub session_key: Option<SessionKey>, # TODO: add the field in next testnet version.
+    pub session_key: Option<SessionKey>,
 }
 
 #[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
@@ -268,24 +268,27 @@ pub type Price = Balance;
 pub type Amount = Balance;
 
 pub type ID = u64;
-pub type OrderPairID = u32;
+pub type TradingPairIndex = u32;
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct OrderPair {
-    pub id: OrderPairID,
-    pub first: Token,
-    pub second: Token,
-    pub precision: u32,      //价格精度
-    pub unit_precision: u32, //最小单位精度
-    pub used: bool,
+pub struct CurrencyPair(pub Token, pub Token); // base currency / counter currency
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TradingPair {
+    pub id: TradingPairIndex,
+    pub currency_pair: CurrencyPair,
+    pub precision: u32,      // price precision
+    pub unit_precision: u32, // minimum unit precision
+    pub online: bool,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum OrderType {
-    Limit,  //限价单
-    Market, //市价单
+    Limit,
+    Market,
 }
 
 impl Default for OrderType {
@@ -310,20 +313,38 @@ impl Default for OrderDirection {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum OrderStatus {
-    FillNo,
-    FillPart,
-    FillAll,
-    FillPartAndCancel,
-    Cancel,
+    ZeroExecuted,
+    ParitialExecuted,
+    AllExecuted,
+    ParitialExecutedAndCanceled,
+    Canceled,
 }
 
 impl Default for OrderStatus {
     fn default() -> Self {
-        OrderStatus::FillNo
+        OrderStatus::ZeroExecuted
     }
 }
 
-/// 用户的委托记录 包含了成交历史的index
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct OrderProperty<
+    Pair: Clone + Default + Codec,
+    AccountId: Clone + Default + Codec,
+    Amount: Copy + Default + Codec,
+    Price: Copy + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
+>(
+    AccountId,
+    Pair,
+    OrderDirection,
+    Amount,
+    Price,
+    ID,
+    OrderType,
+    BlockNumber,
+);
+
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Order<Pair, AccountId, Amount, Price, BlockNumber>
@@ -334,21 +355,13 @@ where
     Price: Copy + Default + Codec,
     BlockNumber: Copy + Default + Codec,
 {
-    pub pair: Pair,
-    pub price: Price,
-    pub index: ID,
+    props: OrderProperty<Pair, AccountId, Amount, Price, BlockNumber>,
 
-    pub user: AccountId,
-    pub class: OrderType,
-    pub direction: OrderDirection,
-
-    pub amount: Amount,
-    pub hasfill_amount: Amount,
-    pub create_time: BlockNumber,
-    pub lastupdate_time: BlockNumber,
     pub status: OrderStatus,
-    pub reserve_last: Amount, //未被交易 未被回退
-    pub fill_index: Vec<ID>,  // 填充历史记录的索引
+    pub remaining: Amount,   // remaining amount, measured by counter currency
+    pub fill_index: Vec<ID>, // index of transaction record
+    pub already_filled: Amount,
+    pub last_update_at: BlockNumber, // FIXME BlockNumber or Timestamp?
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
@@ -371,40 +384,34 @@ pub struct BlockHeaderInfo {
     pub header: btc::BlockHeader,
     pub height: u32,
     pub confirmed: bool,
-    pub txid: Vec<H256>,
+    pub txid_list: Vec<H256>,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum TxType {
+    Withdraw,
+    Deposit,
+}
+
+impl Default for TxType {
+    fn default() -> Self {
+        TxType::Deposit
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TxInfo {
-    pub input_address: btc::Address,
     pub raw_tx: btc::Transaction,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct Params {
-    max_bits: u32,
-    //Compact
-    block_max_future: u32,
-    max_fork_route_preset: u32,
-
-    target_timespan_seconds: u32,
-    target_spacing_seconds: u32,
-    retargeting_factor: u32,
-
-    double_spacing_seconds: u32,
-
-    retargeting_interval: u32,
-    min_timespan: u32,
-    max_timespan: u32,
+    pub tx_type: TxType,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositCache {
     pub txid: H256,
-    pub index: u32,
+    pub balance: u64,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
@@ -426,11 +433,26 @@ pub struct CandidateTx<AccountId>
 where
     AccountId: Clone + Default + Codec,
 {
-    pub withdraw_id: Vec<u32>,
+    pub sig_state: VoteResult,
+    pub withdrawal_id_list: Vec<u32>,
     pub tx: btc::Transaction,
-    pub sig_status: VoteResult,
-    pub sig_num: u32,
-    pub sig_node: Vec<(AccountId, bool)>,
+    pub trustee_list: Vec<(AccountId, bool)>,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct Params {
+    max_bits: u32,
+    //Compact
+    block_max_future: u32,
+
+    target_timespan_seconds: u32,
+    target_spacing_seconds: u32,
+    retargeting_factor: u32,
+
+    retargeting_interval: u32,
+    min_timespan: u32,
+    max_timespan: u32,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]

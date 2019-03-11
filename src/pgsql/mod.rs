@@ -25,7 +25,7 @@ fn insert_block(conn: &PgConnection, new_blocks: Vec<NewBlock>) -> usize {
         .expect("Error saving new block")
 }
 
-pub fn insert_block_into_pgsql(conn: &PgConnection, h: u64, stat: &HashMap<String, Value>) {
+pub fn insert_block_into_pgsql(conn: &PgConnection, h: u64, stat: &HashMap<Vec<u8>, Value>) {
     let new_blocks: Vec<NewBlock> = stat
         .iter()
         .map(|(k, v)| NewBlock {
