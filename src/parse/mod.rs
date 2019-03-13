@@ -86,7 +86,7 @@ pub enum RuntimeStorage {
     #[strum(message = "XAccounts TrusteeIntentionPropertiesOf", detailed_message = "map")]
     XAccountsTrusteeIntentionPropertiesOf((AccountId, Chain), TrusteeIntentionProps),
     #[strum(message = "XAccounts CrossChainAddressMapOf", detailed_message = "map")]
-    XAccountsCrossChainAddressMapOf((Chain, Bytes), (AccountId, AccountId)),
+    XAccountsCrossChainAddressMapOf((Chain, Bytes), (AccountId, Option<AccountId>)),
     #[strum(message = "XAccounts CrossChainBindOf", detailed_message = "map")]
     XAccountsCrossChainBindOf((Chain, AccountId), Vec<Bytes>),
     #[strum(message = "XAccounts TrusteeAddress", detailed_message = "map")]
@@ -178,6 +178,19 @@ pub enum RuntimeStorage {
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<BlockNumber>),
     #[strum(message = "XTokens DepositRecords", detailed_message = "map")]
     XTokensDepositRecords((AccountId, Token), DepositVoteWeight<BlockNumber>),
+    // xmultisig ----------------------------------------------------------------------------------
+    #[strum(message = "XMultiSig RootAddrList", detailed_message = "value")]
+    XMultiSigRootAddrList(Vec<AccountId>),
+    #[strum(message = "XMultiSig MultiSigAddrInfo", detailed_message = "map")]
+    XMultiSigMultiSigAddrInfo(AccountId, AddrInfo<AccountId>),
+    #[strum(message = "XMultiSig PendingListFor", detailed_message = "map")]
+    XMultiSigPendingListFor(AccountId, Vec<Hash>),
+//    #[strum(message = "XMultiSig PendingStateFor", detailed_message = "map")]
+//    XMultiSigPendingStateFor((AccountId, Hash), PendingState<Proposal>),
+    #[strum(message = "XMultiSig MultiSigListItemFor", detailed_message = "map")]
+    XMultiSigMultiSigListItemFor((AccountId, u32), AccountId),
+    #[strum(message = "XMultiSig MultiSigListLenFor", detailed_message = "map")]
+    XMultiSigMultiSigListLenFor(AccountId, u32),
     // xdex ---------------------------------------------------------------------------------------
     // XSpot
     #[strum(message = "XSpot TradingPairCount", detailed_message = "value")]
@@ -406,6 +419,12 @@ impl RuntimeStorage {
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XMultiSigRootAddrList(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XMultiSigMultiSigAddrInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XMultiSigPendingListFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+//            RuntimeStorage::XMultiSigPendingStateFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XMultiSigMultiSigListItemFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XMultiSigMultiSigListLenFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XSpotTradingPairCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSpotTradingPairOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XSpotTradingPairInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
