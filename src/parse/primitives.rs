@@ -261,6 +261,30 @@ where
 }
 
 // ============================================================================
+// xmultisig - multisig runtime module definitions.
+// ============================================================================
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct AddrInfo<AccountId>
+where
+    AccountId: Clone + Default + Codec,
+{
+    is_root: bool,
+    required_num: u32,
+    owner_list: Vec<(AccountId, bool)>,
+}
+
+// struct for the status of a pending operation.
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct PendingState<Proposal> {
+    yet_needed: u32,
+    owners_done: u32,
+    proposal: Box<Proposal>,
+}
+
+// ============================================================================
 // xdex - spot runtime module definitions.
 // ============================================================================
 
