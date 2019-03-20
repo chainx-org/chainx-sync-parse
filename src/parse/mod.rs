@@ -39,6 +39,8 @@ pub enum RuntimeStorage {
     BalancesFreeBalance(AccountId, Balance),
     #[strum(message = "Balances ReservedBalance", detailed_message = "map")]
     BalancesReservedBalance(AccountId, Balance),
+//    #[strum(message = "Balances Locks", detailed_message = "map")]
+//    BalancesLocks(AccountId, Vec<BalanceLock<Balance, BlockNumber>>),
     // indices ------------------------------------------------------------------------------------
     #[strum(message = "Indices NextEnumSet", detailed_message = "value")]
     IndicesNextEnumSet(AccountIndex),
@@ -46,9 +48,9 @@ pub enum RuntimeStorage {
     IndicesEnumSet(AccountIndex, Vec<AccountId>),
     // timestamp ----------------------------------------------------------------------------------
     #[strum(message = "Timestamp Now", detailed_message = "value")]
-    TimestampNow(Moment),
+    TimestampNow(Timestamp),
     #[strum(message = "Timestamp BlockPeriod", detailed_message = "value")]
-    TimestampBlockPeriod(Moment),
+    TimestampBlockPeriod(Timestamp),
     // session ------------------------------------------------------------------------------------
     #[strum(message = "Session Validators", detailed_message = "value")]
     SessionValidators(Vec<(AccountId, u64)>),   // SessionValidators(Vec<AccountId>) in substrate
@@ -57,11 +59,9 @@ pub enum RuntimeStorage {
     #[strum(message = "Session CurrentIndex", detailed_message = "value")]
     SessionCurrentIndex(BlockNumber),
     #[strum(message = "Session CurrentStart", detailed_message = "value")]
-    SessionCurrentStart(Moment),
+    SessionCurrentStart(Timestamp),
     #[strum(message = "Session ForcingNewSession", detailed_message = "value")]
     SessionForcingNewSession(bool),
-    #[strum(message = "Session SessionKeys", detailed_message = "map")]
-    SessionSessionKeys(AccountId, SessionKey),
     #[strum(message = "Session NextKeyFor", detailed_message = "map")]
     SessionNextKeyFor(AccountId, SessionKey),
     // ============================================================================================
@@ -80,7 +80,7 @@ pub enum RuntimeStorage {
     #[strum(message = "XAccounts IntentionNameOf", detailed_message = "map")]
     XAccountsIntentionNameOf(AccountId, Name),
     #[strum(message = "XAccounts IntentionPropertiesOf", detailed_message = "map")]
-    XAccountsIntentionPropertiesOf(AccountId, IntentionProps),
+    XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey>),
     #[strum(message = "XAccounts TrusteeIntentions", detailed_message = "value")]
     XAccountsTrusteeIntentions(Vec<AccountId>),
     #[strum(message = "XAccounts TrusteeIntentionPropertiesOf", detailed_message = "map")]
@@ -114,11 +114,11 @@ pub enum RuntimeStorage {
     XAssetsMemoLen(u32),
     // XAssetsRecords
     #[strum(message = "XAssetsRecords ApplicationMHeader", detailed_message = "map")]
-    XAssetsRecordsApplicationMHeader(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Moment>>),
+    XAssetsRecordsApplicationMHeader(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Timestamp>>),
     #[strum(message = "XAssetsRecords ApplicationMTail", detailed_message = "map")]
-    XAssetsRecordsApplicationMTail(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Moment>>),
+    XAssetsRecordsApplicationMTail(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Timestamp>>),
     #[strum(message = "XAssetsRecords ApplicationMap", detailed_message = "map")]
-    XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance, Moment>>),
+    XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance, Timestamp>>),
     #[strum(message = "XAssetsRecords SerialNumber", detailed_message = "value")]
     XAssetsRecordsSerialNumber(u32),
     // xmining ------------------------------------------------------------------------------------
@@ -165,10 +165,10 @@ pub enum RuntimeStorage {
     XStakingCouncilAddress(AccountId),
     #[strum(message = "XStaking MinimumPenalty", detailed_message = "value")]
     XStakingMinimumPenalty(Balance),
-    #[strum(message = "XStaking SlashedPerSession", detailed_message = "value")]
-    XStakingSlashedPerSession(Vec<AccountId>),
-    #[strum(message = "XStaking TotalSlashOfPerSession", detailed_message = "map")]
-    XStakingTotalSlashOfPerSession(AccountId, Balance),
+    #[strum(message = "XStaking OfflineValidatorsPerSession", detailed_message = "value")]
+    XStakingOfflineValidatorsPerSession(Vec<AccountId>),
+    #[strum(message = "XStaking MissedOfPerSession", detailed_message = "map")]
+    XStakingMissedOfPerSession(AccountId, u32),
     // XTokens
     #[strum(message = "XTokens TokenDiscount", detailed_message = "value")]
     XTokensTokenDiscount(u32),
@@ -199,8 +199,7 @@ pub enum RuntimeStorage {
     XSpotTradingPairOf(TradingPairIndex, TradingPair),
     #[strum(message = "XSpot TradingPairInfoOf", detailed_message = "map")]
     XSpotTradingPairInfoOf(TradingPairIndex, (Price, Price, BlockNumber)),
-    // FIXME: hisotry => history
-    #[strum(message = "XSpot TradeHisotryIndexOf", detailed_message = "map")]
+    #[strum(message = "XSpot TradeHistoryIndexOf", detailed_message = "map")]
     XSpotTradeHistoryIndexOf(TradingPairIndex, ID),
     #[strum(message = "XSpot OrderCountOf", detailed_message = "map")]
     XSpotOrderCountOf(AccountId, ID),
@@ -356,6 +355,7 @@ impl RuntimeStorage {
             RuntimeStorage::BalancesVesting(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesFreeBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesReservedBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+//            RuntimeStorage::BalancesLocks(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::IndicesNextEnumSet(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::IndicesEnumSet(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::TimestampNow(ref mut v) => to_value_json!(prefix, value => v),
@@ -365,7 +365,6 @@ impl RuntimeStorage {
             RuntimeStorage::SessionCurrentIndex(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::SessionCurrentStart(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::SessionForcingNewSession(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::SessionSessionKeys(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::SessionNextKeyFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             // ChainX
             RuntimeStorage::XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
@@ -413,8 +412,8 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingTeamAddress(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingCouncilAddress(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMinimumPenalty(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XStakingSlashedPerSession(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XStakingTotalSlashOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XStakingOfflineValidatorsPerSession(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XStakingMissedOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensTokenDiscount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),

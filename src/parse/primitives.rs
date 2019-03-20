@@ -2,6 +2,8 @@ use parity_codec::Codec;
 use parity_codec_derive::{Decode, Encode};
 use serde_derive::{Deserialize, Serialize};
 
+use sr_primitives::traits::Verify;
+
 use crate::types::{btc, Bytes, NodeT};
 
 // ================================================================================================
@@ -24,38 +26,42 @@ where
     pub per_block: Balance,
 }
 
-/// A hash of some data used by the relay chain.
-pub type Hash = substrate_primitives::H256;
-
-/// The Ed25519 pub key of an session that belongs to an authority of the relay chain. This is
-/// exactly equivalent to what the substrate calls an "authority".
-pub type SessionKey = substrate_primitives::Ed25519AuthorityId;
-
-/// An index to a block.
-/// 32-bits will allow for 136 years of blocks assuming 1 block per second.
-/// TODO: switch to u32
-pub type BlockNumber = u64;
-
-/// Alias to Ed25519 pubkey that identifies an account on the relay chain.
-pub type AccountId = substrate_primitives::H256;
-
-/// The type for looking up accounts. We don't expect more than 4 billion of them, but you
-/// never know...
-pub type AccountIndex = u32;
-
-/// Index of a transaction in the relay chain. 32-bit should be plenty.
-pub type Index = u64;
-
-/// Type used for expressing timestamp.
-pub type Moment = u64;
-
-/// The balance of an account.
-/// u64 for chainx token and all assets type, if the asset is not suit for u64, choose a suitable precision
-pub type Balance = u64;
+//#[derive(Clone, PartialEq, Eq, Default, Encode, Decode)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+//pub struct BalanceLock<Balance, BlockNumber>
+//where
+//    Balance: Copy + Default + Codec,
+//    BlockNumber: Copy + Default + Codec,
+//{
+//    pub id: LockIdentifier,
+//    pub amount: Balance,
+//    pub until: BlockNumber,
+//    pub reasons: WithdrawReasons,
+//}
 
 // ================================================================================================
 // ChainX primitives.
 // ================================================================================================
+
+type AuthoritySignature = substrate_primitives::ed25519::Signature;
+type AuthorityId = <AuthoritySignature as Verify>::Signer;
+
+type Signature = substrate_primitives::ed25519::Signature;
+pub type AccountId = <Signature as Verify>::Signer;
+
+pub type Hash = substrate_primitives::H256;
+
+pub type SessionKey = AuthorityId;
+
+pub type BlockNumber = u64;
+
+pub type AccountIndex = u32;
+
+pub type Index = u64;
+
+pub type Timestamp = u64;
+
+pub type Balance = u64;
 
 pub type XString = String;
 
@@ -69,7 +75,10 @@ pub type URL = XString;
 /// Intention mutable properties
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct IntentionProps {
+pub struct IntentionProps<SessionKey>
+where
+    SessionKey: Clone + Default + Codec,
+{
     pub url: URL,
     pub is_active: bool,
     pub about: XString,
@@ -191,7 +200,7 @@ where
     time: Moment,
 }
 
-impl<AccountId, Balance> NodeT for Application<AccountId, Balance, Moment>
+impl<AccountId, Balance, Moment> NodeT for Application<AccountId, Balance, Moment>
 where
     AccountId: Clone + Default + Codec,
     Balance: Copy + Default + Codec,
