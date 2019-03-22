@@ -31,8 +31,8 @@ sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "011f18e
 substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "011f18e" }
 
 # bitcoin
-btc_chain = { package = "chain", path = "../../light-bitcoin/chain" }
-btc_keys = { package = "keys", path = "../../light-bitcoin/keys" }
+btc-chain = { package = "chain", git = "https://github.com/chainx-org/light-bitcoin" }
+btc-keys = { package = "keys", git = "https://github.com/chainx-org/light-bitcoin" }
 
 [dev-dependencies]
 clap = "2"
