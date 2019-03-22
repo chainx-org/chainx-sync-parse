@@ -1,7 +1,9 @@
 use std::fmt;
 
 use parity_codec_derive::{Decode, Encode};
+#[cfg(feature = "std")]
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
+#[cfg(feature = "std")]
 use serde::ser::{Serialize, Serializer};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Default, Encode, Decode)]
@@ -36,7 +38,6 @@ impl<T: Into<Vec<u8>>> From<T> for Bytes {
     }
 }
 
-#[cfg(feature = "std")]
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -57,8 +58,10 @@ impl<'de> Deserialize<'de> for Bytes {
     }
 }
 
+#[cfg(feature = "std")]
 struct BytesVisitor;
 
+#[cfg(feature = "std")]
 impl<'de> Visitor<'de> for BytesVisitor {
     type Value = Bytes;
 
