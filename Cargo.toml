@@ -31,7 +31,6 @@ sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "011f18e
 substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "011f18e" }
 
 # bitcoin
-btc_primitives = { package = "primitives", path = "../../light-bitcoin/primitives" }
 btc_chain = { package = "chain", path = "../../light-bitcoin/chain" }
 btc_keys = { package = "keys", path = "../../light-bitcoin/keys" }
 

@@ -15,7 +15,8 @@ pub use substrate_primitives::H256;
 //pub use srml_balances::VestingSchedule;
 /// Struct to encode the vesting schedule of an individual account.
 #[derive(Copy, Clone, PartialEq, Eq, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Debug, Serialize, Deserialize)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct VestingSchedule<Balance>
 where
     Balance: Copy + Default + Codec,
@@ -74,7 +75,8 @@ pub type URL = XString;
 
 /// Intention mutable properties
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Debug, Serialize, Deserialize)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct IntentionProps<SessionKey>
 where
     SessionKey: Clone + Default + Codec,
@@ -86,7 +88,8 @@ where
 }
 
 #[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Debug, Serialize, Deserialize)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum TrusteeEntity {
     Bitcoin(Bytes),
 }
@@ -116,7 +119,7 @@ where
     pub cold_address: Bytes,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeInfoConfig {
     pub min_trustee_count: u32,
@@ -127,7 +130,7 @@ pub struct TrusteeInfoConfig {
 // xfee - manager runtime module definitions.
 // ============================================================================
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct SwitchStore {
     pub global: bool,
@@ -195,7 +198,8 @@ pub type Memo = XString;
 
 /// application for withdrawal
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+#[derive(Debug, Serialize, Deserialize)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Application<AccountId, Balance, Moment>
 where
     AccountId: Clone + Default + Codec,
@@ -296,13 +300,13 @@ where
 }
 
 // struct for the status of a pending operation.
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct PendingState<Proposal> {
-    yet_needed: u32,
-    owners_done: u32,
-    proposal: Box<Proposal>,
-}
+//#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+//#[cfg_attr(feature = "std", derive(Debug, Serialize))]
+//pub struct PendingState<Proposal> {
+//    yet_needed: u32,
+//    owners_done: u32,
+//    proposal: Box<Proposal>,
+//}
 
 // ============================================================================
 // xdex - spot runtime module definitions.
@@ -451,7 +455,7 @@ pub struct TxInfo {
     pub tx_type: TxType,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositCache {
     pub txid: H256,
