@@ -81,16 +81,18 @@ pub enum RuntimeStorage {
     XAccountsIntentionNameOf(AccountId, Name),
     #[strum(message = "XAccounts IntentionPropertiesOf", detailed_message = "map")]
     XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey>),
-    #[strum(message = "XAccounts TrusteeIntentions", detailed_message = "value")]
-    XAccountsTrusteeIntentions(Vec<AccountId>),
-    #[strum(message = "XAccounts TrusteeIntentionPropertiesOf", detailed_message = "map")]
-    XAccountsTrusteeIntentionPropertiesOf((AccountId, Chain), TrusteeIntentionProps),
     #[strum(message = "XAccounts CrossChainAddressMapOf", detailed_message = "map")]
     XAccountsCrossChainAddressMapOf((Chain, Bytes), (AccountId, Option<AccountId>)),
     #[strum(message = "XAccounts CrossChainBindOf", detailed_message = "map")]
     XAccountsCrossChainBindOf((Chain, AccountId), Vec<Bytes>),
-    #[strum(message = "XAccounts TrusteeAddress", detailed_message = "map")]
-    XAccountsTrusteeAddress(Chain, TrusteeAddressPair),
+    #[strum(message = "XAccounts TrusteeSessionInfoLen", detailed_message = "map")]
+    XAccountsTrusteeSessionInfoLen(Chain, u32),
+    #[strum(message = "XAccounts TrusteeSessionInfoOf", detailed_message = "map")]
+    XAccountsTrusteeSessionInfoOf((Chain, u32), TrusteeSessionInfo<AccountId>),
+    #[strum(message = "XAccounts TrusteeInfoConfigOf", detailed_message = "map")]
+    XAccountsTrusteeInfoConfigOf(Chain, TrusteeInfoConfig),
+    #[strum(message = "XAccounts TrusteeIntentionPropertiesOf", detailed_message = "map")]
+    XAccountsTrusteeIntentionPropertiesOf((AccountId, Chain), TrusteeIntentionProps),
     // xfee ---------------------------------------------------------------------------------------
     #[strum(message = "XFeeManager Switch", detailed_message = "value")]
     XFeeManagerSwitch(SwitchStore),
@@ -125,10 +127,6 @@ pub enum RuntimeStorage {
     // XStaking
     #[strum(message = "XStaking InitialReward", detailed_message = "value")]
     XStakingInitialReward(Balance),
-    #[strum(message = "XStaking TrusteeCount", detailed_message = "value")]
-    XStakingTrusteeCount(u32),
-    #[strum(message = "XStaking MinimumTrusteeCount", detailed_message = "value")]
-    XStakingMinimumTrusteeCount(u32),
     #[strum(message = "XStaking ValidatorCount", detailed_message = "value")]
     XStakingValidatorCount(u32),
     #[strum(message = "XStaking MinimumValidatorCount", detailed_message = "value")]
@@ -191,6 +189,8 @@ pub enum RuntimeStorage {
     XMultiSigMultiSigListItemFor((AccountId, u32), AccountId),
     #[strum(message = "XMultiSig MultiSigListLenFor", detailed_message = "map")]
     XMultiSigMultiSigListLenFor(AccountId, u32),
+    #[strum(message = "XMultiSig TrusteeMultiSigAddr", detailed_message = "map")]
+    XMultiSigTrusteeMultiSigAddr(Chain, AccountId),
     // xdex ---------------------------------------------------------------------------------------
     // XSpot
     #[strum(message = "XSpot TradingPairCount", detailed_message = "value")]
@@ -227,10 +227,8 @@ pub enum RuntimeStorage {
     XBridgeOfBTCInputAddrFor(H256, btc::Address),
     #[strum(message = "XBridgeOfBTC PendingDepositMap", detailed_message = "map")]
     XBridgeOfBTCPendingDepositMap(btc::Address, Vec<DepositCache>),
-    #[strum(message = "XBridgeOfBTC WithdrawalProposal", detailed_message = "value")]
-    XBridgeOfBTCWithdrawalProposal(CandidateTx<AccountId>),
-    #[strum(message = "XBridgeOfBTC WithdrawalFatalErr", detailed_message = "value")]
-    XBridgeOfBTCWithdrawalFatalErr(bool),
+    #[strum(message = "XBridgeOfBTC CurrentWithdrawalProposal", detailed_message = "value")]
+    XBridgeOfBTCCurrentWithdrawalProposal(WithdrawalProposal<AccountId>),
     #[strum(message = "XBridgeOfBTC GenesisInfo", detailed_message = "value")]
     XBridgeOfBTCGenesisInfo((btc::BlockHeader, u32)),
     #[strum(message = "XBridgeOfBTC ParamsInfo", detailed_message = "value")]
@@ -241,12 +239,12 @@ pub enum RuntimeStorage {
     XBridgeOfBTCReservedBlock(u32),
     #[strum(message = "XBridgeOfBTC ConfirmationNumber", detailed_message = "value")]
     XBridgeOfBTCConfirmationNumber(u32),
-    #[strum(message = "XBridgeOfBTC TrusteeRedeemScript", detailed_message = "value")]
-    XBridgeOfBTCTrusteeRedeemScript(TrusteeScriptInfo),
     #[strum(message = "XBridgeOfBTC BtcWithdrawalFee", detailed_message = "value")]
     XBridgeOfBTCBtcWithdrawalFee(u32),
     #[strum(message = "XBridgeOfBTC MaxWithdrawalCount", detailed_message = "value")]
     XBridgeOfBTCMaxWithdrawalCount(u32),
+    #[strum(message = "XBridgeOfBTC LastTrusteeSessionNumber", detailed_message = "value")]
+    XBridgeOfBTCLastTrusteeSessionNumber(u32),
     // SDOT
     #[strum(message = "XBridgeOfSDOT Claims", detailed_message = "map")]
     XBridgeOfSDOTClaims(EthereumAddress, Balance),
@@ -373,11 +371,12 @@ impl RuntimeStorage {
             RuntimeStorage::XAccountsIntentionOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAccountsIntentionNameOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAccountsIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XAccountsTrusteeIntentions(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XAccountsTrusteeIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAccountsCrossChainAddressMapOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAccountsCrossChainBindOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XAccountsTrusteeAddress(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAccountsTrusteeSessionInfoLen(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAccountsTrusteeSessionInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAccountsTrusteeInfoConfigOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XAccountsTrusteeIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XFeeManagerSwitch(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XFeeManagerProducerFeeProportion(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XFeeManagerTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
@@ -392,8 +391,6 @@ impl RuntimeStorage {
             RuntimeStorage::XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsRecordsSerialNumber(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingInitialReward(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XStakingTrusteeCount(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XStakingMinimumTrusteeCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
@@ -424,6 +421,7 @@ impl RuntimeStorage {
 //            RuntimeStorage::XMultiSigPendingStateFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XMultiSigMultiSigListItemFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XMultiSigMultiSigListLenFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            RuntimeStorage::XMultiSigTrusteeMultiSigAddr(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XSpotTradingPairCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSpotTradingPairOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XSpotTradingPairInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -441,16 +439,15 @@ impl RuntimeStorage {
             RuntimeStorage::XBridgeOfBTCTxFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfBTCInputAddrFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XBridgeOfBTCWithdrawalProposal(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XBridgeOfBTCWithdrawalFatalErr(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XBridgeOfBTCCurrentWithdrawalProposal(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCGenesisInfo(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCParamsInfo(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCNetworkId(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCReservedBlock(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCConfirmationNumber(ref mut v) => to_value_json!(prefix, value => v),
-            RuntimeStorage::XBridgeOfBTCTrusteeRedeemScript(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCBtcWithdrawalFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCMaxWithdrawalCount(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XBridgeOfBTCLastTrusteeSessionNumber(ref mut v) => to_value_json!(prefix, value => v),
             // bridge - xdot
             RuntimeStorage::XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfSDOTTotal(ref mut v) => to_value_json!(prefix, value => v),

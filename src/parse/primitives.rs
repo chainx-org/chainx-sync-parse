@@ -107,9 +107,20 @@ pub struct TrusteeIntentionProps {
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct TrusteeAddressPair {
+pub struct TrusteeSessionInfo<AccountId>
+where
+    AccountId: Clone + Default + Codec,
+{
+    pub trustee_list: Vec<AccountId>,
     pub hot_address: Bytes,
     pub cold_address: Bytes,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeInfoConfig {
+    pub min_trustee_count: u32,
+    pub max_trustee_count: u32,
 }
 
 // ============================================================================
@@ -462,7 +473,7 @@ impl Default for VoteResult {
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct CandidateTx<AccountId>
+pub struct WithdrawalProposal<AccountId>
 where
     AccountId: Clone + Default + Codec,
 {
