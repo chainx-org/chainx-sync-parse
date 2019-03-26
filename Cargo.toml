@@ -27,8 +27,8 @@ diesel = { version = "1.4", optional = true }
 dotenv = { version = "0.13", optional = true }
 
 # substrate (the versoin used by ChainX)
-sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "fe3d57f" }
-substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "fe3d57f" }
+sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "475f0b67" }
+substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "475f0b67" }
 
 # bitcoin (the latest version of master branch)
 btc-chain = { package = "chain", git = "https://github.com/chainx-org/light-bitcoin" }
