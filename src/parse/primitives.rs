@@ -272,14 +272,27 @@ where
 // xmultisig - multisig runtime module definitions.
 // ============================================================================
 
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize)]
+pub enum AddrType {
+    Normal,
+    Root,
+    Trustee,
+}
+
+impl Default for AddrType {
+    fn default() -> Self {
+        AddrType::Normal
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
 pub struct AddrInfo<AccountId>
 where
     AccountId: Clone + Default + Codec,
 {
-    is_root: bool,
-    required_num: u32,
-    owner_list: Vec<(AccountId, bool)>,
+    pub addr_type: AddrType,
+    pub required_num: u32,
+    pub owner_list: Vec<(AccountId, bool)>,
 }
 
 // struct for the status of a pending operation.
