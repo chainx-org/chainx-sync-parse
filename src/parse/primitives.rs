@@ -272,14 +272,27 @@ where
 // xmultisig - multisig runtime module definitions.
 // ============================================================================
 
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize)]
+pub enum AddrType {
+    Normal,
+    Root,
+    Trustee,
+}
+
+impl Default for AddrType {
+    fn default() -> Self {
+        AddrType::Normal
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
 pub struct AddrInfo<AccountId>
 where
     AccountId: Clone + Default + Codec,
 {
-    is_root: bool,
-    required_num: u32,
-    owner_list: Vec<(AccountId, bool)>,
+    pub addr_type: AddrType,
+    pub required_num: u32,
+    pub owner_list: Vec<(AccountId, bool)>,
 }
 
 // struct for the status of a pending operation.
@@ -298,7 +311,8 @@ where
 pub type Price = Balance;
 pub type Amount = Balance;
 
-pub type ID = u64;
+pub type OrderIndex = u64;
+pub type TradeHistoryIndex = u64;
 pub type TradingPairIndex = u32;
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
@@ -371,27 +385,27 @@ pub struct OrderProperty<
     OrderDirection,
     Amount,
     Price,
-    ID,
+    OrderIndex,
     OrderType,
     BlockNumber,
 );
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
-pub struct Order<Pair, AccountId, Amount, Price, BlockNumber>
+pub struct Order<Pair, AccountId, Balance, Price, BlockNumber>
 where
     Pair: Clone + Default + Codec,
     AccountId: Clone + Default + Codec,
-    Amount: Copy + Default + Codec,
+    Balance: Copy + Default + Codec,
     Price: Copy + Default + Codec,
     BlockNumber: Copy + Default + Codec,
 {
-    props: OrderProperty<Pair, AccountId, Amount, Price, BlockNumber>,
+    pub props: OrderProperty<Pair, AccountId, Balance, Price, BlockNumber>,
 
     pub status: OrderStatus,
-    pub remaining: Amount,   // remaining amount, measured by counter currency
-    pub fill_index: Vec<ID>, // index of transaction record
-    pub already_filled: Amount,
-    pub last_update_at: BlockNumber, // FIXME BlockNumber or Timestamp?
+    pub remaining: Balance,
+    pub executed_indices: Vec<TradeHistoryIndex>, // indices of transaction record
+    pub already_filled: Balance,
+    pub last_update_at: BlockNumber,
 }
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]

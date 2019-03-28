@@ -33,6 +33,10 @@ pub enum RuntimeStorage {
     BalancesTransferFee(Balance),
     #[strum(message = "Balances CreationFee", detailed_message = "value")]
     BalancesCreationFee(Balance),
+    #[strum(message = "Balances TransactionBaseFee", detailed_message = "value")]
+    BalancesTransactionBaseFee(Balance),
+    #[strum(message = "Balances TransactionByteFee", detailed_message = "value")]
+    BalancesTransactionByteFee(Balance),
     #[strum(message = "Balances Vesting", detailed_message = "map")]
     BalancesVesting(AccountId, VestingSchedule<Balance>),
     #[strum(message = "Balances FreeBalance", detailed_message = "map")]
@@ -200,13 +204,13 @@ pub enum RuntimeStorage {
     #[strum(message = "XSpot TradingPairInfoOf", detailed_message = "map")]
     XSpotTradingPairInfoOf(TradingPairIndex, (Price, Price, BlockNumber)),
     #[strum(message = "XSpot TradeHistoryIndexOf", detailed_message = "map")]
-    XSpotTradeHistoryIndexOf(TradingPairIndex, ID),
+    XSpotTradeHistoryIndexOf(TradingPairIndex, TradeHistoryIndex),
     #[strum(message = "XSpot OrderCountOf", detailed_message = "map")]
-    XSpotOrderCountOf(AccountId, ID),
+    XSpotOrderCountOf(AccountId, OrderIndex),
     #[strum(message = "XSpot OrderInfoOf", detailed_message = "map")]
-    XSpotOrderInfoOf ((AccountId, ID), Order<TradingPairIndex, AccountId, Amount, Price, BlockNumber>),
+    XSpotOrderInfoOf ((AccountId, OrderIndex), Order<TradingPairIndex, AccountId, Amount, Price, BlockNumber>),
     #[strum(message = "XSpot QuotationsOf", detailed_message = "map")]
-    XSpotQuotationsOf((TradingPairIndex, Price), Vec<(AccountId, ID)>),
+    XSpotQuotationsOf((TradingPairIndex, Price), Vec<(AccountId, OrderIndex)>),
     #[strum(message = "XSpot HandicapOf", detailed_message = "map")]
     XSpotHandicapOf(TradingPairIndex, Handicap<Price>),
     #[strum(message = "XSpot PriceVolatility", detailed_message = "value")]
@@ -219,8 +223,6 @@ pub enum RuntimeStorage {
     XBridgeOfBTCBlockHashFor(u32, Vec<H256>),
     #[strum(message = "XBridgeOfBTC BlockHeaderFor", detailed_message = "map")]
     XBridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
-    #[strum(message = "XBridgeOfBTC BlockHeightFor", detailed_message = "map")]
-    XBridgeOfBTCBlockHeightFor(u32, Vec<H256>),
     #[strum(message = "XBridgeOfBTC TxFor", detailed_message = "map")]
     XBridgeOfBTCTxFor(H256, TxInfo),
     #[strum(message = "XBridgeOfBTC InputAddrFor", detailed_message = "map")]
@@ -240,7 +242,7 @@ pub enum RuntimeStorage {
     #[strum(message = "XBridgeOfBTC ConfirmationNumber", detailed_message = "value")]
     XBridgeOfBTCConfirmationNumber(u32),
     #[strum(message = "XBridgeOfBTC BtcWithdrawalFee", detailed_message = "value")]
-    XBridgeOfBTCBtcWithdrawalFee(u32),
+    XBridgeOfBTCBtcWithdrawalFee(u64),
     #[strum(message = "XBridgeOfBTC MaxWithdrawalCount", detailed_message = "value")]
     XBridgeOfBTCMaxWithdrawalCount(u32),
     #[strum(message = "XBridgeOfBTC LastTrusteeSessionNumber", detailed_message = "value")]
@@ -350,6 +352,8 @@ impl RuntimeStorage {
             RuntimeStorage::BalancesExistentialDeposit(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesTransferFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesCreationFee(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BalancesTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::BalancesTransactionByteFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::BalancesVesting(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesFreeBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::BalancesReservedBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -435,7 +439,6 @@ impl RuntimeStorage {
             RuntimeStorage::XBridgeOfBTCBestIndex(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCBlockHashFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XBridgeOfBTCBlockHeightFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfBTCTxFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfBTCInputAddrFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
