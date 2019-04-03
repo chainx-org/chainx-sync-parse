@@ -1,6 +1,5 @@
 mod primitives;
 
-use log::{debug, error};
 use parity_codec::Decode;
 use serde_json::json;
 use strum::{EnumMessage, IntoEnumIterator};

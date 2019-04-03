@@ -2,6 +2,7 @@ use std::fmt;
 
 use failure::{Backtrace, Context};
 use failure_derive::Fail;
+use std::error::Error as StdError;
 
 #[derive(Debug)]
 pub struct Error {
@@ -130,3 +131,29 @@ impl From<String> for Error {
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;
+
+const ERROR: i64 = 10000;
+
+fn rpc_error<S: Into<String>>(code: i64, msg: S) -> jsonrpc_core::Error {
+    jsonrpc_core::Error {
+        code: jsonrpc_core::ErrorCode::ServerError(code),
+        message: msg.into(),
+        data: None,
+    }
+}
+
+impl From<Error> for jsonrpc_core::Error {
+    fn from(err: Error) -> Self {
+        match err.kind() {
+            ErrorKind::Msg(msg) => rpc_error(ERROR + 1, msg.clone()),
+            ErrorKind::Fmt(e) => rpc_error(ERROR + 2, e.description()),
+            ErrorKind::Io(e) => rpc_error(ERROR + 3, e.description()),
+            ErrorKind::NetAddrParse(e) => rpc_error(ERROR + 4, e.description()),
+            ErrorKind::Send(e) => rpc_error(ERROR + 5, e.description()),
+            ErrorKind::Recv(e) => rpc_error(ERROR + 6, e.description()),
+            ErrorKind::Redis(e) => rpc_error(ERROR + 7, e.description()),
+            ErrorKind::Reqwest(e) => rpc_error(ERROR + 8, e.description()),
+            ErrorKind::SerdeJson(e) => rpc_error(ERROR + 9, e.description()),
+        }
+    }
+}

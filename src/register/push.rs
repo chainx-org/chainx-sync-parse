@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::thread;
 use std::time::Duration;
 
-use log::{debug, error, info, warn};
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{json, Value};
