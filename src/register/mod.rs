@@ -110,14 +110,17 @@ impl RegisterService {
 
     fn spawn_new_push(&self, url: String, ctxt: RegisterContext, tx: PushSender) {
         let queue = self.block_queue.clone();
-        let client = PushClient::new(url.clone());
+        let client = PushClient::new(url);
         info!("Register: start push thread of url: [{}]", &client.url);
 
         thread::spawn(move || 'outer: loop {
             if ctxt.lock().deregister {
                 tx.send(NotifyData::Deregister(client.url.clone()))
                     .expect("Unable to send context");
-                info!("Deregister: [{}] 's push thread will terminate", &url);
+                info!(
+                    "Deregister: [{}] 's push thread will terminate",
+                    &client.url
+                );
                 break 'outer;
             }
             // Ensure that there is at least one block in the queue.
@@ -135,7 +138,10 @@ impl RegisterService {
                 if !msg.is_empty() && client.post_big_message(msg).is_err() {
                     tx.send(NotifyData::Abnormal(client.url.clone()))
                         .expect("Unable to send context");
-                    warn!("Post abnormal: [{}] 's push thread will terminate", &url);
+                    warn!(
+                        "Post abnormal: [{}] 's push thread will terminate",
+                        &client.url
+                    );
                     break 'outer;
                 } else {
                     ctxt.lock().push_height = h + 1; // next push height
