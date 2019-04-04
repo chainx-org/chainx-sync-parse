@@ -67,6 +67,7 @@ type PushReceiver = Receiver<NotifyData>;
 enum NotifyData {
     Normal((String, u64)),
     Abnormal(String),
+    Deregister(String),
 }
 
 /// Register API
@@ -114,9 +115,9 @@ impl RegisterService {
 
         thread::spawn(move || 'outer: loop {
             if ctxt.lock().deregister {
-                tx.send(NotifyData::Abnormal(client.url.clone()))
+                tx.send(NotifyData::Deregister(client.url.clone()))
                     .expect("Unable to send context");
-                warn!("Deregister: [{}] 's push thread will terminate", &url);
+                info!("Deregister: [{}] 's push thread will terminate", &url);
                 break 'outer;
             }
             // Ensure that there is at least one block in the queue.
@@ -217,17 +218,20 @@ fn remove_block_from_queue(
                 .or_insert(push_height);
         }
         NotifyData::Abnormal(url) => {
-            info!("Remove register [{}]", &url);
+            info!("Abnormal, remove register [{}]", &url);
             stat.remove(&url);
             map.write().remove(&url);
+            return;
+        }
+        NotifyData::Deregister(url) => {
+            info!("Deregister, remove register [{}]", &url);
+            stat.remove(&url);
+            map.write().remove(&url);
+            return;
         }
     }
 
     let queue_len = util::get_block_queue_len(queue);
-    // Deregister when the length of block queue is 0.
-    if queue_len == 0 {
-        return;
-    }
 
     let max_block_height = util::get_max_block_height(queue);
     let min_block_height = util::get_min_block_height(queue);
