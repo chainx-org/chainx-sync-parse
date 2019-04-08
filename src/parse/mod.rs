@@ -1,12 +1,14 @@
 mod primitives;
 
+use std::collections::BTreeMap;
+
 use parity_codec::Decode;
 use serde_json::json;
 use strum::{EnumMessage, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumMessage};
 
 use self::primitives::*;
-use crate::types::{btc, Bytes, CodecBTreeMap, MultiNodeIndex, Node};
+use crate::types::{btc, Bytes, MultiNodeIndex, Node};
 use crate::Result;
 
 #[rustfmt::skip]
@@ -112,9 +114,9 @@ pub enum RuntimeStorage {
     #[strum(message = "XAssets AssetInfo", detailed_message = "map")]
     XAssetsAssetInfo(Token, (Asset, bool, BlockNumber)),
     #[strum(message = "XAssets AssetBalance", detailed_message = "map")]
-    XAssetsAssetBalance((AccountId, Token), CodecBTreeMap<AssetType, Balance>),
+    XAssetsAssetBalance((AccountId, Token), BTreeMap<AssetType, Balance>),
     #[strum(message = "XAssets TotalAssetBalance", detailed_message = "map")]
-    XAssetsTotalAssetBalance(Token, CodecBTreeMap<AssetType, Balance>),
+    XAssetsTotalAssetBalance(Token, BTreeMap<AssetType, Balance>),
     #[strum(message = "XAssets MemoLen", detailed_message = "value")]
     XAssetsMemoLen(u32),
     // XAssetsRecords
