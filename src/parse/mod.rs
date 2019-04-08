@@ -173,8 +173,8 @@ pub enum RuntimeStorage {
     #[strum(message = "XStaking MissedOfPerSession", detailed_message = "map")]
     XStakingMissedOfPerSession(AccountId, u32),
     // XTokens
-    #[strum(message = "XTokens TokenDiscount", detailed_message = "value")]
-    XTokensTokenDiscount(u32),
+    #[strum(message = "XTokens TokenDiscount", detailed_message = "map")]
+    XTokensTokenDiscount(Token, u32),
     #[strum(message = "XTokens PseduIntentions", detailed_message = "value")]
     XTokensPseduIntentions(Vec<Token>),
     #[strum(message = "XTokens PseduIntentionProfiles", detailed_message = "map")]
@@ -416,7 +416,7 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingMinimumPenalty(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingOfflineValidatorsPerSession(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMissedOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XTokensTokenDiscount(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XTokensTokenDiscount(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
