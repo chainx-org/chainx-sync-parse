@@ -30,13 +30,13 @@ cp /target/release/chainx-sub-parse .
 ./start.sh
 ```
 
-### 2. Register
+### 2. Register/Deregister
 
-Subscribe to the prefixes of needed runtime storage by registering api.
+Subscribe to the prefixes of needed runtime storage by register api.
 
 The structure of Runtime storage is consistent with the [ChainX - stage/testnet-v0.9.7](https://github.com/chainpool/ChainX/tree/stage/testnet-v0.9.7) and [substrate](https://github.com/chainpool/substrate).
 
-**For example**:
+**Register example**:
 
 Postman: `POST 0.0.0.0:3030`
 
@@ -56,6 +56,18 @@ before sending a register request through Postman.
 cd chainx-sub-parse
 cargo run --example register
 # please run `cargo run --example register -- -h` to see the specific usage.
+```
+
+**Deregister example**:
+
+Postman: `POST 0.0.0.0:3030`
+
+```
+Headers:
+Content-Type: application/json
+
+Body: raw JSON (application/json)
+{"jsonrpc":"2.0","id":1,"method":"deregister","params":["http://127.0.0.1:12345/write"]}
 ```
 
 ### 3. Sync block
