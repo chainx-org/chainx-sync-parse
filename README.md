@@ -1,6 +1,6 @@
 # chainx-sub-parse
 
-Follow the stage/testnet-v0.9.7 branch of ChainX.
+Follow the stage/test-v0.9.8 branch of ChainX.
 
 ## Usage
 
@@ -34,7 +34,7 @@ cp /target/release/chainx-sub-parse .
 
 Subscribe to the prefixes of needed runtime storage by register api.
 
-The structure of Runtime storage is consistent with the [ChainX - stage/testnet-v0.9.7](https://github.com/chainpool/ChainX/tree/stage/testnet-v0.9.7) and [substrate](https://github.com/chainpool/substrate).
+The structure of Runtime storage is consistent with the [ChainX - stage/test-v0.9.8](https://github.com/chainpool/ChainX/tree/stage/test-v0.9.8) and [substrate](https://github.com/chainpool/substrate).
 
 **Register example**:
 
@@ -75,7 +75,7 @@ Body: raw JSON (application/json)
 ```bash
 # compile
 cd ChainX
-git checkout stage/testnet-v0.9.7
+git checkout stage/test-v0.9.8
 cargo build --release --features msgbus-redis
 
 # run
