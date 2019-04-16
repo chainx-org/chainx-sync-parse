@@ -331,7 +331,7 @@ impl RuntimeStorage {
     }
 
     #[rustfmt::skip]
-    #[allow(clippy::cyclomatic_complexity)] // cyclomatic_complexity = 234 (defaults to 25)
+    #[allow(clippy::cognitive_complexity)]
     fn decode_by_type(&mut self, prefix: &str, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
         let mut key = self.match_key(prefix, key)?;
 
