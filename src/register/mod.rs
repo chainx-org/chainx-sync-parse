@@ -1,7 +1,8 @@
 mod push;
 mod util;
 
-use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::thread;
@@ -9,18 +10,17 @@ use std::time::Duration;
 
 use jsonrpc_derive::rpc;
 use parking_lot::{Mutex, RwLock};
+use semver::Version;
 
 use self::push::{Message, PushClient};
 use crate::{BlockQueue, Result};
 
-const NUM_THREADS_FOR_REGISTERING: usize = 4;
-
 #[derive(PartialEq, Clone, Debug)]
 struct Context {
     /// The prefixes of block storage that required by registrant.
-    pub prefixes: Vec<String>,
+    pub prefixes: HashSet<String>,
     /// The representation that used to distinguish whether the storage info matches the requirements.
-    pub version: String,
+    pub version: Version,
     /// The block height of the block that has been pushed.
     pub push_height: u64,
     /// The flag the represents whether registrant deregister.
@@ -28,32 +28,29 @@ struct Context {
 }
 
 impl Context {
-    pub fn new(prefixes: Vec<String>, version: String) -> Self {
+    pub fn new(prefixes: Vec<String>, version: Version) -> Self {
         Self {
-            prefixes,
+            prefixes: prefixes.iter().cloned().collect(),
             version,
             push_height: 0,
             deregister: false,
         }
     }
 
-    pub fn handle_existing_url(&mut self, prefix: String, version: String) {
+    /// Update version and prefixes of the context.
+    pub fn update_prefixes(&mut self, prefixes: Vec<String>, version: Version) {
         if version > self.version {
-            self.prefixes.clear();
-            self.add_prefix(prefix);
             self.version = version;
+            self.prefixes.clear();
+            self.prefixes.extend(prefixes);
             info!(
-                "New version: [{}], new prefixes: [{:?}]",
+                "New version: [{}], Updated prefixes: [{:?}]",
                 &self.version, &self.prefixes
             );
-        } else if self.prefixes.iter().find(|&x| x == &prefix).is_none() {
-            self.add_prefix(prefix);
-            info!("New prefixes: [{:?}]", &self.prefixes);
+        } else {
+            self.prefixes.extend(prefixes);
+            info!("Updated prefixes: [{:?}]", &self.prefixes);
         }
-    }
-
-    fn add_prefix(&mut self, prefix: String) {
-        self.prefixes.push(prefix);
     }
 }
 
@@ -75,7 +72,7 @@ enum NotifyData {
 pub trait RegisterApi {
     /// Register
     #[rpc(name = "register")]
-    fn register(&self, prefix: String, url: String, version: String) -> Result<String>;
+    fn register(&self, prefixes: Vec<String>, url: String, version: String) -> Result<String>;
 
     /// Deregister
     #[rpc(name = "deregister")]
@@ -89,6 +86,43 @@ pub struct RegisterService {
     map: RegisterMap,
     /// PushData sender
     tx: Mutex<PushSender>,
+}
+
+impl RegisterApi for RegisterService {
+    fn register(&self, prefixes: Vec<String>, url: String, version: String) -> Result<String> {
+        let register_info = format!(
+            "url: {:?}, prefix: {:?}, version: {:?}",
+            &url, &prefixes, &version
+        );
+        let version = Version::parse(&version)?;
+        match self.map.write().entry(url.clone()) {
+            Entry::Occupied(mut entry) => {
+                info!("Existing Register [{}]", register_info);
+                let ctxt = entry.get_mut();
+                ctxt.lock().update_prefixes(prefixes, version);
+            }
+            Entry::Vacant(entry) => {
+                info!("New Register [{}]", register_info);
+                let tx = self.tx.lock().clone();
+                let ctxt = Arc::new(Mutex::new(Context::new(prefixes, version)));
+                self.spawn_new_push(url, ctxt.clone(), tx);
+                entry.insert(ctxt);
+            }
+        }
+        Ok("OK".to_string())
+    }
+
+    fn deregister(&self, url: String) -> Result<String> {
+        match self.map.write().entry(url.clone()) {
+            Entry::Occupied(mut entry) => {
+                info!("Deregister [{}]", url);
+                let ctxt = entry.get_mut();
+                ctxt.lock().deregister = true;
+                Ok("OK".to_string())
+            }
+            Entry::Vacant(_) => Err("Nonexistent register url".into()),
+        }
+    }
 }
 
 impl RegisterService {
@@ -173,44 +207,6 @@ impl RegisterService {
     }
 }
 
-impl RegisterApi for RegisterService {
-    fn register(&self, prefix: String, url: String, version: String) -> Result<String> {
-        let register_detail = format!(
-            "url: {:?}, prefix: {:?}, version: {:?}",
-            &url, &prefix, &version
-        );
-        self.map
-            .write()
-            .entry(url.clone())
-            .and_modify(|ctxt| {
-                info!("Register existing [{}]", register_detail);
-                ctxt.lock()
-                    .handle_existing_url(prefix.clone(), version.clone())
-            })
-            .or_insert_with(|| {
-                info!("Register new [{}]", register_detail);
-                let tx = self.tx.lock().clone();
-                let ctxt = Arc::new(Mutex::new(Context::new(vec![prefix], version)));
-                self.spawn_new_push(url, ctxt.clone(), tx);
-                ctxt
-            });
-        Ok("OK".to_string())
-    }
-
-    fn deregister(&self, url: String) -> Result<String> {
-        use std::collections::hash_map::Entry;
-        match self.map.write().entry(url.clone()) {
-            Entry::Occupied(mut entry) => {
-                info!("Deregister [{}]", url);
-                let ctxt = entry.get_mut();
-                ctxt.lock().deregister = true;
-                Ok("OK".to_string())
-            }
-            Entry::Vacant(_) => Err("Nonexistent register url".into()),
-        }
-    }
-}
-
 fn remove_block_from_queue(
     queue: &BlockQueue,
     stat: &mut HashMap<String, u64>,
@@ -267,7 +263,6 @@ fn start_http_rpc_server(
     io: jsonrpc_core::IoHandler,
 ) -> Result<jsonrpc_http_server::Server> {
     let server = jsonrpc_http_server::ServerBuilder::new(io)
-        .threads(NUM_THREADS_FOR_REGISTERING)
         .rest_api(jsonrpc_http_server::RestApi::Unsecure)
         .cors(jsonrpc_http_server::DomainsValidation::AllowOnly(vec![
             jsonrpc_http_server::AccessControlAllowOrigin::Any,
@@ -281,30 +276,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_context_handle_existing_url() {
-        let mut ctxt = Context::new(vec!["Balances FreeBalance1".into()], "1.0".into());
-        ctxt.handle_existing_url("Balances FreeBalance2".into(), "1.0".into());
-        assert_eq!(
-            ctxt.prefixes,
-            vec![
-                "Balances FreeBalance1".to_string(),
-                "Balances FreeBalance2".to_string()
-            ]
+    fn test_context_update_prefixes() {
+        let mut ctxt = Context::new(
+            vec!["Balances FreeBalance1".into()],
+            Version::parse("1.0.0").unwrap(),
         );
-        assert_eq!(ctxt.version, "1.0".to_string());
-
-        ctxt.handle_existing_url("Balances FreeBalance3".into(), "2.0".into());
-        assert_eq!(ctxt.prefixes, vec!["Balances FreeBalance3".to_string(),]);
-        assert_eq!(ctxt.version, "2.0".to_string());
-
-        ctxt.handle_existing_url("Balances FreeBalance4".into(), "2.0".into());
-        assert_eq!(
-            ctxt.prefixes,
-            vec![
-                "Balances FreeBalance3".to_string(),
-                "Balances FreeBalance4".to_string(),
-            ]
+        ctxt.update_prefixes(
+            vec!["Balances FreeBalance2".into()],
+            Version::parse("1.0.0").unwrap(),
         );
-        assert_eq!(ctxt.version, "2.0".to_string());
+        assert!(ctxt.prefixes.contains("Balances FreeBalance1"));
+        assert!(ctxt.prefixes.contains("Balances FreeBalance2"));
+        assert_eq!(ctxt.version, Version::new(1, 0, 0));
+
+        ctxt.update_prefixes(
+            vec!["Balances FreeBalance3".into()],
+            Version::parse("1.1.0").unwrap(),
+        );
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance1"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance2"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance3"), true);
+        assert_eq!(ctxt.version, Version::new(1, 1, 0));
+
+        ctxt.update_prefixes(
+            vec!["Balances FreeBalance4".into()],
+            Version::parse("1.1.0").unwrap(),
+        );
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance1"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance2"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance3"), true);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance4"), true);
+        assert_eq!(ctxt.version, Version::new(1, 1, 0));
     }
 }

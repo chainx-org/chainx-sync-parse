@@ -35,6 +35,8 @@ pub enum ErrorKind {
     Reqwest(#[cause] reqwest::Error),
     #[fail(display = "{}", _0)]
     SerdeJson(#[cause] serde_json::Error),
+    #[fail(display = "{}", _0)]
+    SemVer(#[cause] semver::SemVerError),
 }
 
 impl failure::Fail for Error {
@@ -119,6 +121,12 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+impl From<semver::SemVerError> for Error {
+    fn from(err: semver::SemVerError) -> Self {
+        Error::from(ErrorKind::SemVer(err))
+    }
+}
+
 impl<'a> From<&'a str> for Error {
     fn from(s: &'a str) -> Self {
         Error::from(ErrorKind::Msg(s.into()))
@@ -154,6 +162,7 @@ impl From<Error> for jsonrpc_core::Error {
             ErrorKind::Redis(e) => rpc_error(ERROR + 7, e.description()),
             ErrorKind::Reqwest(e) => rpc_error(ERROR + 8, e.description()),
             ErrorKind::SerdeJson(e) => rpc_error(ERROR + 9, e.description()),
+            ErrorKind::SemVer(e) => rpc_error(ERROR + 10, e.description()),
         }
     }
 }

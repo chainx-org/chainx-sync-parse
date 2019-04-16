@@ -36,7 +36,7 @@ Subscribe to the prefixes of needed runtime storage by register api.
 
 The structure of Runtime storage is consistent with the [ChainX - stage/test-v0.9.8](https://github.com/chainpool/ChainX/tree/stage/test-v0.9.8) and [substrate](https://github.com/chainpool/substrate).
 
-**Register example**:
+**Register**:
 
 Postman: `POST 0.0.0.0:3030`
 
@@ -45,8 +45,21 @@ Headers:
 Content-Type: application/json
 
 Body: raw JSON (application/json)
-{"jsonrpc":"2.0","id":1,"method":"register","params":["System BlockHash", "http://127.0.0.1:12345/write","1"]}
+{"jsonrpc":"2.0","id":1,"method":"register","params":[["XAssets AssetInfo", "XAssets AssetBalance"], "http://127.0.0.1:12345/write","1"]}
 ```
+
+Parameter description:
+
+- prefixes: 
+    - type: JsonArray with JsonString
+    - example: ["XAssets AssetInfo"], ["XAssets AssetInfo", "XAssets AssetBalance"]
+- url: 
+    - type: JsonString
+    - example: "http://127.0.0.1:12345/write"
+- version: 
+    - types: JsonString
+    - note: Semantic version (major.minor.patch), see [details](https://github.com/semver/semver)
+    - example: "1.2.3"
 
 You can run the example (a simple http server) to simulate the situation 
 that registrant receives the block data successfully, 
@@ -58,7 +71,7 @@ cargo run --example register
 # please run `cargo run --example register -- -h` to see the specific usage.
 ```
 
-**Deregister example**:
+**Deregister**:
 
 Postman: `POST 0.0.0.0:3030`
 
@@ -69,6 +82,12 @@ Content-Type: application/json
 Body: raw JSON (application/json)
 {"jsonrpc":"2.0","id":1,"method":"deregister","params":["http://127.0.0.1:12345/write"]}
 ```
+
+Parameter description:
+
+- url: 
+    - type: JsonString
+    - example: "http://127.0.0.1:12345/write"
 
 ### 3. Sync block
 

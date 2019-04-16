@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::thread;
 use std::time::Duration;
@@ -20,16 +21,15 @@ pub struct Message {
 impl Message {
     /// Build a message with all json value that match the prefix successfully.
     /// The data of message may be empty, and empty message don't need to be pushed.
-    pub fn build(height: u64, values: &[Value], prefixes: &[String]) -> Self {
-        let mut data = vec![];
-        values.iter().for_each(|value| {
-            let prefix = util::get_value_prefix(&value);
-            prefixes.iter().for_each(|need| {
-                if need == &prefix {
-                    data.push(value.clone());
-                }
-            });
-        });
+    pub fn build(height: u64, values: &[Value], prefixes: &HashSet<String>) -> Self {
+        let data = values
+            .iter()
+            .cloned()
+            .filter(|value| {
+                let prefix = util::get_value_prefix(value);
+                prefixes.contains(&prefix)
+            })
+            .collect();
         Self { height, data }
     }
 
@@ -167,6 +167,16 @@ mod tests {
         };
     }
 
+    macro_rules! hash_set {
+        ( $($key:expr),+ ) => {{
+            let mut set = ::std::collections::HashSet::new();
+            $(
+                set.insert($key);
+            )+
+            set
+        }};
+    }
+
     #[test]
     fn test_message_build() {
         let values0 = values!(
@@ -177,7 +187,7 @@ mod tests {
         ]"#
         );
         assert_eq!(
-            Message::build(0, &values0, &["aaa".into(), "bbb".into()]),
+            Message::build(0, &values0, &hash_set!("aaa".into(), "bbb".into())),
             Message {
                 height: 0,
                 data: vec![
@@ -195,7 +205,7 @@ mod tests {
         ]"#
         );
         assert_eq!(
-            Message::build(1, &values1, &["bbb".into(), "ccc".into()]),
+            Message::build(1, &values1, &hash_set!("bbb".into(), "ccc".into())),
             Message {
                 height: 1,
                 data: vec![
@@ -213,7 +223,7 @@ mod tests {
         ]"#
         );
         assert_eq!(
-            Message::build(2, &values2, &["aaa".into(), "ccc".into()]),
+            Message::build(2, &values2, &hash_set!("aaa".into(), "ccc".into())),
             Message {
                 height: 2,
                 data: vec![
@@ -223,14 +233,14 @@ mod tests {
             }
         );
         assert_eq!(
-            Message::build(2, &values2, &["aaa".into(), "ddd".into()]),
+            Message::build(2, &values2, &hash_set!("aaa".into(), "ddd".into())),
             Message {
                 height: 2,
                 data: vec![value!(r#"{"prefix":"aaa", "value":100}"#),]
             }
         );
         assert_eq!(
-            Message::build(2, &values2, &["ddd".into()]),
+            Message::build(2, &values2, &hash_set!("ddd".into())),
             Message {
                 height: 2,
                 data: vec![]
