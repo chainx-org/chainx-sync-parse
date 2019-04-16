@@ -55,7 +55,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let register_server = RegisterService::run(REGISTER_SERVER_URL, block_queue.clone())?;
+    let register_server = RegisterService::new(block_queue.clone()).run(REGISTER_SERVER_URL)?;
     let client = RedisClient::connect(REDIS_SERVER_URL)?;
     let subscribe_service = client.start_subscription()?;
 
@@ -86,8 +86,8 @@ fn main() -> Result<()> {
             if height == next_block_height {
                 match RuntimeStorage::parse(&key, value) {
                     Ok((prefix, value)) => {
-                        let mut prefix = prefix.into_bytes();
-                        prefix.append(&mut key.clone());
+                        let mut prefix = prefix.as_bytes().to_vec();
+                        prefix.extend_from_slice(&key);
                         stat.insert(prefix, value);
                     }
                     Err(_) => continue,

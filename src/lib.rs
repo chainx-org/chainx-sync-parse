@@ -2,6 +2,9 @@
 #[macro_use]
 extern crate diesel;
 
+#[macro_use]
+extern crate log;
+
 mod error;
 mod parse;
 #[cfg(feature = "pgsql")]

@@ -6,7 +6,6 @@ use std::env;
 
 use diesel::{pg::PgConnection, prelude::*};
 use dotenv::dotenv;
-use log::{info, warn};
 use serde_json::Value;
 
 use self::models::*;

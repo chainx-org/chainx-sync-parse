@@ -1,256 +1,258 @@
 mod primitives;
 
-use log::{debug, error};
+use std::collections::BTreeMap;
+
 use parity_codec::Decode;
 use serde_json::json;
-use strum::{EnumMessage, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumMessage};
+use strum::{EnumProperty, IntoEnumIterator};
+use strum_macros::{EnumIter, EnumProperty, IntoStaticStr};
 
 use self::primitives::*;
-use crate::types::{btc, Bytes, CodecBTreeMap, MultiNodeIndex, Node};
+use crate::types::{btc, Bytes, MultiNodeIndex, Node};
 use crate::Result;
 
 #[rustfmt::skip]
 #[allow(clippy::large_enum_variant)]
-#[derive(PartialEq, Eq, Debug, EnumIter, EnumMessage)]
+#[derive(PartialEq, Eq, Debug, IntoStaticStr, EnumIter, EnumProperty)]
 pub enum RuntimeStorage {
     // ============================================================================================
     // Substrate
     // ============================================================================================
     // system -------------------------------------------------------------------------------------
-//    #[strum(message = "System Number", detailed_message = "value")]
+//    #[strum(serialize = "System Number", props(type = "value"))]
 //    SystemNumber(BlockNumber),
-    #[strum(message = "System AccountNonce", detailed_message = "map")]
+    #[strum(serialize = "System AccountNonce", props(type = "map"))]
     SystemAccountNonce(AccountId, Index),
-    #[strum(message = "System BlockHash", detailed_message = "map")]
+    #[strum(serialize = "System BlockHash", props(type = "map"))]
     SystemBlockHash(BlockNumber, Hash),
     // balances -----------------------------------------------------------------------------------
-    #[strum(message = "Balances TotalIssuance", detailed_message = "value")]
+    #[strum(serialize = "Balances TotalIssuance", props(type = "value"))]
     BalancesTotalIssuance(Balance),
-    #[strum(message = "Balances ExistentialDeposit", detailed_message = "value")]
+    #[strum(serialize = "Balances ExistentialDeposit", props(type = "value"))]
     BalancesExistentialDeposit(Balance),
-    #[strum(message = "Balances TransferFee", detailed_message = "value")]
+    #[strum(serialize = "Balances TransferFee", props(type = "value"))]
     BalancesTransferFee(Balance),
-    #[strum(message = "Balances CreationFee", detailed_message = "value")]
+    #[strum(serialize = "Balances CreationFee", props(type = "value"))]
     BalancesCreationFee(Balance),
-    #[strum(message = "Balances TransactionBaseFee", detailed_message = "value")]
+    #[strum(serialize = "Balances TransactionBaseFee", props(type = "value"))]
     BalancesTransactionBaseFee(Balance),
-    #[strum(message = "Balances TransactionByteFee", detailed_message = "value")]
+    #[strum(serialize = "Balances TransactionByteFee", props(type = "value"))]
     BalancesTransactionByteFee(Balance),
-    #[strum(message = "Balances Vesting", detailed_message = "map")]
+    #[strum(serialize = "Balances Vesting", props(type = "map"))]
     BalancesVesting(AccountId, VestingSchedule<Balance>),
-    #[strum(message = "Balances FreeBalance", detailed_message = "map")]
+    #[strum(serialize = "Balances FreeBalance", props(type = "map"))]
     BalancesFreeBalance(AccountId, Balance),
-    #[strum(message = "Balances ReservedBalance", detailed_message = "map")]
+    #[strum(serialize = "Balances ReservedBalance", props(type = "map"))]
     BalancesReservedBalance(AccountId, Balance),
-//    #[strum(message = "Balances Locks", detailed_message = "map")]
+    //    #[strum(serialize = "Balances Locks", props(type = "map"))]
 //    BalancesLocks(AccountId, Vec<BalanceLock<Balance, BlockNumber>>),
     // indices ------------------------------------------------------------------------------------
-    #[strum(message = "Indices NextEnumSet", detailed_message = "value")]
+    #[strum(serialize = "Indices NextEnumSet", props(type = "value"))]
     IndicesNextEnumSet(AccountIndex),
-    #[strum(message = "Indices EnumSet", detailed_message = "map")]
+    #[strum(serialize = "Indices EnumSet", props(type = "map"))]
     IndicesEnumSet(AccountIndex, Vec<AccountId>),
     // timestamp ----------------------------------------------------------------------------------
-    #[strum(message = "Timestamp Now", detailed_message = "value")]
+    #[strum(serialize = "Timestamp Now", props(type = "value"))]
     TimestampNow(Timestamp),
-    #[strum(message = "Timestamp BlockPeriod", detailed_message = "value")]
+    #[strum(serialize = "Timestamp BlockPeriod", props(type = "value"))]
     TimestampBlockPeriod(Timestamp),
     // session ------------------------------------------------------------------------------------
-    #[strum(message = "Session Validators", detailed_message = "value")]
-    SessionValidators(Vec<(AccountId, u64)>),   // SessionValidators(Vec<AccountId>) in substrate
-    #[strum(message = "Session SessionLength", detailed_message = "value")]
+    #[strum(serialize = "Session Validators", props(type = "value"))]
+    SessionValidators(Vec<(AccountId, u64)>),
+    // SessionValidators(Vec<AccountId>) in substrate
+    #[strum(serialize = "Session SessionLength", props(type = "value"))]
     SessionSessionLength(BlockNumber),
-    #[strum(message = "Session CurrentIndex", detailed_message = "value")]
+    #[strum(serialize = "Session CurrentIndex", props(type = "value"))]
     SessionCurrentIndex(BlockNumber),
-    #[strum(message = "Session CurrentStart", detailed_message = "value")]
+    #[strum(serialize = "Session CurrentStart", props(type = "value"))]
     SessionCurrentStart(Timestamp),
-    #[strum(message = "Session ForcingNewSession", detailed_message = "value")]
+    #[strum(serialize = "Session ForcingNewSession", props(type = "value"))]
     SessionForcingNewSession(bool),
-    #[strum(message = "Session NextKeyFor", detailed_message = "map")]
+    #[strum(serialize = "Session NextKeyFor", props(type = "map"))]
     SessionNextKeyFor(AccountId, SessionKey),
     // ============================================================================================
     // ChainX
     // ============================================================================================
     // xsystem ------------------------------------------------------------------------------------
-    #[strum(message = "XSystem BlockProducer", detailed_message = "value")]
+    #[strum(serialize = "XSystem BlockProducer", props(type = "value"))]
     XSystemBlockProducer(AccountId),
-    #[strum(message = "XSystem DeathAccount", detailed_message = "value")]
+    #[strum(serialize = "XSystem DeathAccount", props(type = "value"))]
     XSystemDeathAccount(AccountId),
-    #[strum(message = "XSystem BurnAccount", detailed_message = "value")]
+    #[strum(serialize = "XSystem BurnAccount", props(type = "value"))]
     XSystemBurnAccount(AccountId),
     // xaccounts ----------------------------------------------------------------------------------
-    #[strum(message = "XAccounts IntentionOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts IntentionOf", props(type = "map"))]
     XAccountsIntentionOf(Name, AccountId),
-    #[strum(message = "XAccounts IntentionNameOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts IntentionNameOf", props(type = "map"))]
     XAccountsIntentionNameOf(AccountId, Name),
-    #[strum(message = "XAccounts IntentionPropertiesOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts IntentionPropertiesOf", props(type = "map"))]
     XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey>),
-    #[strum(message = "XAccounts CrossChainAddressMapOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts CrossChainAddressMapOf", props(type = "map"))]
     XAccountsCrossChainAddressMapOf((Chain, Bytes), (AccountId, Option<AccountId>)),
-    #[strum(message = "XAccounts CrossChainBindOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts CrossChainBindOf", props(type = "map"))]
     XAccountsCrossChainBindOf((Chain, AccountId), Vec<Bytes>),
-    #[strum(message = "XAccounts TrusteeSessionInfoLen", detailed_message = "map")]
+    #[strum(serialize = "XAccounts TrusteeSessionInfoLen", props(type = "map"))]
     XAccountsTrusteeSessionInfoLen(Chain, u32),
-    #[strum(message = "XAccounts TrusteeSessionInfoOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts TrusteeSessionInfoOf", props(type = "map"))]
     XAccountsTrusteeSessionInfoOf((Chain, u32), TrusteeSessionInfo<AccountId>),
-    #[strum(message = "XAccounts TrusteeInfoConfigOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts TrusteeInfoConfigOf", props(type = "map"))]
     XAccountsTrusteeInfoConfigOf(Chain, TrusteeInfoConfig),
-    #[strum(message = "XAccounts TrusteeIntentionPropertiesOf", detailed_message = "map")]
+    #[strum(serialize = "XAccounts TrusteeIntentionPropertiesOf", props(type = "map"))]
     XAccountsTrusteeIntentionPropertiesOf((AccountId, Chain), TrusteeIntentionProps),
     // xfee ---------------------------------------------------------------------------------------
-    #[strum(message = "XFeeManager Switch", detailed_message = "value")]
+    #[strum(serialize = "XFeeManager Switch", props(type = "value"))]
     XFeeManagerSwitch(SwitchStore),
-    #[strum(message = "XFeeManager ProducerFeeProportion", detailed_message = "value")]
+    #[strum(serialize = "XFeeManager ProducerFeeProportion", props(type = "value"))]
     XFeeManagerProducerFeeProportion((u32, u32)),
-    #[strum(message = "XFeeManager TransactionBaseFee", detailed_message = "value")]
+    #[strum(serialize = "XFeeManager TransactionBaseFee", props(type = "value"))]
     XFeeManagerTransactionBaseFee(Balance),
-    #[strum(message = "XFeeManager TransactionByteFee", detailed_message = "value")]
+    #[strum(serialize = "XFeeManager TransactionByteFee", props(type = "value"))]
     XFeeManagerTransactionByteFee(Balance),
     // xassets ------------------------------------------------------------------------------------
     // XAssets
-    #[strum(message = "XAssets AssetList", detailed_message = "map")]
+    #[strum(serialize = "XAssets AssetList", props(type = "map"))]
     XAssetsAssetList(Chain, Vec<Token>),
-    #[strum(message = "XAssets AssetInfo", detailed_message = "map")]
+    #[strum(serialize = "XAssets AssetInfo", props(type = "map"))]
     XAssetsAssetInfo(Token, (Asset, bool, BlockNumber)),
-    #[strum(message = "XAssets AssetBalance", detailed_message = "map")]
-    XAssetsAssetBalance((AccountId, Token), CodecBTreeMap<AssetType, Balance>),
-    #[strum(message = "XAssets TotalAssetBalance", detailed_message = "map")]
-    XAssetsTotalAssetBalance(Token, CodecBTreeMap<AssetType, Balance>),
-    #[strum(message = "XAssets MemoLen", detailed_message = "value")]
+    #[strum(serialize = "XAssets AssetBalance", props(type = "map"))]
+    XAssetsAssetBalance((AccountId, Token), BTreeMap<AssetType, Balance>),
+    #[strum(serialize = "XAssets TotalAssetBalance", props(type = "map"))]
+    XAssetsTotalAssetBalance(Token, BTreeMap<AssetType, Balance>),
+    #[strum(serialize = "XAssets MemoLen", props(type = "value"))]
     XAssetsMemoLen(u32),
     // XAssetsRecords
-    #[strum(message = "XAssetsRecords ApplicationMHeader", detailed_message = "map")]
+    #[strum(serialize = "XAssetsRecords ApplicationMHeader", props(type = "map"))]
     XAssetsRecordsApplicationMHeader(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Timestamp>>),
-    #[strum(message = "XAssetsRecords ApplicationMTail", detailed_message = "map")]
+    #[strum(serialize = "XAssetsRecords ApplicationMTail", props(type = "map"))]
     XAssetsRecordsApplicationMTail(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Timestamp>>),
-    #[strum(message = "XAssetsRecords ApplicationMap", detailed_message = "map")]
+    #[strum(serialize = "XAssetsRecords ApplicationMap", props(type = "map"))]
     XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance, Timestamp>>),
-    #[strum(message = "XAssetsRecords SerialNumber", detailed_message = "value")]
+    #[strum(serialize = "XAssetsRecords SerialNumber", props(type = "value"))]
     XAssetsRecordsSerialNumber(u32),
     // xmining ------------------------------------------------------------------------------------
     // XStaking
-    #[strum(message = "XStaking InitialReward", detailed_message = "value")]
+    #[strum(serialize = "XStaking InitialReward", props(type = "value"))]
     XStakingInitialReward(Balance),
-    #[strum(message = "XStaking ValidatorCount", detailed_message = "value")]
+    #[strum(serialize = "XStaking ValidatorCount", props(type = "value"))]
     XStakingValidatorCount(u32),
-    #[strum(message = "XStaking MinimumValidatorCount", detailed_message = "value")]
+    #[strum(serialize = "XStaking MinimumValidatorCount", props(type = "value"))]
     XStakingMinimumValidatorCount(u32),
-    #[strum(message = "XStaking SessionsPerEra", detailed_message = "value")]
+    #[strum(serialize = "XStaking SessionsPerEra", props(type = "value"))]
     XStakingSessionsPerEra(BlockNumber),
-    #[strum(message = "XStaking BondingDuration", detailed_message = "value")]
+    #[strum(serialize = "XStaking BondingDuration", props(type = "value"))]
     XStakingBondingDuration(BlockNumber),
-    #[strum(message = "XStaking IntentionBondingDuration", detailed_message = "value")]
+    #[strum(serialize = "XStaking IntentionBondingDuration", props(type = "value"))]
     XStakingIntentionBondingDuration(BlockNumber),
-    #[strum(message = "XStaking SessionsPerEpoch", detailed_message = "value")]
+    #[strum(serialize = "XStaking SessionsPerEpoch", props(type = "value"))]
     XStakingSessionsPerEpoch(BlockNumber),
-    #[strum(message = "XStaking ValidatorStakeThreshold", detailed_message = "value")]
+    #[strum(serialize = "XStaking ValidatorStakeThreshold", props(type = "value"))]
     XStakingValidatorStakeThreshold(Balance),
-    #[strum(message = "XStaking CurrentEra", detailed_message = "value")]
+    #[strum(serialize = "XStaking CurrentEra", props(type = "value"))]
     XStakingCurrentEra(BlockNumber),
-    #[strum(message = "XStaking Intentions", detailed_message = "value")]
+    #[strum(serialize = "XStaking Intentions", props(type = "value"))]
     XStakingIntentions(Vec<AccountId>),
-    #[strum(message = "XStaking NextSessionsPerEra", detailed_message = "value")]
+    #[strum(serialize = "XStaking NextSessionsPerEra", props(type = "value"))]
     XStakingNextSessionsPerEra(BlockNumber),
-    #[strum(message = "XStaking LastEraLengthChange", detailed_message = "value")]
+    #[strum(serialize = "XStaking LastEraLengthChange", props(type = "value"))]
     XStakingLastEraLengthChange(BlockNumber),
-    #[strum(message = "XStaking ForcingNewEra", detailed_message = "value")]
+    #[strum(serialize = "XStaking ForcingNewEra", props(type = "value"))]
     XStakingForcingNewEra(()),
-    #[strum(message = "XStaking StakeWeight", detailed_message = "map")]
+    #[strum(serialize = "XStaking StakeWeight", props(type = "map"))]
     XStakingStakeWeight(AccountId, Balance),
-    #[strum(message = "XStaking IntentionProfiles", detailed_message = "map")]
+    #[strum(serialize = "XStaking IntentionProfiles", props(type = "map"))]
     XStakingIntentionProfiles(AccountId, IntentionProfs<Balance, BlockNumber>),
-    #[strum(message = "XStaking NominationRecords", detailed_message = "map")]
+    #[strum(serialize = "XStaking NominationRecords", props(type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
-    #[strum(message = "XStaking TeamAddress", detailed_message = "value")]
+    #[strum(serialize = "XStaking TeamAddress", props(type = "value"))]
     XStakingTeamAddress(AccountId),
-    #[strum(message = "XStaking CouncilAddress", detailed_message = "value")]
+    #[strum(serialize = "XStaking CouncilAddress", props(type = "value"))]
     XStakingCouncilAddress(AccountId),
-    #[strum(message = "XStaking MinimumPenalty", detailed_message = "value")]
+    #[strum(serialize = "XStaking MinimumPenalty", props(type = "value"))]
     XStakingMinimumPenalty(Balance),
-    #[strum(message = "XStaking OfflineValidatorsPerSession", detailed_message = "value")]
+    #[strum(serialize = "XStaking OfflineValidatorsPerSession", props(type = "value"))]
     XStakingOfflineValidatorsPerSession(Vec<AccountId>),
-    #[strum(message = "XStaking MissedOfPerSession", detailed_message = "map")]
+    #[strum(serialize = "XStaking MissedOfPerSession", props(type = "map"))]
     XStakingMissedOfPerSession(AccountId, u32),
     // XTokens
-    #[strum(message = "XTokens TokenDiscount", detailed_message = "value")]
-    XTokensTokenDiscount(u32),
-    #[strum(message = "XTokens PseduIntentions", detailed_message = "value")]
+    #[strum(serialize = "XTokens TokenDiscount", props(type = "map"))]
+    XTokensTokenDiscount(Token, u32),
+    #[strum(serialize = "XTokens PseduIntentions", props(type = "value"))]
     XTokensPseduIntentions(Vec<Token>),
-    #[strum(message = "XTokens PseduIntentionProfiles", detailed_message = "map")]
+    #[strum(serialize = "XTokens PseduIntentionProfiles", props(type = "map"))]
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<BlockNumber>),
-    #[strum(message = "XTokens DepositRecords", detailed_message = "map")]
+    #[strum(serialize = "XTokens DepositRecords", props(type = "map"))]
     XTokensDepositRecords((AccountId, Token), DepositVoteWeight<BlockNumber>),
     // xmultisig ----------------------------------------------------------------------------------
-    #[strum(message = "XMultiSig RootAddrList", detailed_message = "value")]
+    #[strum(serialize = "XMultiSig RootAddrList", props(type = "value"))]
     XMultiSigRootAddrList(Vec<AccountId>),
-    #[strum(message = "XMultiSig MultiSigAddrInfo", detailed_message = "map")]
+    #[strum(serialize = "XMultiSig MultiSigAddrInfo", props(type = "map"))]
     XMultiSigMultiSigAddrInfo(AccountId, AddrInfo<AccountId>),
-    #[strum(message = "XMultiSig PendingListFor", detailed_message = "map")]
+    #[strum(serialize = "XMultiSig PendingListFor", props(type = "map"))]
     XMultiSigPendingListFor(AccountId, Vec<Hash>),
-//    #[strum(message = "XMultiSig PendingStateFor", detailed_message = "map")]
+    //    #[strum(serialize = "XMultiSig PendingStateFor", props(type = "map"))]
 //    XMultiSigPendingStateFor((AccountId, Hash), PendingState<Proposal>),
-    #[strum(message = "XMultiSig MultiSigListItemFor", detailed_message = "map")]
+    #[strum(serialize = "XMultiSig MultiSigListItemFor", props(type = "map"))]
     XMultiSigMultiSigListItemFor((AccountId, u32), AccountId),
-    #[strum(message = "XMultiSig MultiSigListLenFor", detailed_message = "map")]
+    #[strum(serialize = "XMultiSig MultiSigListLenFor", props(type = "map"))]
     XMultiSigMultiSigListLenFor(AccountId, u32),
-    #[strum(message = "XMultiSig TrusteeMultiSigAddr", detailed_message = "map")]
+    #[strum(serialize = "XMultiSig TrusteeMultiSigAddr", props(type = "map"))]
     XMultiSigTrusteeMultiSigAddr(Chain, AccountId),
     // xdex ---------------------------------------------------------------------------------------
     // XSpot
-    #[strum(message = "XSpot TradingPairCount", detailed_message = "value")]
+    #[strum(serialize = "XSpot TradingPairCount", props(type = "value"))]
     XSpotTradingPairCount(TradingPairIndex),
-    #[strum(message = "XSpot TradingPairOf", detailed_message = "map")]
+    #[strum(serialize = "XSpot TradingPairOf", props(type = "map"))]
     XSpotTradingPairOf(TradingPairIndex, TradingPair),
-    #[strum(message = "XSpot TradingPairInfoOf", detailed_message = "map")]
+    #[strum(serialize = "XSpot TradingPairInfoOf", props(type = "map"))]
     XSpotTradingPairInfoOf(TradingPairIndex, (Price, Price, BlockNumber)),
-    #[strum(message = "XSpot TradeHistoryIndexOf", detailed_message = "map")]
+    #[strum(serialize = "XSpot TradeHistoryIndexOf", props(type = "map"))]
     XSpotTradeHistoryIndexOf(TradingPairIndex, TradeHistoryIndex),
-    #[strum(message = "XSpot OrderCountOf", detailed_message = "map")]
+    #[strum(serialize = "XSpot OrderCountOf", props(type = "map"))]
     XSpotOrderCountOf(AccountId, OrderIndex),
-    #[strum(message = "XSpot OrderInfoOf", detailed_message = "map")]
-    XSpotOrderInfoOf ((AccountId, OrderIndex), Order<TradingPairIndex, AccountId, Amount, Price, BlockNumber>),
-    #[strum(message = "XSpot QuotationsOf", detailed_message = "map")]
+    #[strum(serialize = "XSpot OrderInfoOf", props(type = "map"))]
+    XSpotOrderInfoOf((AccountId, OrderIndex), Order<TradingPairIndex, AccountId, Amount, Price, BlockNumber>),
+    #[strum(serialize = "XSpot QuotationsOf", props(type = "map"))]
     XSpotQuotationsOf((TradingPairIndex, Price), Vec<(AccountId, OrderIndex)>),
-    #[strum(message = "XSpot HandicapOf", detailed_message = "map")]
+    #[strum(serialize = "XSpot HandicapOf", props(type = "map"))]
     XSpotHandicapOf(TradingPairIndex, Handicap<Price>),
-    #[strum(message = "XSpot PriceVolatility", detailed_message = "value")]
+    #[strum(serialize = "XSpot PriceVolatility", props(type = "value"))]
     XSpotPriceVolatility(u32),
     // xbridge ------------------------------------------------------------------------------------
     // BTC
-    #[strum(message = "XBridgeOfBTC BestIndex", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC BestIndex", props(type = "value"))]
     XBridgeOfBTCBestIndex(H256),
-    #[strum(message = "XBridgeOfBTC BlockHashFor", detailed_message = "map")]
+    #[strum(serialize = "XBridgeOfBTC BlockHashFor", props(type = "map"))]
     XBridgeOfBTCBlockHashFor(u32, Vec<H256>),
-    #[strum(message = "XBridgeOfBTC BlockHeaderFor", detailed_message = "map")]
+    #[strum(serialize = "XBridgeOfBTC BlockHeaderFor", props(type = "map"))]
     XBridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
-    #[strum(message = "XBridgeOfBTC TxFor", detailed_message = "map")]
+    #[strum(serialize = "XBridgeOfBTC TxFor", props(type = "map"))]
     XBridgeOfBTCTxFor(H256, TxInfo),
-    #[strum(message = "XBridgeOfBTC InputAddrFor", detailed_message = "map")]
+    #[strum(serialize = "XBridgeOfBTC InputAddrFor", props(type = "map"))]
     XBridgeOfBTCInputAddrFor(H256, btc::Address),
-    #[strum(message = "XBridgeOfBTC PendingDepositMap", detailed_message = "map")]
+    #[strum(serialize = "XBridgeOfBTC PendingDepositMap", props(type = "map"))]
     XBridgeOfBTCPendingDepositMap(btc::Address, Vec<DepositCache>),
-    #[strum(message = "XBridgeOfBTC CurrentWithdrawalProposal", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC CurrentWithdrawalProposal", props(type = "value"))]
     XBridgeOfBTCCurrentWithdrawalProposal(WithdrawalProposal<AccountId>),
-    #[strum(message = "XBridgeOfBTC GenesisInfo", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC GenesisInfo", props(type = "value"))]
     XBridgeOfBTCGenesisInfo((btc::BlockHeader, u32)),
-    #[strum(message = "XBridgeOfBTC ParamsInfo", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC ParamsInfo", props(type = "value"))]
     XBridgeOfBTCParamsInfo(Params),
-    #[strum(message = "XBridgeOfBTC NetworkId", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC NetworkId", props(type = "value"))]
     XBridgeOfBTCNetworkId(u32),
-    #[strum(message = "XBridgeOfBTC ReservedBlock", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC ReservedBlock", props(type = "value"))]
     XBridgeOfBTCReservedBlock(u32),
-    #[strum(message = "XBridgeOfBTC ConfirmationNumber", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC ConfirmationNumber", props(type = "value"))]
     XBridgeOfBTCConfirmationNumber(u32),
-    #[strum(message = "XBridgeOfBTC BtcWithdrawalFee", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC BtcWithdrawalFee", props(type = "value"))]
     XBridgeOfBTCBtcWithdrawalFee(u64),
-    #[strum(message = "XBridgeOfBTC MaxWithdrawalCount", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC MaxWithdrawalCount", props(type = "value"))]
     XBridgeOfBTCMaxWithdrawalCount(u32),
-    #[strum(message = "XBridgeOfBTC LastTrusteeSessionNumber", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfBTC LastTrusteeSessionNumber", props(type = "value"))]
     XBridgeOfBTCLastTrusteeSessionNumber(u32),
     // SDOT
-    #[strum(message = "XBridgeOfSDOT Claims", detailed_message = "map")]
+    #[strum(serialize = "XBridgeOfSDOT Claims", props(type = "map"))]
     XBridgeOfSDOTClaims(EthereumAddress, Balance),
-    #[strum(message = "XBridgeOfSDOT Total", detailed_message = "value")]
+    #[strum(serialize = "XBridgeOfSDOT Total", props(type = "value"))]
     XBridgeOfSDOTTotal(Balance),
 }
 
@@ -304,31 +306,20 @@ macro_rules! to_value_json_impl {
 }
 
 impl RuntimeStorage {
-    pub fn parse(key: &[u8], value: Vec<u8>) -> Result<(String, serde_json::Value)> {
-        let (mut storage, prefix) = Self::match_prefix(key)?;
-        let json = storage.decode_by_type(&prefix, key, value)?;
-        Ok((prefix, json))
-    }
-
-    fn match_prefix(key: &[u8]) -> Result<(Self, String)> {
-        for storage in Self::iter() {
-            let prefix: String = match storage.get_message() {
-                Some(prefix) => prefix.to_string(),
-                None => {
-                    error!("Runtime storage parse: get storage prefix failed");
-                    return Err("Runtime storage parse: get storage prefix failed".into());
-                }
-            };
+    pub fn parse(key: &[u8], value: Vec<u8>) -> Result<(&'static str, serde_json::Value)> {
+        for mut storage in Self::iter() {
+            let prefix: &'static str = (&storage).into();
             if key.starts_with(prefix.as_bytes()) {
-                return Ok((storage, prefix));
+                let json = storage.decode_by_type(&prefix, key, value)?;
+                return Ok((prefix, json));
             }
         }
         debug!("Runtime storage parse: No matching key found");
         Err("No matching key found".into())
     }
 
-    fn match_key<'a>(&mut self, prefix: &str, key: &'a [u8]) -> Result<&'a [u8]> {
-        let key = match self.get_detailed_message() {
+    fn match_key<'a>(&self, prefix: &str, key: &'a [u8]) -> Result<&'a [u8]> {
+        let key = match self.get_str("type") {
             Some("map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
@@ -340,7 +331,7 @@ impl RuntimeStorage {
     }
 
     #[rustfmt::skip]
-    #[allow(clippy::cyclomatic_complexity)] // cyclomatic_complexity = 234 (defaults to 25)
+    #[allow(clippy::cognitive_complexity)]
     fn decode_by_type(&mut self, prefix: &str, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
         let mut key = self.match_key(prefix, key)?;
 
@@ -415,7 +406,7 @@ impl RuntimeStorage {
             RuntimeStorage::XStakingMinimumPenalty(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingOfflineValidatorsPerSession(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMissedOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            RuntimeStorage::XTokensTokenDiscount(ref mut v) => to_value_json!(prefix, value => v),
+            RuntimeStorage::XTokensTokenDiscount(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),

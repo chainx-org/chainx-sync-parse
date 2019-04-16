@@ -1,61 +1,56 @@
 mod push;
 mod util;
 
-use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use jsonrpc_core::{IoHandler, Params};
-use jsonrpc_http_server::{
-    AccessControlAllowOrigin, DomainsValidation, RestApi, Server, ServerBuilder,
-};
-use log::{error, info};
+use jsonrpc_derive::rpc;
 use parking_lot::{Mutex, RwLock};
-use serde_json::Value;
+use semver::Version;
 
 use self::push::{Message, PushClient};
 use crate::{BlockQueue, Result};
 
-const NUM_THREADS_FOR_REGISTERING: usize = 4;
-
 #[derive(PartialEq, Clone, Debug)]
 struct Context {
     /// The prefixes of block storage that required by registrant.
-    pub prefixes: Vec<String>,
+    pub prefixes: HashSet<String>,
     /// The representation that used to distinguish whether the storage info matches the requirements.
-    pub version: String,
+    pub version: Version,
     /// The block height of the block that has been pushed.
     pub push_height: u64,
+    /// The flag the represents whether registrant deregister.
+    pub deregister: bool,
 }
 
 impl Context {
-    pub fn new(prefixes: Vec<String>, version: String) -> Self {
+    pub fn new(prefixes: Vec<String>, version: Version) -> Self {
         Self {
-            prefixes,
+            prefixes: prefixes.iter().cloned().collect(),
             version,
             push_height: 0,
+            deregister: false,
         }
     }
 
-    pub fn handle_existing_url(&mut self, prefix: String, version: String) {
+    /// Update version and prefixes of the context.
+    pub fn update_prefixes(&mut self, prefixes: Vec<String>, version: Version) {
         if version > self.version {
-            self.prefixes.clear();
-            self.add_prefix(prefix);
             self.version = version;
+            self.prefixes.clear();
+            self.prefixes.extend(prefixes);
             info!(
-                "New version: [{}], new prefixes: [{:?}]",
+                "New version: [{}], Updated prefixes: [{:?}]",
                 &self.version, &self.prefixes
             );
-        } else if self.prefixes.iter().find(|&x| x == &prefix).is_none() {
-            self.add_prefix(prefix);
-            info!("New prefixes: [{:?}]", &self.prefixes);
+        } else {
+            self.prefixes.extend(prefixes);
+            info!("Updated prefixes: [{:?}]", &self.prefixes);
         }
-    }
-
-    fn add_prefix(&mut self, prefix: String) {
-        self.prefixes.push(prefix);
     }
 }
 
@@ -63,61 +58,88 @@ impl Context {
 type RegisterMap = Arc<RwLock<HashMap<String, RegisterContext>>>;
 type RegisterContext = Arc<Mutex<Context>>;
 
-type PushData = (String, u64, bool);
-type PushSender = Sender<PushData>;
-type PushReceiver = Receiver<PushData>;
+type PushSender = Sender<NotifyData>;
+type PushReceiver = Receiver<NotifyData>;
+
+enum NotifyData {
+    Normal((String, u64)),
+    Abnormal(String),
+    Deregister(String),
+}
+
+/// Register API
+#[rpc]
+pub trait RegisterApi {
+    /// Register
+    #[rpc(name = "register")]
+    fn register(&self, prefixes: Vec<String>, url: String, version: String) -> Result<String>;
+
+    /// Deregister
+    #[rpc(name = "deregister")]
+    fn deregister(&self, url: String) -> Result<String>;
+}
 
 pub struct RegisterService {
     /// The block queue (BTreeMap: key - block height, value - json value).
     block_queue: BlockQueue,
     /// The map of register url and register context.
     map: RegisterMap,
+    /// PushData sender
+    tx: Mutex<PushSender>,
+}
+
+impl RegisterApi for RegisterService {
+    fn register(&self, prefixes: Vec<String>, url: String, version: String) -> Result<String> {
+        let register_info = format!(
+            "url: {:?}, prefix: {:?}, version: {:?}",
+            &url, &prefixes, &version
+        );
+        let version = Version::parse(&version)?;
+        match self.map.write().entry(url.clone()) {
+            Entry::Occupied(mut entry) => {
+                info!("Existing Register [{}]", register_info);
+                let ctxt = entry.get_mut();
+                ctxt.lock().update_prefixes(prefixes, version);
+            }
+            Entry::Vacant(entry) => {
+                info!("New Register [{}]", register_info);
+                let tx = self.tx.lock().clone();
+                let ctxt = Arc::new(Mutex::new(Context::new(prefixes, version)));
+                self.spawn_new_push(url, ctxt.clone(), tx);
+                entry.insert(ctxt);
+            }
+        }
+        Ok("OK".to_string())
+    }
+
+    fn deregister(&self, url: String) -> Result<String> {
+        match self.map.write().entry(url.clone()) {
+            Entry::Occupied(mut entry) => {
+                info!("Deregister [{}]", url);
+                let ctxt = entry.get_mut();
+                ctxt.lock().deregister = true;
+                Ok("OK".to_string())
+            }
+            Entry::Vacant(_) => Err("Nonexistent register url".into()),
+        }
+    }
 }
 
 impl RegisterService {
-    pub fn run(url: &str, block_queue: BlockQueue) -> Result<Server> {
-        let service = RegisterService::new(block_queue);
+    pub fn new(block_queue: BlockQueue) -> Self {
         let (tx, rx) = mpsc::channel();
-        service.spawn_remove_block(rx);
-
-        let mut io = IoHandler::new();
-        let tx = Mutex::new(tx);
-        service.register(&mut io, tx);
-
-        start_http_rpc_server(url, io)
-    }
-
-    fn new(block_queue: BlockQueue) -> Self {
-        Self {
+        let service = RegisterService {
             block_queue,
             map: Default::default(),
-        }
+            tx: Mutex::new(tx),
+        };
+        service.spawn_remove_block(rx);
+        service
     }
 
-    fn register(self, io: &mut IoHandler, tx: Mutex<PushSender>) {
-        io.add_method("register", move |params: Params| {
-            let (prefix, url, version): (String, String, String) = params.parse().unwrap();
-            let register_detail = format!(
-                "url: {:?}, prefix: {:?}, version: {:?}",
-                &url, &prefix, &version
-            );
-            self.map
-                .write()
-                .entry(url.clone())
-                .and_modify(|ctxt| {
-                    info!("Register existing [ {} ]", register_detail);
-                    ctxt.lock()
-                        .handle_existing_url(prefix.clone(), version.clone())
-                })
-                .or_insert_with(|| {
-                    info!("Register new [ {} ]", register_detail);
-                    let ctxt = Arc::new(Mutex::new(Context::new(vec![prefix], version)));
-                    self.spawn_new_push(url, ctxt.clone(), tx.lock().clone());
-                    ctxt
-                });
-
-            Ok(Value::String("OK".to_string()))
-        });
+    pub fn run(self, url: &str) -> Result<jsonrpc_http_server::Server> {
+        let io = rpc_handler(self);
+        start_http_rpc_server(url, io)
     }
 
     fn spawn_new_push(&self, url: String, ctxt: RegisterContext, tx: PushSender) {
@@ -126,6 +148,15 @@ impl RegisterService {
         info!("Register: start push thread of url: [{}]", &client.url);
 
         thread::spawn(move || 'outer: loop {
+            if ctxt.lock().deregister {
+                tx.send(NotifyData::Deregister(client.url.clone()))
+                    .expect("Unable to send context");
+                info!(
+                    "Deregister: [{}] 's push thread will terminate",
+                    &client.url
+                );
+                break 'outer;
+            }
             // Ensure that there is at least one block in the queue.
             if queue.read().len() <= 1 {
                 thread::sleep(Duration::from_secs(1));
@@ -139,13 +170,16 @@ impl RegisterService {
                     None => Message::empty(h),
                 };
                 if !msg.is_empty() && client.post_big_message(msg).is_err() {
-                    tx.send((client.url.clone(), h, false))
+                    tx.send(NotifyData::Abnormal(client.url.clone()))
                         .expect("Unable to send context");
-                    // TODO: save abnormal register in the disk.
+                    warn!(
+                        "Post abnormal: [{}] 's push thread will terminate",
+                        &client.url
+                    );
                     break 'outer;
                 } else {
                     ctxt.lock().push_height = h + 1; // next push height
-                    tx.send((client.url.clone(), h, true))
+                    tx.send(NotifyData::Normal((client.url.clone(), h)))
                         .expect("Unable to send context");
                 }
             }
@@ -177,28 +211,38 @@ fn remove_block_from_queue(
     queue: &BlockQueue,
     stat: &mut HashMap<String, u64>,
     map: &RegisterMap,
-    data: PushData,
+    data: NotifyData,
 ) {
-    let (url, push_height, is_normal) = data;
-    if is_normal {
-        stat.entry(url)
-            .and_modify(|height| *height = push_height)
-            .or_insert(push_height);
-    } else {
-        error!("Register: [{}] 's push thread terminated", &url);
-        stat.remove(&url);
-        map.write().remove(&url);
+    match data {
+        NotifyData::Normal((url, push_height)) => {
+            stat.entry(url)
+                .and_modify(|height| *height = push_height)
+                .or_insert(push_height);
+        }
+        NotifyData::Abnormal(url) => {
+            info!("Abnormal, remove register [{}]", &url);
+            stat.remove(&url);
+            map.write().remove(&url);
+            return;
+        }
+        NotifyData::Deregister(url) => {
+            info!("Deregister, remove register [{}]", &url);
+            stat.remove(&url);
+            map.write().remove(&url);
+            return;
+        }
     }
 
     let queue_len = util::get_block_queue_len(queue);
+
     let max_block_height = util::get_max_block_height(queue);
     let min_block_height = util::get_min_block_height(queue);
     let min_push_height = match stat.values().min() {
         Some(height) => *height,
         None => 0,
     };
-
     assert!(min_push_height < max_block_height);
+
     for h in min_block_height..=min_push_height {
         info!(
             "Block status: queue len [{}], min height [{}], push height [{}], max height [{}]",
@@ -208,12 +252,20 @@ fn remove_block_from_queue(
     }
 }
 
-fn start_http_rpc_server(url: &str, io: IoHandler) -> Result<Server> {
-    let server = ServerBuilder::new(io)
-        .threads(NUM_THREADS_FOR_REGISTERING)
-        .rest_api(RestApi::Unsecure)
-        .cors(DomainsValidation::AllowOnly(vec![
-            AccessControlAllowOrigin::Any,
+fn rpc_handler<R: RegisterApi>(register: R) -> jsonrpc_core::IoHandler {
+    let mut io = jsonrpc_core::IoHandler::default();
+    io.extend_with(register.to_delegate());
+    io
+}
+
+fn start_http_rpc_server(
+    url: &str,
+    io: jsonrpc_core::IoHandler,
+) -> Result<jsonrpc_http_server::Server> {
+    let server = jsonrpc_http_server::ServerBuilder::new(io)
+        .rest_api(jsonrpc_http_server::RestApi::Unsecure)
+        .cors(jsonrpc_http_server::DomainsValidation::AllowOnly(vec![
+            jsonrpc_http_server::AccessControlAllowOrigin::Any,
         ]))
         .start_http(&url.parse()?)?;
     Ok(server)
@@ -224,30 +276,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_context_handle_existing_url() {
-        let mut ctxt = Context::new(vec!["Balances FreeBalance1".into()], "1.0".into());
-        ctxt.handle_existing_url("Balances FreeBalance2".into(), "1.0".into());
-        assert_eq!(
-            ctxt.prefixes,
-            vec![
-                "Balances FreeBalance1".to_string(),
-                "Balances FreeBalance2".to_string()
-            ]
+    fn test_context_update_prefixes() {
+        let mut ctxt = Context::new(
+            vec!["Balances FreeBalance1".into()],
+            Version::parse("1.0.0").unwrap(),
         );
-        assert_eq!(ctxt.version, "1.0".to_string());
-
-        ctxt.handle_existing_url("Balances FreeBalance3".into(), "2.0".into());
-        assert_eq!(ctxt.prefixes, vec!["Balances FreeBalance3".to_string(),]);
-        assert_eq!(ctxt.version, "2.0".to_string());
-
-        ctxt.handle_existing_url("Balances FreeBalance4".into(), "2.0".into());
-        assert_eq!(
-            ctxt.prefixes,
-            vec![
-                "Balances FreeBalance3".to_string(),
-                "Balances FreeBalance4".to_string(),
-            ]
+        ctxt.update_prefixes(
+            vec!["Balances FreeBalance2".into()],
+            Version::parse("1.0.0").unwrap(),
         );
-        assert_eq!(ctxt.version, "2.0".to_string());
+        assert!(ctxt.prefixes.contains("Balances FreeBalance1"));
+        assert!(ctxt.prefixes.contains("Balances FreeBalance2"));
+        assert_eq!(ctxt.version, Version::new(1, 0, 0));
+
+        ctxt.update_prefixes(
+            vec!["Balances FreeBalance3".into()],
+            Version::parse("1.1.0").unwrap(),
+        );
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance1"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance2"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance3"), true);
+        assert_eq!(ctxt.version, Version::new(1, 1, 0));
+
+        ctxt.update_prefixes(
+            vec!["Balances FreeBalance4".into()],
+            Version::parse("1.1.0").unwrap(),
+        );
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance1"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance2"), false);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance3"), true);
+        assert_eq!(ctxt.prefixes.contains("Balances FreeBalance4"), true);
+        assert_eq!(ctxt.version, Version::new(1, 1, 0));
     }
 }
