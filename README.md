@@ -57,7 +57,7 @@ Parameter description:
     - type: JsonString
     - example: "http://127.0.0.1:12345/write"
 - version: 
-    - types: JsonString
+    - type: JsonString
     - note: Semantic version (major.minor.patch), see [details](https://github.com/semver/semver)
     - example: "1.2.3"
 
