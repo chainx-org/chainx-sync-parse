@@ -344,14 +344,14 @@ impl Default for OrderType {
 #[derive(
     PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
 )]
-pub enum OrderDirection {
+pub enum Side {
     Buy,
     Sell,
 }
 
-impl Default for OrderDirection {
+impl Default for Side {
     fn default() -> Self {
-        OrderDirection::Buy
+        Side::Buy
     }
 }
 
@@ -359,16 +359,16 @@ impl Default for OrderDirection {
     PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
 )]
 pub enum OrderStatus {
-    ZeroExecuted,
-    ParitialExecuted,
-    AllExecuted,
-    ParitialExecutedAndCanceled,
+    ZeroFill,
+    ParitialFill,
+    Filled,
+    ParitialFillAndCanceled,
     Canceled,
 }
 
 impl Default for OrderStatus {
     fn default() -> Self {
-        OrderStatus::ZeroExecuted
+        OrderStatus::ZeroFill
     }
 }
 
@@ -382,7 +382,7 @@ pub struct OrderProperty<
 >(
     AccountId,
     Pair,
-    OrderDirection,
+    Side,
     Amount,
     Price,
     OrderIndex,
