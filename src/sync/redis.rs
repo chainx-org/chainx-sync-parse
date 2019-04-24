@@ -5,14 +5,14 @@ use crate::Result;
 
 const REDIS_KEY_EVENT_NOTIFICATION: &str = "__keyevent@0__:zadd";
 
-pub struct RedisClient {
+pub struct Redis {
     client: redis::Client,
     conn: redis::Connection,
     tx: mpsc::Sender<Vec<u8>>,
     rx: mpsc::Receiver<Vec<u8>>,
 }
 
-impl RedisClient {
+impl Redis {
     pub fn connect<I: redis::IntoConnectionInfo>(info: I) -> Result<Self> {
         let client = redis::Client::open(info)?;
         let conn = client.get_connection()?;

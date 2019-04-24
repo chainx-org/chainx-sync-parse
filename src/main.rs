@@ -56,8 +56,8 @@ fn main() -> Result<()> {
     let pg_conn = establish_connection();
 
     let register_server = RegisterService::new(block_queue.clone()).run(REGISTER_SERVER_URL)?;
-    let client = RedisClient::connect(REDIS_SERVER_URL)?;
-    let subscribe_service = client.start_subscription()?;
+    let client = Redis::connect(REDIS_SERVER_URL)?;
+    let sync_service = client.start_subscription()?;
 
     let mut next_block_height: u64 = 0;
     let mut cur_block_height: u64 = 0;
@@ -110,7 +110,7 @@ fn main() -> Result<()> {
         }
     }
 
-    subscribe_service
+    sync_service
         .join()
         .expect("Couldn't join on the subscribe thread");
 
