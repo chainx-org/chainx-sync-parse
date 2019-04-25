@@ -12,18 +12,6 @@ use crate::types::{btc, Bytes, NodeT};
 
 pub use substrate_primitives::H256;
 
-///// Struct to encode the vesting schedule of an individual account.
-//#[derive(Copy, Clone, PartialEq, Eq, Default, Encode, Decode, Debug, Serialize, Deserialize)]
-//pub struct VestingSchedule<Balance>
-//where
-//    Balance: Copy + Default + Codec,
-//{
-//    /// Locked amount at genesis.
-//    pub offset: Balance,
-//    /// Amount that gets unlocked every block from genesis.
-//    pub per_block: Balance,
-//}
-
 // ================================================================================================
 // ChainX primitives.
 // ================================================================================================
@@ -58,7 +46,8 @@ pub type Name = XString;
 pub type URL = XString;
 
 /// Intention mutable properties
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct IntentionProps<SessionKey>
 where
     SessionKey: Clone + Default + Codec,
@@ -69,7 +58,8 @@ where
     pub session_key: Option<SessionKey>,
 }
 
-#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum TrusteeEntity {
     Bitcoin(Bytes),
 }
@@ -80,14 +70,16 @@ impl Default for TrusteeEntity {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeIntentionProps {
     pub about: XString,
     pub hot_entity: TrusteeEntity,
     pub cold_entity: TrusteeEntity,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeSessionInfo<AccountId>
 where
     AccountId: Clone + Default + Codec,
@@ -97,7 +89,8 @@ where
     pub cold_address: Bytes,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeInfoConfig {
     pub min_trustee_count: u32,
     pub max_trustee_count: u32,
@@ -107,7 +100,8 @@ pub struct TrusteeInfoConfig {
 // xfee - manager runtime module definitions.
 // ============================================================================
 
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct SwitchStore {
     pub global: bool,
     pub spot: bool,
@@ -123,9 +117,8 @@ pub type Token = XString;
 pub type Desc = XString;
 pub type Precision = u16;
 
-#[derive(
-    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum Chain {
     ChainX,
     Bitcoin,
@@ -139,7 +132,8 @@ impl Default for Chain {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Asset {
     token: Token,
     token_name: Token,
@@ -148,9 +142,8 @@ pub struct Asset {
     desc: Desc,
 }
 
-#[derive(
-    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum AssetType {
     Free,
     ReservedStaking,
@@ -175,7 +168,8 @@ pub type AddrStr = XString;
 pub type Memo = XString;
 
 /// application for withdrawal
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Application<AccountId, Balance, BlockNumber>
 where
     AccountId: Clone + Default + Codec,
@@ -208,7 +202,8 @@ where
 // ============================================================================
 
 /// Intention mutable properties
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct IntentionProfs<Balance, BlockNumber>
 where
     Balance: Copy + Default + Codec,
@@ -220,7 +215,8 @@ where
 }
 
 /// Nomination record of one of the nominator's nominations.
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct NominationRecord<Balance, BlockNumber>
 where
     Balance: Copy + Default + Codec,
@@ -238,7 +234,8 @@ where
 
 /// This module only tracks the vote weight related changes.
 /// All the amount related has been taken care by assets module.
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct PseduIntentionVoteWeight<BlockNumber>
 where
     BlockNumber: Copy + Default + Codec,
@@ -247,7 +244,8 @@ where
     pub last_total_deposit_weight_update: BlockNumber,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositVoteWeight<BlockNumber>
 where
     BlockNumber: Copy + Default + Codec,
@@ -260,7 +258,8 @@ where
 // xmultisig - multisig runtime module definitions.
 // ============================================================================
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum AddrType {
     Normal,
     Root,
@@ -273,7 +272,8 @@ impl Default for AddrType {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct AddrInfo<AccountId>
 where
     AccountId: Clone + Default + Codec,
@@ -288,19 +288,20 @@ where
 // ============================================================================
 
 pub type Price = Balance;
-pub type Amount = Balance;
 
 pub type OrderIndex = u64;
 pub type TradeHistoryIndex = u64;
 pub type TradingPairIndex = u32;
 
 /// PCX/BTC, base currency / quote currency
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct CurrencyPair(pub Token, pub Token);
 
 /// PCX/BTC = pip, a.k.a, percentage in point. Also called exchange rate.
 /// tick precision for BTC
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TradingPair {
     pub id: TradingPairIndex,
     pub currency_pair: CurrencyPair,
@@ -309,9 +310,8 @@ pub struct TradingPair {
     pub online: bool,
 }
 
-#[derive(
-    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum OrderType {
     Limit,
     Market,
@@ -323,9 +323,8 @@ impl Default for OrderType {
     }
 }
 
-#[derive(
-    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum Side {
     Buy,
     Sell,
@@ -337,9 +336,8 @@ impl Default for Side {
     }
 }
 
-#[derive(
-    PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize,
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum OrderStatus {
     ZeroFill,
     ParitialFill,
@@ -354,25 +352,27 @@ impl Default for OrderStatus {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct OrderProperty<
     PairIndex: Clone + Default + Codec,
     AccountId: Clone + Default + Codec,
-    Amount: Copy + Default + Codec,
+    Balance: Copy + Default + Codec,
     Price: Copy + Default + Codec,
     BlockNumber: Copy + Default + Codec,
 >(
     AccountId,
     PairIndex,
     Side,
-    Amount,
+    Balance,
     Price,
     OrderIndex,
     OrderType,
     BlockNumber,
 );
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Order<PairIndex, AccountId, Balance, Price, BlockNumber>
 where
     PairIndex: Clone + Default + Codec,
@@ -390,7 +390,8 @@ where
     pub last_update_at: BlockNumber,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Handicap<Price>
 where
     Price: Copy + Default + Codec,
@@ -403,7 +404,8 @@ where
 // xbridge - bitcoin runtime module definitions.
 // ============================================================================
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct BlockHeaderInfo {
     pub header: btc::BlockHeader,
     pub height: u32,
@@ -411,7 +413,8 @@ pub struct BlockHeaderInfo {
     pub txid_list: Vec<H256>,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum TxType {
     Withdraw,
     Deposit,
@@ -426,7 +429,8 @@ impl Default for TxType {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TxInfo {
     pub raw_tx: btc::Transaction,
     pub tx_type: TxType,
@@ -434,13 +438,15 @@ pub struct TxInfo {
     pub done: bool,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositCache {
     pub txid: H256,
     pub balance: u64,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub enum VoteResult {
     Unfinish,
     Finish,
@@ -452,7 +458,8 @@ impl Default for VoteResult {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct WithdrawalProposal<AccountId>
 where
     AccountId: Clone + Default + Codec,
@@ -463,7 +470,8 @@ where
     pub trustee_list: Vec<(AccountId, bool)>,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct Params {
     max_bits: u32,
     //Compact
@@ -478,7 +486,8 @@ pub struct Params {
     max_timespan: u32,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct TrusteeScriptInfo {
     pub hot_redeem_script: Bytes,
     pub cold_redeem_script: Bytes,

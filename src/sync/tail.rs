@@ -1,34 +1,22 @@
-use std::collections::vec_deque::VecDeque;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
-use std::path::Path;
+use std::io::{BufRead, BufReader};
 use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use crate::Result;
 
-const BLOCK_SIZE: u64 = 1 << 16;
 const BUFFER_SIZE: usize = 1 << 8;
-const LINES_NUM: usize = 10;
 
-struct Settings {
-    mode: (u64, u8), // (number of lines, delimiter)
-    sleep_milli: u64,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Settings {
-            mode: (10, '\n' as u8),
-            sleep_milli: 50,
-        }
-    }
+pub struct StorageData {
+    height: u64,
+    key: Vec<u8>,
+    value: Vec<u8>,
 }
 
 pub struct Tail {
-    tx: mpsc::Sender<Vec<u8>>,
-    rx: mpsc::Receiver<Vec<u8>>,
+    tx: mpsc::Sender<StorageData>,
+    rx: mpsc::Receiver<StorageData>,
 }
 
 impl Tail {
@@ -37,41 +25,62 @@ impl Tail {
         Tail { tx, rx }
     }
 
-    //    pub fn run(&self, filename: &str) -> Result<JoinHandle<()>> {
-    //        let path = Path::new(filename);
-    //        assert!(!path.is_dir());
-    //        let file = File::open(path)?;
-    //        let mut reader = BufReader::new(file);
-    //        let settings = Settings::default();
-    //
-    //        let tx = self.tx.clone();
-    //        let handle = thread::spawn(move || loop {
-    //            thread::sleep(Duration::from_millis(settings.sleep_milli));
-    //            let mut lines: VecDeque<String> = VecDeque::with_capacity(LINES_NUM);
-    //            let mut line = String::with_capacity(BUFFER_SIZE);
-    //            loop {
-    //                match reader.read_line(&mut line) {
-    //                    Ok(0) => break,
-    //                    Ok(_) => {
-    //                        if lines.len() >= LINES_NUM {
-    //                            let line = lines.pop_front().unwrap();
-    //                            tx.send(line.into_bytes()).unwrap();
-    //                        }
-    //
-    //                    },
-    //                    Err(e) => error!("Tail read line error: {}", e),
-    //                }
-    //                line.clear();
-    //            }
-    //        });
-    //        Ok(handle)
-    //    }
+    pub fn run(&self, file: File) -> Result<JoinHandle<()>> {
+        let mut reader = BufReader::new(file);
+        let tx = self.tx.clone();
 
-    pub fn recv_key(&self) -> Result<Vec<u8>> {
+        let handle = thread::spawn(move || {
+            let mut line = Vec::with_capacity(BUFFER_SIZE);
+            'outer: loop {
+                thread::sleep(Duration::from_millis(50));
+                loop {
+                    line.clear();
+                    match reader.read_until(b'\n', &mut line) {
+                        Ok(0) => break 'outer,
+                        Ok(_) => {
+                            if let Some(data) = filter_line(&line) {
+                                tx.send(data).unwrap()
+                            } else {
+                                continue;
+                            }
+                        }
+                        Err(e) => error!("Tail read line error: {}", e),
+                    }
+                }
+            }
+        });
+        Ok(handle)
+    }
+
+    pub fn recv_data(&self) -> Result<StorageData> {
         Ok(self.rx.recv()?)
     }
 }
 
-//fn filter_line() {
-//
-//}
+fn filter_line(_line: &[u8]) -> Option<StorageData> {
+    None
+}
+
+#[test]
+fn test_tail() -> Result<()> {
+    use std::path::Path;
+
+    let path = Path::new("./tail.log");
+    assert!(path.is_file());
+    let file = File::open(path)?;
+
+    let tail = Tail::new();
+    let handle = tail.run(file)?;
+
+    while let Ok(StorageData { h, key, value }) = tail.recv_data() {
+        println!(
+            "h = {:?}, key = {:?}, value = {:?}",
+            h,
+            String::from_utf8(key).unwrap(),
+            String::from_utf8(value).unwrap()
+        );
+    }
+
+    handle.join().expect("Join should be successful");
+    Ok(())
+}

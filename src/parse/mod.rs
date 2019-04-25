@@ -348,6 +348,7 @@ impl RuntimeStorage {
             RuntimeStorage::XFeeManagerProducerFeeProportion(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XFeeManagerTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XFeeManagerTransactionByteFee(ref mut v) => to_value_json!(prefix, value => v),
+            // assets
             RuntimeStorage::XAssetsAssetList(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsAssetInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -357,6 +358,7 @@ impl RuntimeStorage {
             RuntimeStorage::XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XAssetsRecordsSerialNumber(ref mut v) => to_value_json!(prefix, value => v),
+            // mining
             RuntimeStorage::XStakingInitialReward(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
@@ -380,12 +382,14 @@ impl RuntimeStorage {
             RuntimeStorage::XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            // multi signature
             RuntimeStorage::XMultiSigRootAddrList(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XMultiSigMultiSigAddrInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XMultiSigPendingListFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XMultiSigMultiSigListItemFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XMultiSigMultiSigListLenFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XMultiSigTrusteeMultiSigAddr(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            // dex
             RuntimeStorage::XSpotTradingPairCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XSpotTradingPairOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XSpotTradingPairInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -411,7 +415,7 @@ impl RuntimeStorage {
             RuntimeStorage::XBridgeOfBTCBtcWithdrawalFee(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCMaxWithdrawalCount(ref mut v) => to_value_json!(prefix, value => v),
             RuntimeStorage::XBridgeOfBTCLastTrusteeSessionNumber(ref mut v) => to_value_json!(prefix, value => v),
-            // bridge - xdot
+            // bridge - sdot
             RuntimeStorage::XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             RuntimeStorage::XBridgeOfSDOTTotal(ref mut v) => to_value_json!(prefix, value => v),
         }
@@ -425,36 +429,36 @@ mod tests {
 
     #[test]
     fn test_parse_match_value() {
-//        let key = "Balances TotalIssuance".as_bytes();
-//        let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-//        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
-//        let exp = serde_json::Value::from_str(
-//            r#"{
-//                "type":"value",
-//                "prefix":"Balances TotalIssuance",
-//                "key":null,
-//                "value":123
-//            }"#,
-//        )
-//        .unwrap();
-//        assert_eq!(got, exp);
+        let key = "Balances TotalIssuance".as_bytes();
+        let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
+        let exp = serde_json::Value::from_str(
+            r#"{
+                "type":"value",
+                "prefix":"Balances TotalIssuance",
+                "key":null,
+                "value":123
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(got, exp);
     }
 
     #[test]
     fn test_parse_match_map() {
-//        let key = "Balances FreeBalance12345678901234567890123456789012".as_bytes();
-//        let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-//        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
-//        let exp = serde_json::Value::from_str(
-//            r#"{
-//                "type":"map",
-//                "prefix":"Balances FreeBalance",
-//                "key":"0x3132333435363738393031323334353637383930313233343536373839303132",
-//                "value":123
-//            }"#,
-//        )
-//        .unwrap();
-//        assert_eq!(got, exp);
+        //        let key = "Balances FreeBalance12345678901234567890123456789012".as_bytes();
+        //        let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        //        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
+        //        let exp = serde_json::Value::from_str(
+        //            r#"{
+        //                "type":"map",
+        //                "prefix":"Balances FreeBalance",
+        //                "key":"0x3132333435363738393031323334353637383930313233343536373839303132",
+        //                "value":123
+        //            }"#,
+        //        )
+        //        .unwrap();
+        //        assert_eq!(got, exp);
     }
 
     #[test]
