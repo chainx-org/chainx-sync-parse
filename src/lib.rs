@@ -23,6 +23,6 @@ pub use self::parse::RuntimeStorage;
 #[cfg(feature = "pgsql")]
 pub use self::pgsql::*;
 pub use self::register::RegisterService;
-pub use self::sync::Redis;
+pub use self::sync::{Redis, Tail};
 
 pub type BlockQueue = Arc<RwLock<BTreeMap<u64, Vec<serde_json::Value>>>>;

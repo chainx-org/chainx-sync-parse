@@ -6,7 +6,7 @@ use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use super::error::Result;
+use crate::Result;
 
 const BLOCK_SIZE: u64 = 1 << 16;
 const BUFFER_SIZE: usize = 1 << 8;

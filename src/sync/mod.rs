@@ -1,5 +1,5 @@
 mod redis;
-//mod tail;
+mod tail;
 
 pub use self::redis::Redis;
-//pub use self::tail::Tail;
+pub use self::tail::Tail;
