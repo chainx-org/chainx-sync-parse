@@ -8,7 +8,7 @@ use log4rs::{
 };
 use serde_json::Value;
 
-use chainx_sub_parse::*;
+use chainx_sync_parse::*;
 
 const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
 const REGISTER_SERVER_URL: &str = "0.0.0.0:3030";

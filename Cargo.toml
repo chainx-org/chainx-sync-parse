@@ -1,5 +1,5 @@
 [package]
-name = "chainx-sub-parse"
+name = "chainx-sync-parse"
 version = "0.1.0"
 authors = ["ChainX <https://chainx.org>"]
 edition = "2018"

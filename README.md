@@ -21,12 +21,12 @@ Follow the stage/V0.9.9 branch of ChainX.
 
 ```bash
 # compile
-git clone https://github.com/chainpool/chainx-sub-parse.git
-cd chainx-sub-parse
+git clone https://github.com/chainpool/chainx-sync-parse.git
+cd chainx-sync-parse
 cargo build --release
 
 # run
-cp /target/release/chainx-sub-parse .
+cp /target/release/chainx-sync-parse .
 ./start.sh
 ```
 
@@ -66,7 +66,7 @@ that registrant receives the block data successfully,
 before sending a register request through Postman.
 
 ```bash
-cd chainx-sub-parse
+cd chainx-sync-parse
 cargo run --example register
 # please run `cargo run --example register -- -h` to see the specific usage.
 ```
@@ -119,11 +119,11 @@ See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for det
 
 ```bash
 # compile
-git clone https://github.com/chainpool/chainx-sub-parse.git
-cd chainx-sub-parse
+git clone https://github.com/chainpool/chainx-sync-parse.git
+cd chainx-sync-parse
 cargo build --release --features pgsql
 
 # run
-cp /target/release/chainx-sub-parse .
+cp /target/release/chainx-sync-parse .
 ./start.sh
 ```
