@@ -1,6 +1,10 @@
-use std::collections::HashMap;
+#[macro_use]
+extern crate log;
 
-use log::{debug, error, info, LevelFilter};
+use std::collections::HashMap;
+use std::thread;
+
+use log::LevelFilter;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
     config::{Appender, Config, Root},
@@ -10,9 +14,10 @@ use serde_json::Value;
 
 use chainx_sync_parse::*;
 
-const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
 const REGISTER_SERVER_URL: &str = "0.0.0.0:3030";
 const LOG_FILE_PATH: &str = "log/output.log";
+#[cfg(feature = "sync-redis")]
+const REDIS_SERVER_URL: &str = "redis://127.0.0.1";
 
 fn init_log_config() -> Result<()> {
     let console = ConsoleAppender::builder()
@@ -48,35 +53,36 @@ fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<Vec<u8>, V
     }
 }
 
-fn main() -> Result<()> {
-    init_log_config()?;
+fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
+    // for debug
+    if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
+        debug!(
+            "block_height: {:?}, prefix+key: {:?}, value: {:?}",
+            height, prefix_key, value
+        );
+    } else {
+        debug!(
+            "block_height: {:?}, prefix+key: Invalid UTF8 (hex: {:?}), value: {:?}",
+            height, key, value
+        );
+    }
+}
 
-    let block_queue: BlockQueue = BlockQueue::default();
-    #[cfg(feature = "pgsql")]
-    let pg_conn = establish_connection();
-
-    let register_server = RegisterService::new(block_queue.clone()).run(REGISTER_SERVER_URL)?;
-    let client = Redis::connect(REDIS_SERVER_URL)?;
-    let sync_service = client.start_subscription()?;
-
+#[cfg(feature = "sync-redis")]
+fn sync_redis(url: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
     let mut next_block_height: u64 = 0;
     let mut cur_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
+    #[cfg(feature = "pgsql")]
+    let pg_conn = establish_connection();
+
+    let client = Redis::connect(url)?;
+    let sync_service = client.start_subscription()?;
+
     while let Ok(key) = client.recv_key() {
         if let Ok((height, value)) = client.query(&key) {
-            // for debug
-            if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
-                debug!(
-                    "block_height: {:?}, prefix+key: {:?}, value: {:?}",
-                    height, prefix_key, value
-                );
-            } else {
-                debug!(
-                    "block_height: {:?}, prefix+key: Invalid UTF8 (hex: {:?}), value: {:?}",
-                    height, key, value
-                );
-            }
+            debug_sync_block_info(height, &key, &value);
 
             if height < cur_block_height {
                 next_block_height = height;
@@ -99,7 +105,7 @@ fn main() -> Result<()> {
             next_block_height = height;
             cur_block_height = next_block_height - 1;
 
-            insert_block_into_queue(&block_queue, cur_block_height, &stat);
+            insert_block_into_queue(block_queue, cur_block_height, &stat);
             #[cfg(feature = "pgsql")]
             insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
 
@@ -110,9 +116,74 @@ fn main() -> Result<()> {
         }
     }
 
+    Ok(sync_service)
+}
+
+#[cfg(feature = "sync-log")]
+fn sync_log(block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
+    let mut next_block_height: u64 = 0;
+    let mut cur_block_height: u64 = 0;
+    let mut stat = HashMap::new();
+
+    #[cfg(feature = "pgsql")]
+    let pg_conn = establish_connection();
+
+    let path = std::path::Path::new("./tail.log");
+    assert!(path.is_file());
+    let file = std::fs::File::open(path)?;
+
+    let tail = Tail::new();
+    let sync_service = tail.run(file)?;
+
+    while let Ok((height, key, value)) = tail.recv_data() {
+        debug_sync_block_info(height, &key, &value);
+
+        if height < cur_block_height {
+            next_block_height = height;
+            stat.clear();
+        }
+
+        if height == next_block_height {
+            match RuntimeStorage::parse(&key, value) {
+                Ok((prefix, value)) => {
+                    let mut prefix = prefix.as_bytes().to_vec();
+                    prefix.extend_from_slice(&key);
+                    stat.insert(prefix, value);
+                }
+                Err(_) => continue,
+            }
+            continue;
+        }
+
+        // when height > nex_block_height
+        next_block_height = height;
+        cur_block_height = next_block_height - 1;
+
+        insert_block_into_queue(block_queue, cur_block_height, &stat);
+        #[cfg(feature = "pgsql")]
+        insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
+
+        stat.clear();
+    }
+
+    Ok(sync_service)
+}
+
+fn main() -> Result<()> {
+    init_log_config()?;
+
+    let block_queue: BlockQueue = BlockQueue::default();
+
+    let register_server = RegisterService::new(block_queue.clone()).run(REGISTER_SERVER_URL)?;
+
+    #[cfg(feature = "sync-redis")]
+    let sync_service = sync_redis(REDIS_SERVER_URL, &block_queue)?;
+    #[cfg(feature = "sync-log")]
+    let sync_service = sync_log(&block_queue)?;
+
     sync_service
         .join()
-        .expect("Couldn't join on the subscribe thread");
+        .expect("Couldn't join on the sync_service thread");
 
     register_server.wait();
 

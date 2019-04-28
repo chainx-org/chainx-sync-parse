@@ -14,11 +14,7 @@ lazy_static::lazy_static! {
 
 const BUFFER_SIZE: usize = 1 << 8;
 
-pub struct StorageData {
-    height: u64,
-    key: Vec<u8>,
-    value: Vec<u8>,
-}
+type StorageData = (u64, Vec<u8>, Vec<u8>); // height, key, value
 
 pub struct Tail {
     tx: mpsc::Sender<StorageData>,
@@ -68,11 +64,11 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
             .parse::<u64>()
             .unwrap();
         // key and value will be hex
-//        let key = hex::decode(&caps[2]).unwrap();
-//        let value = hex::decode(&caps[3]).unwrap();
-        let key = (&caps[2]).to_vec();
-        let value = (&caps[3]).to_vec();
-        Some(StorageData { height, key, value })
+        let key = hex::decode(&caps[2]).unwrap();
+        let value = hex::decode(&caps[3]).unwrap();
+        //        let key = (&caps[2]).to_vec();
+        //        let value = (&caps[3]).to_vec();
+        Some((height, key, value))
     } else {
         None
     }
@@ -87,7 +83,7 @@ fn test_tail() -> Result<()> {
     let tail = Tail::new();
     let handle = tail.run(file)?;
 
-    while let Ok(StorageData { height, key, value }) = tail.recv_data() {
+    while let Ok((height, key, value)) = tail.recv_data() {
         println!(
             "height = {:?}, key = {:?}, value = {:?}",
             height,
