@@ -6,16 +6,7 @@ Follow the stage/V0.9.9 branch of ChainX.
 
 ### 0. Requirement
 
-- Redis (that supports the **keyspace notification** feature)
-
-    redis-server's conf:
-
-    ```
-    ####### EVENT NOTIFICATION ######
-    notify-keyspace-events "Ez"
-    ```
-
-- Rust stable
+- The latest Rust stable version.
 
 ### 1. Run the program
 
@@ -95,35 +86,78 @@ Parameter description:
 # compile
 cd ChainX
 git checkout stage/V0.9.9
-cargo build --release --features msgbus-redis
+cargo build --release --features msgbus-log
+# or cargo build --release --features msgbus-redis
 
 # run
 cp target/release/chainx .
 ./sync-block.sh  # need to modify configuration manually.
 ```
 
-## Feature/pgsql
+## Feature - Sync strategy
+
+### sync-log (Enable Default)
+
+0. **Requirement**: None
+
+1. **Usage**:
+
+    ```bash
+    # compile
+    git clone https://github.com/chainpool/chainx-sync-parse.git
+    cd chainx-sync-parse
+    cargo build --release
+    
+    # run
+    cp /target/release/chainx-sync-parse .
+    ./start.sh
+    ```
+
+### sync-redis (Alternative)
+
+0. **Requirement**: Redis (which supports the **keyspace notification** feature)
+
+    ```
+    redis-server's conf:
+    
+    ####### EVENT NOTIFICATION ######
+    notify-keyspace-events "Ez"
+    ```
+
+1. **Usage**:
+
+    ```bash
+    # compile
+    git clone https://github.com/chainpool/chainx-sync-parse.git
+    cd chainx-sync-parse
+    cargo build --release --default-features --features='std,msgbus-redis'
+    
+    # run
+    cp /target/release/chainx-sync-parse .
+    ./start.sh
+    ```
+
+## Feature/pgsql (Optional)
 
 Add the feature for inserting syncing block information into PostgreSQL.
  
 See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for details of the database table `blocks`.
 
-### 0. Requirement
+0. **Requirement**: PostgreSQL, use your own PostgreSQL configuration in the [.env](./.env) file, like:
 
-- PostgreSQL, use your own PostgreSQL configuration in the [.env](./.env) file, like:
     ```bash
     DATABASE_URL=postgres://username:password@localhost/database_name
     ```
 
-### 1. Usage
+1. **Usage**:
 
-```bash
-# compile
-git clone https://github.com/chainpool/chainx-sync-parse.git
-cd chainx-sync-parse
-cargo build --release --features pgsql
-
-# run
-cp /target/release/chainx-sync-parse .
-./start.sh
-```
+    ```bash
+    # compile
+    git clone https://github.com/chainpool/chainx-sync-parse.git
+    cd chainx-sync-parse
+    cargo build --release --features pgsql
+    
+    # run
+    cp /target/release/chainx-sync-parse .
+    ./start.sh
+    ```
