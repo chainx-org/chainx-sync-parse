@@ -120,7 +120,7 @@ fn sync_redis(url: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<
 }
 
 #[cfg(feature = "sync-log")]
-fn sync_log(block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
+fn sync_log(path: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
     let mut next_block_height: u64 = 0;
     let mut cur_block_height: u64 = 0;
     let mut stat = HashMap::new();
@@ -128,7 +128,7 @@ fn sync_log(block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let path = std::path::Path::new("./tail.log");
+    let path = std::path::Path::new(path);
     assert!(path.is_file());
     let file = std::fs::File::open(path)?;
 
@@ -179,7 +179,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "sync-redis")]
     let sync_service = sync_redis(REDIS_SERVER_URL, &block_queue)?;
     #[cfg(feature = "sync-log")]
-    let sync_service = sync_log(&block_queue)?;
+    let sync_service = sync_log("./nohup.out", &block_queue)?;
 
     sync_service
         .join()
