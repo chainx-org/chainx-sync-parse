@@ -45,8 +45,8 @@ hyper = "0.12"
 [features]
 default = ["std", "sync-log"]
 std = []
-sync-redis = []
 sync-log = []
+sync-redis = []
 pgsql = [
     "diesel/postgres",
     "diesel/serde_json",

@@ -1,4 +1,7 @@
-# chainx-sub-parse
+# chainx-sync-parse
+
+The program is used to synchronize and parse sync-node data, 
+providing 1:N external subscription serive.
 
 Follow the stage/V0.9.9 branch of ChainX.
 
@@ -130,7 +133,7 @@ cp target/release/chainx .
     # compile
     git clone https://github.com/chainpool/chainx-sync-parse.git
     cd chainx-sync-parse
-    cargo build --release --default-features --features='std,msgbus-redis'
+    cargo build --release --no-default-features --features='std,msgbus-redis'
     
     # run
     cp /target/release/chainx-sync-parse .
