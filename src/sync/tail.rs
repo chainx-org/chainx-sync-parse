@@ -21,6 +21,12 @@ pub struct Tail {
     rx: mpsc::Receiver<StorageData>,
 }
 
+impl Default for Tail {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Tail {
     pub fn new() -> Tail {
         let (tx, rx) = mpsc::channel();
