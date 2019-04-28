@@ -1,7 +1,7 @@
 # chainx-sync-parse
 
 The program is used to synchronize and parse sync-node data, 
-providing 1:N external subscription serive.
+providing 1:N external subscription service.
 
 Follow the stage/V0.9.9 branch of ChainX.
 
