@@ -13,6 +13,7 @@ pub struct Cli {
     #[structopt(
         short = "p",
         long = "port",
+        value_name = "PORT",
         default_value = "3030",
         parse(from_str = "parse_register_service_port")
     )]
@@ -20,7 +21,8 @@ pub struct Cli {
 
     /// Specify the log file path
     #[structopt(
-        long = "log_file_path",
+        long = "log-file-path",
+        value_name = "PATH",
         default_value = "log/output.log",
         parse(from_os_str)
     )]
@@ -28,12 +30,20 @@ pub struct Cli {
 
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]
-    #[structopt(long = "sync_redis_url", default_value = "redis://127.0.0.1")]
+    #[structopt(
+        long = "sync-redis",
+        value_name = "URL",
+        default_value = "redis://127.0.0.1"
+    )]
     pub sync_redis_url: String,
 
     /// Specify the sync log path
     #[cfg(feature = "sync-log")]
-    #[structopt(long = "sync_log_path", default_value = "nohup.out")]
+    #[structopt(
+        long = "sync-log",
+        value_name = "PATH",
+        default_value = "nohup.out"
+    )]
     pub sync_log_path: String,
 }
 
