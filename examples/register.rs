@@ -1,6 +1,6 @@
-use clap::{App, Arg};
 use hyper::{rt::Future, service::service_fn_ok, Body, Method, Request, Response, Server};
 use serde_json::json;
+use structopt::StructOpt;
 
 fn echo(req: Request<Body>) -> Response<Body> {
     let (parts, _body) = req.into_parts();
@@ -22,46 +22,48 @@ fn echo(req: Request<Body>) -> Response<Body> {
     }
 }
 
-fn config_ip_port() -> ([u8; 4], u16) {
-    let matches = App::new("register-server-test")
-        .version("1.0")
-        .author("ChainX <https://chainx.org>")
-        .about("For testing register service")
-        .arg(
-            Arg::with_name("ip")
-                .short("i")
-                .long("ip")
-                .value_name("IP")
-                .help("Specify the ip address")
-                .default_value("127.0.0.1")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("port")
-                .short("p")
-                .long("port")
-                .value_name("PORT")
-                .help("Specify the port of register service")
-                .default_value("12345")
-                .takes_value(true),
-        )
-        .get_matches();
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "register-server-test",
+    author = "ChainX <https://chainx.org>",
+    about = "For testing register service"
+)]
+struct Opt {
+    /// Specify the ip address
+    #[structopt(
+        short = "i",
+        long = "ip",
+        default_value = "127.0.0.1",
+        parse(from_str = "parse_ip_addr")
+    )]
+    ip: [u8; 4],
+    /// Specify the port of register service
+    #[structopt(
+        short = "p",
+        long = "port",
+        default_value = "12345",
+        parse(from_str = "parse_port")
+    )]
+    port: u16,
+}
 
-    let ip_addr = matches.value_of("ip").unwrap_or("127.0.0.1");
+fn parse_ip_addr(ip_addr: &str) -> [u8; 4] {
     let ip_addr: Vec<u8> = ip_addr
         .split(".")
         .map(|x| x.parse::<u8>().unwrap())
         .collect();
     let mut ip = [0u8; 4];
     ip.copy_from_slice(ip_addr.as_slice());
-    let port = matches.value_of("port").unwrap_or("12345");
-    let port = port.parse::<u16>().unwrap();
-    (ip, port)
+    ip
+}
+
+fn parse_port(port: &str) -> u16 {
+    port.parse::<u16>().unwrap()
 }
 
 fn main() {
-    let (ip, port) = config_ip_port();
-    let addr = (ip, port).into();
+    let opt = Opt::from_args();
+    let addr = (opt.ip, opt.port).into();
 
     let server = Server::bind(&addr)
         .serve(|| service_fn_ok(echo))
