@@ -1,18 +1,18 @@
 mod push;
+mod rpc;
 mod util;
 
-use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use jsonrpc_derive::rpc;
 use parking_lot::{Mutex, RwLock};
 use semver::Version;
 
 use self::push::{Message, PushClient};
+use self::rpc::RegisterApi;
 use crate::{BlockQueue, Result};
 
 #[derive(PartialEq, Clone, Debug)]
@@ -67,18 +67,6 @@ enum NotifyData {
     Deregister(String),
 }
 
-/// Register API
-#[rpc]
-pub trait RegisterApi {
-    /// Register
-    #[rpc(name = "register")]
-    fn register(&self, prefixes: Vec<String>, url: String, version: String) -> Result<String>;
-
-    /// Deregister
-    #[rpc(name = "deregister")]
-    fn deregister(&self, url: String) -> Result<String>;
-}
-
 pub struct RegisterService {
     /// The block queue (BTreeMap: key - block height, value - json value).
     block_queue: BlockQueue,
@@ -86,43 +74,6 @@ pub struct RegisterService {
     map: RegisterMap,
     /// PushData sender
     tx: Mutex<PushSender>,
-}
-
-impl RegisterApi for RegisterService {
-    fn register(&self, prefixes: Vec<String>, url: String, version: String) -> Result<String> {
-        let register_info = format!(
-            "url: {:?}, prefix: {:?}, version: {:?}",
-            &url, &prefixes, &version
-        );
-        let version = Version::parse(&version)?;
-        match self.map.write().entry(url.clone()) {
-            Entry::Occupied(mut entry) => {
-                info!("Existing Register [{}]", register_info);
-                let ctxt = entry.get_mut();
-                ctxt.lock().update_prefixes(prefixes, version);
-            }
-            Entry::Vacant(entry) => {
-                info!("New Register [{}]", register_info);
-                let tx = self.tx.lock().clone();
-                let ctxt = Arc::new(Mutex::new(Context::new(prefixes, version)));
-                self.spawn_new_push(url, ctxt.clone(), tx);
-                entry.insert(ctxt);
-            }
-        }
-        Ok("OK".to_string())
-    }
-
-    fn deregister(&self, url: String) -> Result<String> {
-        match self.map.write().entry(url.clone()) {
-            Entry::Occupied(mut entry) => {
-                info!("Deregister [{}]", url);
-                let ctxt = entry.get_mut();
-                ctxt.lock().deregister = true;
-                Ok("OK".to_string())
-            }
-            Entry::Vacant(_) => Err("Nonexistent register url".into()),
-        }
-    }
 }
 
 impl RegisterService {
