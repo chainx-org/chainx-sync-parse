@@ -43,7 +43,7 @@ btc-keys = { package = "keys", git = "https://github.com/chainx-org/light-bitcoi
 hyper = "0.12"
 
 [features]
-default = ["std", "sync-log"]
+default = ["std", "sync-redis"]
 std = []
 sync-log = []
 sync-redis = []
