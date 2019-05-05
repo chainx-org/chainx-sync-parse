@@ -70,8 +70,8 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
             .parse::<u64>()
             .unwrap();
         // key and value will be hex
-        let key = hex::decode(&caps[2]).unwrap();
-        let value = hex::decode(&caps[3]).unwrap();
+        let key = hex::decode(&caps[2]).expect("Hex decode key should not be failed");
+        let value = hex::decode(&caps[3]).expect("Hex decode value should not be failed");
         Some((height, key, value))
     } else {
         None

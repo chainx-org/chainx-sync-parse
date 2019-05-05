@@ -125,6 +125,7 @@ fn sync_redis(url: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<
     let pg_conn = establish_connection();
 
     let client = Redis::connect(url)?;
+    info!("Connect redis [{:?}] successfully", url);
     let sync_service = client.start_subscription()?;
 
     while let Ok(key) = client.recv_key() {
