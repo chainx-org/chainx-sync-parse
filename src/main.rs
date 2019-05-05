@@ -3,7 +3,7 @@ extern crate log;
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::thread;
+use std::thread::JoinHandle;
 
 use log::LevelFilter;
 use log4rs::{
@@ -66,9 +66,9 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
 }
 
 #[cfg(feature = "sync-log")]
-fn sync_log(path: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
+fn sync_log(path: &str, start_height: u64, block_queue: &BlockQueue) -> Result<JoinHandle<()>> {
+    let mut cur_block_height: u64 = start_height;
     let mut next_block_height: u64 = 0;
-    let mut cur_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
     #[cfg(feature = "pgsql")]
@@ -116,9 +116,9 @@ fn sync_log(path: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<(
 }
 
 #[cfg(feature = "sync-redis")]
-fn sync_redis(url: &str, block_queue: &BlockQueue) -> Result<thread::JoinHandle<()>> {
-    let mut next_block_height: u64 = 0;
+fn sync_redis(url: &str, _start_height: u64, block_queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let mut cur_block_height: u64 = 0;
+    let mut next_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
     #[cfg(feature = "pgsql")]
@@ -177,9 +177,9 @@ fn main() -> Result<()> {
         .run(&format!("0.0.0.0:{}", cli.register_service_port))?;
 
     #[cfg(feature = "sync-log")]
-    let sync_service = sync_log(&cli.sync_log_path, &block_queue)?;
+    let sync_service = sync_log(&cli.sync_log_path, cli.start_height, &block_queue)?;
     #[cfg(feature = "sync-redis")]
-    let sync_service = sync_redis(&cli.sync_redis_url, &block_queue)?;
+    let sync_service = sync_redis(&cli.sync_redis_url, cli.start_height, &block_queue)?;
 
     sync_service
         .join()

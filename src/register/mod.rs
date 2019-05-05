@@ -219,6 +219,7 @@ fn start_http_rpc_server(
             jsonrpc_http_server::AccessControlAllowOrigin::Any,
         ]))
         .start_http(&url.parse()?)?;
+    info!("Start http rpc server on: {:?}", url);
     Ok(server)
 }
 

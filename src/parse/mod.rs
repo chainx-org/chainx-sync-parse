@@ -430,15 +430,15 @@ mod tests {
 
     #[test]
     fn test_parse_match_value() {
-        let key = "Balances TotalIssuance".as_bytes();
-        let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let key = "XTokens PseduIntentions".as_bytes();
+        let value = hex::decode("080c4254431053444f54").unwrap();
         let (_, got) = RuntimeStorage::parse(key, value).unwrap();
         let exp = serde_json::Value::from_str(
             r#"{
                 "type":"value",
-                "prefix":"Balances TotalIssuance",
+                "prefix":"XTokens PseduIntentions",
                 "key":null,
-                "value":123
+                "value":["BTC","SDOT"]
             }"#,
         )
         .unwrap();
@@ -447,19 +447,19 @@ mod tests {
 
     #[test]
     fn test_parse_match_map() {
-        //        let key = "Balances FreeBalance12345678901234567890123456789012".as_bytes();
-        //        let value = vec![123u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        //        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
-        //        let exp = serde_json::Value::from_str(
-        //            r#"{
-        //                "type":"map",
-        //                "prefix":"Balances FreeBalance",
-        //                "key":"0x3132333435363738393031323334353637383930313233343536373839303132",
-        //                "value":123
-        //            }"#,
-        //        )
-        //        .unwrap();
-        //        assert_eq!(got, exp);
+        let key = "XAssets AssetList\x00".as_bytes();
+        let value = hex::decode("040c504358").unwrap();
+        let (_, got) = RuntimeStorage::parse(key, value).unwrap();
+        let exp = serde_json::Value::from_str(
+            r#"{
+                "type":"map",
+                "prefix":"XAssets AssetList",
+                "key":"ChainX",
+                "value":["PCX"]
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(got, exp);
     }
 
     #[test]

@@ -14,8 +14,7 @@ pub struct Cli {
         short = "p",
         long = "port",
         value_name = "PORT",
-        default_value = "3030",
-        parse(from_str = "parse_register_service_port")
+        default_value = "3030"
     )]
     pub register_service_port: u16,
 
@@ -39,14 +38,10 @@ pub struct Cli {
 
     /// Specify the sync log path
     #[cfg(feature = "sync-log")]
-    #[structopt(
-        long = "sync-log",
-        value_name = "PATH",
-        default_value = "nohup.out"
-    )]
+    #[structopt(long = "sync-log", value_name = "PATH", default_value = "nohup.out")]
     pub sync_log_path: String,
-}
 
-fn parse_register_service_port(port: &str) -> u16 {
-    port.parse::<u16>().unwrap()
+    /// Specify the block height to start syncing
+    #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
+    pub start_height: u64,
 }
