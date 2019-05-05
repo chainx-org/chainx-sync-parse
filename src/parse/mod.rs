@@ -8,7 +8,7 @@ use strum::{EnumProperty, IntoEnumIterator};
 use strum_macros::{EnumIter, EnumProperty, IntoStaticStr};
 
 use self::primitives::*;
-use crate::types::{btc, Bytes, MultiNodeIndex, Node};
+use crate::types::{btc, MultiNodeIndex, Node};
 use crate::Result;
 
 #[rustfmt::skip]
@@ -68,18 +68,6 @@ pub enum RuntimeStorage {
     XAccountsIntentionNameOf(AccountId, Name),
     #[strum(serialize = "XAccounts IntentionPropertiesOf", props(r#type = "map"))]
     XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey>),
-    #[strum(serialize = "XAccounts CrossChainAddressMapOf", props(r#type = "map"))]
-    XAccountsCrossChainAddressMapOf((Chain, Bytes), (AccountId, Option<AccountId>)),
-    #[strum(serialize = "XAccounts CrossChainBindOf", props(r#type = "map"))]
-    XAccountsCrossChainBindOf((Chain, AccountId), Vec<Bytes>),
-    #[strum(serialize = "XAccounts TrusteeSessionInfoLen", props(r#type = "map"))]
-    XAccountsTrusteeSessionInfoLen(Chain, u32),
-    #[strum(serialize = "XAccounts TrusteeSessionInfoOf", props(r#type = "map"))]
-    XAccountsTrusteeSessionInfoOf((Chain, u32), TrusteeSessionInfo<AccountId>),
-    #[strum(serialize = "XAccounts TrusteeInfoConfigOf", props(r#type = "map"))]
-    XAccountsTrusteeInfoConfigOf(Chain, TrusteeInfoConfig),
-    #[strum(serialize = "XAccounts TrusteeIntentionPropertiesOf", props(r#type = "map"))]
-    XAccountsTrusteeIntentionPropertiesOf((AccountId, Chain), TrusteeIntentionProps),
     #[strum(serialize = "XAccounts TeamAddress", props(r#type = "value"))]
     XAccountsTeamAddress(AccountId),
     #[strum(serialize = "XAccounts CouncilAddress", props(r#type = "value"))]
@@ -174,8 +162,6 @@ pub enum RuntimeStorage {
     XMultiSigMultiSigListItemFor((AccountId, u32), AccountId),
     #[strum(serialize = "XMultiSig MultiSigListLenFor", props(r#type = "map"))]
     XMultiSigMultiSigListLenFor(AccountId, u32),
-    #[strum(serialize = "XMultiSig TrusteeMultiSigAddr", props(r#type = "map"))]
-    XMultiSigTrusteeMultiSigAddr(Chain, AccountId),
     // xdex ---------------------------------------------------------------------------------------
     // XSpot
     #[strum(serialize = "XSpot TradingPairCount", props(r#type = "value"))]
@@ -226,13 +212,30 @@ pub enum RuntimeStorage {
     XBridgeOfBTCBtcWithdrawalFee(u64),
     #[strum(serialize = "XBridgeOfBTC MaxWithdrawalCount", props(r#type = "value"))]
     XBridgeOfBTCMaxWithdrawalCount(u32),
-    #[strum(serialize = "XBridgeOfBTC LastTrusteeSessionNumber", props(r#type = "value"))]
-    XBridgeOfBTCLastTrusteeSessionNumber(u32),
     // SDOT
     #[strum(serialize = "XBridgeOfSDOT Claims", props(r#type = "map"))]
     XBridgeOfSDOTClaims(EthereumAddress, Balance),
     #[strum(serialize = "XBridgeOfSDOT Total", props(r#type = "value"))]
     XBridgeOfSDOTTotal(Balance),
+    // Features
+    #[strum(serialize = "XBridgeFeatures TrusteeMultiSigAddr", props(r#type = "map"))]
+    XBridgeFeaturesTrusteeMultiSigAddr(Chain, AccountId),
+    #[strum(serialize = "XBridgeFeatures TrusteeInfoConfigOf", props(r#type = "map"))]
+    XBridgeFeaturesTrusteeInfoConfigOf(Chain, TrusteeInfoConfig),
+    #[strum(serialize = "XBridgeFeatures TrusteeSessionInfoLen", props(r#type = "map"))]
+    XBridgeFeaturesTrusteeSessionInfoLen(Chain, u32),
+    #[strum(serialize = "XBridgeFeatures BitcoinTrusteeSessionInfoOf", props(r#type = "map"))]
+    XBridgeFeaturesBitcoinTrusteeSessionInfoOf(u32, BitcoinTrusteeSessionInfo<AccountId>),
+    #[strum(serialize = "XBridgeFeatures BitcoinTrusteeIntentionPropertiesOf", props(r#type = "map"))]
+    XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(AccountId, BitcoinTrusteeIntentionProps),
+    #[strum(serialize = "XBridgeFeatures BitcoinCrossChainBinding", props(r#type = "map"))]
+    XBridgeFeaturesBitcoinCrossChainBinding(AccountId, btc::Address),
+    #[strum(serialize = "XBridgeFeatures BitcoinCrossChainOf", props(r#type = "map"))]
+    XBridgeFeaturesBitcoinCrossChainOf(btc::Address, (AccountId, Option<AccountId>)),
+    #[strum(serialize = "XBridgeFeatures EthereumCrossChainBinding", props(r#type = "map"))]
+    XBridgeFeaturesEthereumCrossChainBinding(AccountId, EthereumAddress),
+    #[strum(serialize = "XBridgeFeatures EthereumCrossChainOf", props(r#type = "map"))]
+    XBridgeFeaturesEthereumCrossChainOf(EthereumAddress, (AccountId, Option<AccountId>)),
 }
 
 macro_rules! build_json {
@@ -316,7 +319,7 @@ impl RuntimeStorage {
         let mut key = self.match_key(prefix, key)?;
 
         match self {
-            // Substrate
+            // Substrate ==========================================================================
             SystemAccountNonce(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             SystemBlockHash(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             IndicesNextEnumSet(ref mut v) => to_value_json!(prefix, value => v),
@@ -332,34 +335,32 @@ impl RuntimeStorage {
             SessionCurrentStart(ref mut v) => to_value_json!(prefix, value => v),
             SessionForcingNewSession(ref mut v) => to_value_json!(prefix, value => v),
             SessionNextKeyFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            // ChainX
+            // ChainX =============================================================================
+            // xsystem
             XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
+            // xaccounts
             XAccountsIntentionOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAccountsIntentionNameOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAccountsIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsCrossChainAddressMapOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsCrossChainBindOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsTrusteeSessionInfoLen(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsTrusteeSessionInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsTrusteeInfoConfigOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsTrusteeIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAccountsTeamAddress(ref mut v) => to_value_json!(prefix, value => v),
             XAccountsCouncilAddress(ref mut v) => to_value_json!(prefix, value => v),
+            // xfee/manager
             XFeeManagerSwitch(ref mut v) => to_value_json!(prefix, value => v),
             XFeeManagerProducerFeeProportion(ref mut v) => to_value_json!(prefix, value => v),
             XFeeManagerTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
             XFeeManagerTransactionByteFee(ref mut v) => to_value_json!(prefix, value => v),
-            // assets
+            // xassets/assets
             XAssetsAssetList(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsAssetInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsTotalAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsMemoLen(ref mut v) => to_value_json!(prefix, value => v),
+            // xassets/records
             XAssetsRecordsApplicationMHeader(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAssetsRecordsSerialNumber(ref mut v) => to_value_json!(prefix, value => v),
-            // mining
+            // xmining/staking
             XStakingInitialReward(ref mut v) => to_value_json!(prefix, value => v),
             XStakingValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
             XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
@@ -379,18 +380,18 @@ impl RuntimeStorage {
             XStakingMinimumPenalty(ref mut v) => to_value_json!(prefix, value => v),
             XStakingOfflineValidatorsPerSession(ref mut v) => to_value_json!(prefix, value => v),
             XStakingMissedOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            // // xmining/tokens
             XTokensTokenDiscount(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
             XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            // multi signature
+            // xmultisig
             XMultiSigRootAddrList(ref mut v) => to_value_json!(prefix, value => v),
             XMultiSigMultiSigAddrInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XMultiSigPendingListFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XMultiSigMultiSigListItemFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XMultiSigMultiSigListLenFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XMultiSigTrusteeMultiSigAddr(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            // dex
+            // xdex/spot
             XSpotTradingPairCount(ref mut v) => to_value_json!(prefix, value => v),
             XSpotTradingPairOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XSpotTradingPairInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -400,7 +401,7 @@ impl RuntimeStorage {
             XSpotQuotationsOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XSpotHandicapOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XSpotPriceVolatility(ref mut v) => to_value_json!(prefix, value => v),
-            // bridge - bitcoin
+            // xbridge/bitcoin
             XBridgeOfBTCBestIndex(ref mut v) => to_value_json!(prefix, value => v),
             XBridgeOfBTCBlockHashFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XBridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
@@ -415,10 +416,19 @@ impl RuntimeStorage {
             XBridgeOfBTCConfirmationNumber(ref mut v) => to_value_json!(prefix, value => v),
             XBridgeOfBTCBtcWithdrawalFee(ref mut v) => to_value_json!(prefix, value => v),
             XBridgeOfBTCMaxWithdrawalCount(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCLastTrusteeSessionNumber(ref mut v) => to_value_json!(prefix, value => v),
-            // bridge - sdot
+            // xbridge/sdot
             XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XBridgeOfSDOTTotal(ref mut v) => to_value_json!(prefix, value => v),
+            // xbridge/features
+            XBridgeFeaturesTrusteeMultiSigAddr(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesTrusteeInfoConfigOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesTrusteeSessionInfoLen(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinTrusteeSessionInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinCrossChainBinding(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinCrossChainOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesEthereumCrossChainBinding(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesEthereumCrossChainOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
         }
     }
 }
