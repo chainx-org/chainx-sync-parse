@@ -66,8 +66,8 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
 }
 
 #[cfg(feature = "sync-log")]
-fn sync_log(path: &str, start_height: u64, block_queue: &BlockQueue) -> Result<JoinHandle<()>> {
-    let mut cur_block_height: u64 = start_height;
+fn sync_log(path: &str, _start_height: u64, queue: &BlockQueue) -> Result<JoinHandle<()>> {
+    let mut cur_block_height: u64 = 0;
     let mut next_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
@@ -102,10 +102,14 @@ fn sync_log(path: &str, start_height: u64, block_queue: &BlockQueue) -> Result<J
         }
 
         // when height > nex_block_height
+        assert!(height >= 1);
         next_block_height = height;
-        cur_block_height = next_block_height - 1;
+        cur_block_height = height - 1;
 
-        insert_block_into_queue(block_queue, cur_block_height, &stat);
+        // Insert a complete block.
+        // Example: Once a block1 (height = 1) is received,
+        // it means that the block0 (height = 0) has been synchronized and parsed.
+        insert_block_into_queue(queue, cur_block_height, &stat);
         #[cfg(feature = "pgsql")]
         insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
 
@@ -116,7 +120,7 @@ fn sync_log(path: &str, start_height: u64, block_queue: &BlockQueue) -> Result<J
 }
 
 #[cfg(feature = "sync-redis")]
-fn sync_redis(url: &str, _start_height: u64, block_queue: &BlockQueue) -> Result<JoinHandle<()>> {
+fn sync_redis(url: &str, _start_height: u64, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let mut cur_block_height: u64 = 0;
     let mut next_block_height: u64 = 0;
     let mut stat = HashMap::new();
@@ -149,10 +153,14 @@ fn sync_redis(url: &str, _start_height: u64, block_queue: &BlockQueue) -> Result
             }
 
             // when height > nex_block_height
+            assert!(height >= 1);
             next_block_height = height;
-            cur_block_height = next_block_height - 1;
+            cur_block_height = height - 1;
 
-            insert_block_into_queue(block_queue, cur_block_height, &stat);
+            // Insert a complete block.
+            // Example: Once a block1 (height = 1) is received,
+            // it means that the block0 (height = 0) has been synchronized and parsed.
+            insert_block_into_queue(queue, cur_block_height, &stat);
             #[cfg(feature = "pgsql")]
             insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
 
