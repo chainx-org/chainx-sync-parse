@@ -207,7 +207,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chain"
 version = "0.1.0"
-source = "git+https://github.com/chainx-org/light-bitcoin#82b16cdf10870c2c9da6ddfc95cf7e4c30997053"
+source = "git+https://github.com/chainx-org/light-bitcoin#3d0311f6a9468982d2926e7c503b2fad3b04f5c3"
 dependencies = [
  "crypto 0.1.0 (git+https://github.com/chainx-org/light-bitcoin)",
  "parity-codec 3.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -457,7 +457,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/chainx-org/light-bitcoin#82b16cdf10870c2c9da6ddfc95cf7e4c30997053"
+source = "git+https://github.com/chainx-org/light-bitcoin#3d0311f6a9468982d2926e7c503b2fad3b04f5c3"
 dependencies = [
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitives 0.1.0 (git+https://github.com/chainx-org/light-bitcoin)",
@@ -1036,7 +1036,7 @@ dependencies = [
 [[package]]
 name = "keys"
 version = "0.1.0"
-source = "git+https://github.com/chainx-org/light-bitcoin#82b16cdf10870c2c9da6ddfc95cf7e4c30997053"
+source = "git+https://github.com/chainx-org/light-bitcoin#3d0311f6a9468982d2926e7c503b2fad3b04f5c3"
 dependencies = [
  "base58 0.1.0 (git+https://github.com/chainx-org/chainx-common)",
  "crypto 0.1.0 (git+https://github.com/chainx-org/light-bitcoin)",
@@ -1509,7 +1509,7 @@ dependencies = [
 [[package]]
 name = "primitives"
 version = "0.1.0"
-source = "git+https://github.com/chainx-org/light-bitcoin#82b16cdf10870c2c9da6ddfc95cf7e4c30997053"
+source = "git+https://github.com/chainx-org/light-bitcoin#3d0311f6a9468982d2926e7c503b2fad3b04f5c3"
 dependencies = [
  "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "primitive-types 0.2.2 (git+https://github.com/chainx-org/chainx-common)",
@@ -1980,7 +1980,7 @@ dependencies = [
 [[package]]
 name = "serialization"
 version = "0.1.0"
-source = "git+https://github.com/chainx-org/light-bitcoin#82b16cdf10870c2c9da6ddfc95cf7e4c30997053"
+source = "git+https://github.com/chainx-org/light-bitcoin#3d0311f6a9468982d2926e7c503b2fad3b04f5c3"
 dependencies = [
  "primitives 0.1.0 (git+https://github.com/chainx-org/light-bitcoin)",
  "ustd 0.1.0 (git+https://github.com/chainx-org/chainx-common)",

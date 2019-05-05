@@ -1,2 +1,2 @@
 pub use btc_chain::{BlockHeader, Transaction};
-pub use btc_keys::Address;
+pub use btc_keys::{Address, Public};

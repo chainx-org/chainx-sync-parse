@@ -39,7 +39,7 @@ pub type Balance = u64;
 pub type XString = String;
 
 // ============================================================================
-// xaccounts runtime module definitions.
+// xaccounts types.
 // ============================================================================
 
 pub type Name = XString;
@@ -58,46 +58,8 @@ where
     pub session_key: Option<SessionKey>,
 }
 
-#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub enum TrusteeEntity {
-    Bitcoin(Bytes),
-}
-
-impl Default for TrusteeEntity {
-    fn default() -> Self {
-        TrusteeEntity::Bitcoin(Bytes::default())
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct TrusteeIntentionProps {
-    pub about: XString,
-    pub hot_entity: TrusteeEntity,
-    pub cold_entity: TrusteeEntity,
-}
-
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct TrusteeSessionInfo<AccountId>
-where
-    AccountId: Clone + Default + Codec,
-{
-    pub trustee_list: Vec<AccountId>,
-    pub hot_address: Bytes,
-    pub cold_address: Bytes,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct TrusteeInfoConfig {
-    pub min_trustee_count: u32,
-    pub max_trustee_count: u32,
-}
-
 // ============================================================================
-// xfee - manager runtime module definitions.
+// xfee/manager types.
 // ============================================================================
 
 #[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
@@ -110,7 +72,7 @@ pub struct SwitchStore {
 }
 
 // ============================================================================
-// xassets - assets runtime module definitions.
+// xassets/assets types.
 // ============================================================================
 
 pub type Token = XString;
@@ -161,7 +123,7 @@ impl Default for AssetType {
 }
 
 // ============================================================================
-// xassets - records runtime module definitions.
+// xassets/records types.
 // ============================================================================
 
 pub type AddrStr = XString;
@@ -198,7 +160,7 @@ where
 }
 
 // ============================================================================
-// xmining - staking runtime module definitions.
+// xmining/staking types.
 // ============================================================================
 
 /// Intention mutable properties
@@ -229,7 +191,7 @@ where
 }
 
 // ============================================================================
-// xmining - tokens runtime module definitions.
+// xmining/tokens types.
 // ============================================================================
 
 /// This module only tracks the vote weight related changes.
@@ -255,7 +217,7 @@ where
 }
 
 // ============================================================================
-// xmultisig - multisig runtime module definitions.
+// xmultisig types.
 // ============================================================================
 
 #[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
@@ -284,7 +246,7 @@ where
 }
 
 // ============================================================================
-// xdex - spot runtime module definitions.
+// xdex/spot types.
 // ============================================================================
 
 pub type Price = Balance;
@@ -401,7 +363,7 @@ where
 }
 
 // ============================================================================
-// xbridge - bitcoin runtime module definitions.
+// xbridge/bitcoin types.
 // ============================================================================
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
@@ -486,15 +448,108 @@ pub struct Params {
     max_timespan: u32,
 }
 
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct TrusteeScriptInfo {
-    pub hot_redeem_script: Bytes,
-    pub cold_redeem_script: Bytes,
+pub struct TrusteeAddrInfo {
+    pub addr: btc::Address,
+    pub redeem_script: Bytes,
+}
+
+impl IntoVecu8 for TrusteeAddrInfo {
+    fn into_vecu8(self) -> Vec<u8> {
+        use parity_codec::Encode;
+        self.encode()
+    }
+    fn from_vecu8(src: &[u8]) -> Option<Self> {
+        parity_codec::Decode::decode(&mut src.as_ref())
+    }
 }
 
 // ============================================================================
-// xbridge - sdot runtime module definitions.
+// xbridge/sdot types.
 // ============================================================================
 
 pub type EthereumAddress = substrate_primitives::H160;
+
+// ============================================================================
+// xbridge/features types.
+// ============================================================================
+
+pub trait IntoVecu8 {
+    fn into_vecu8(self) -> Vec<u8>;
+    fn from_vecu8(src: &[u8]) -> Option<Self>
+    where
+        Self: Sized;
+}
+
+impl IntoVecu8 for Vec<u8> {
+    fn into_vecu8(self) -> Vec<u8> {
+        self
+    }
+    fn from_vecu8(src: &[u8]) -> Option<Self> {
+        Some(src.to_vec())
+    }
+}
+
+impl IntoVecu8 for [u8; 20] {
+    fn into_vecu8(self) -> Vec<u8> {
+        self.to_vec()
+    }
+
+    fn from_vecu8(src: &[u8]) -> Option<Self> {
+        if src.len() != 20 {
+            return None;
+        }
+        let mut a: [u8; 20] = Default::default();
+        let len = a.len();
+        a.copy_from_slice(&src[..len]);
+        Some(a)
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeInfoConfig {
+    pub min_trustee_count: u32,
+    pub max_trustee_count: u32,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeIntentionProps<TrusteeEntity>
+where
+    TrusteeEntity: IntoVecu8,
+{
+    pub about: XString,
+    pub hot_entity: TrusteeEntity,
+    pub cold_entity: TrusteeEntity,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct TrusteeSessionInfo<AccountId, TrusteeAddress>
+where
+    AccountId: Clone + Default + Codec,
+    TrusteeAddress: IntoVecu8,
+{
+    pub trustee_list: Vec<AccountId>,
+    pub hot_address: TrusteeAddress,
+    pub cold_address: TrusteeAddress,
+}
+
+pub type BitcoinTrusteeType = btc::Public;
+
+impl IntoVecu8 for BitcoinTrusteeType {
+    fn into_vecu8(self) -> Vec<u8> {
+        (&self).to_vec()
+    }
+
+    fn from_vecu8(src: &[u8]) -> Option<Self> {
+        Self::from_slice(src).ok()
+    }
+}
+
+pub type BitcoinTrusteeAddrInfo = TrusteeAddrInfo;
+pub type BitcoinTrusteeIntentionProps = TrusteeIntentionProps<BitcoinTrusteeType>;
+pub type BitcoinTrusteeSessionInfo<AccountId> =
+    TrusteeSessionInfo<AccountId, BitcoinTrusteeAddrInfo>;
