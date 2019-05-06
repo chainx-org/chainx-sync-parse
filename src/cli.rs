@@ -38,7 +38,7 @@ pub struct Cli {
 
     /// Specify the sync log path
     #[cfg(feature = "sync-log")]
-    #[structopt(long = "sync-log", value_name = "PATH", default_value = "nohup.out")]
+    #[structopt(long = "sync-log", value_name = "PATH", default_value = "data/data.log")]
     pub sync_log_path: String,
 
     /// Specify the block height to start syncing
