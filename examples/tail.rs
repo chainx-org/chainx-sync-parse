@@ -4,7 +4,7 @@ use std::path::Path;
 use chainx_sync_parse::{Result, Tail};
 
 fn main() -> Result<()> {
-    let path = Path::new("./examples/tail.log");
+    let path = Path::new("./data/tail.log");
     assert!(path.is_file());
     let file = File::open(path)?;
 

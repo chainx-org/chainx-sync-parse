@@ -68,7 +68,7 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
         let height = std::str::from_utf8(&caps[1])
             .unwrap()
             .parse::<u64>()
-            .unwrap();
+            .expect("Parse height should not be failed");
         // key and value will be hex
         let key = hex::decode(&caps[2]).expect("Hex decode key should not be failed");
         let value = hex::decode(&caps[3]).expect("Hex decode value should not be failed");
