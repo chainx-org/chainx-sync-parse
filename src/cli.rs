@@ -42,6 +42,7 @@ pub struct Cli {
     pub sync_log_path: String,
 
     /// Specify the block height to start syncing
+    #[cfg(feature = "sync-log")]
     #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
     pub start_height: u64,
 }
