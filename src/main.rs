@@ -38,7 +38,7 @@ fn init_log_config(log_path: &Path) -> Result<()> {
         )
         .expect("Construct log config failure");
 
-    log4rs::init_config(config).expect("Initialize log config failure");
+    log4rs::init_config(config).expect("Initializing log config should not be failed");
     Ok(())
 }
 
@@ -66,7 +66,7 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
 }
 
 #[cfg(feature = "sync-log")]
-fn sync_log(path: &str, _start_height: u64, queue: &BlockQueue) -> Result<JoinHandle<()>> {
+fn sync_log(path: &str, start_height: u64, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let mut cur_block_height: u64 = 0;
     let mut next_block_height: u64 = 0;
     let mut stat = HashMap::new();
@@ -89,6 +89,7 @@ fn sync_log(path: &str, _start_height: u64, queue: &BlockQueue) -> Result<JoinHa
             stat.clear();
         }
 
+        // collect all data of the block with the same height
         if height == next_block_height {
             match RuntimeStorage::parse(&key, value) {
                 Ok((prefix, value)) => {
@@ -106,13 +107,14 @@ fn sync_log(path: &str, _start_height: u64, queue: &BlockQueue) -> Result<JoinHa
         next_block_height = height;
         cur_block_height = height - 1;
 
-        // Insert a complete block.
-        // Example: Once a block1 (height = 1) is received,
-        // it means that the block0 (height = 0) has been synchronized and parsed.
-        insert_block_into_queue(queue, cur_block_height, &stat);
-        #[cfg(feature = "pgsql")]
-        insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
-
+        if cur_block_height >= start_height {
+            // Insert a complete block.
+            // Example: Once a block1 (height = 1) is received,
+            // it means that the block0 (height = 0) has been synchronized and parsed.
+            insert_block_into_queue(queue, cur_block_height, &stat);
+            #[cfg(feature = "pgsql")]
+            insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
+        }
         stat.clear();
     }
 
