@@ -3,7 +3,7 @@
 The program is used to synchronize and parse sync-node data, 
 providing 1:N external subscription service.
 
-Follow the stage/V0.9.9 branch of ChainX.
+Follow the stage/V0.9.10 branch of ChainX.
 
 ## Usage
 
@@ -28,7 +28,7 @@ cp /target/release/chainx-sync-parse .
 
 Subscribe to the prefixes of needed runtime storage by register api.
 
-The structure of Runtime storage is consistent with the [ChainX - stage/V0.9.9](https://github.com/chainpool/ChainX/tree/stage/V0.9.9) and [substrate](https://github.com/chainpool/substrate).
+The structure of Runtime storage is consistent with the [ChainX - stage/V0.9.10](https://github.com/chainpool/ChainX/tree/stage/V0.9.10) and [substrate](https://github.com/chainpool/substrate).
 
 **Register**:
 
@@ -88,7 +88,7 @@ Parameter description:
 ```bash
 # compile
 cd ChainX
-git checkout stage/V0.9.9
+git checkout stage/V0.9.10
 cargo build --release --features msgbus-log
 # or cargo build --release --features msgbus-redis
 
@@ -112,9 +112,9 @@ cp target/release/chainx .
     cargo build --release
     
     # run
-    cp /target/release/chainx-sync-parse .
-    ./start.sh
-    ```
+    # -h or --help for usage details
+    ./target/release/chainx-sync-parse --sync-log <PATH>
+     ```
 
 ### sync-redis (Alternative)
 
