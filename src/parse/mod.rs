@@ -61,6 +61,8 @@ pub enum RuntimeStorage {
     // xsystem ------------------------------------------------------------------------------------
     #[strum(serialize = "XSystem BlockProducer", props(r#type = "value"))]
     XSystemBlockProducer(AccountId),
+    #[strum(serialize = "XSystem NetworkProps", props(r#type = "value"))]
+    XSystemNetworkProps((NetworkType, AddressType)),
     // xaccounts ----------------------------------------------------------------------------------
     #[strum(serialize = "XAccounts IntentionOf", props(r#type = "map"))]
     XAccountsIntentionOf(Name, AccountId),
@@ -338,6 +340,7 @@ impl RuntimeStorage {
             // ChainX =============================================================================
             // xsystem
             XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
+            XSystemNetworkProps(ref mut v) => to_value_json!(prefix, value => v),
             // xaccounts
             XAccountsIntentionOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
             XAccountsIntentionNameOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),

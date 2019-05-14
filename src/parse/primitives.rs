@@ -38,6 +38,22 @@ pub type Balance = u64;
 
 pub type XString = String;
 
+#[derive(PartialEq, Eq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum NetworkType {
+    Mainnet,
+    Testnet,
+}
+
+impl Default for NetworkType {
+    fn default() -> Self {
+        NetworkType::Testnet
+    }
+}
+
+/// 44 for Mainnet, 42 for Testnet
+pub type AddressType = u32;
+
 // ============================================================================
 // xaccounts types.
 // ============================================================================
