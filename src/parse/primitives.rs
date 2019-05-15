@@ -145,6 +145,27 @@ impl Default for AssetType {
 pub type AddrStr = XString;
 pub type Memo = XString;
 
+/// state machine for state is:
+/// Applying(lock token) => Processing(can't cancel) =>
+///        destroy token => NormalFinish|RootFinish (final state)
+///        release token => NormalCancel(can from Applying directly)|RootCancel (final state)
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum ApplicationState {
+    Applying,
+    Processing,
+    NormalFinish,
+    RootFinish,
+    NormalCancel,
+    RootCancel,
+}
+
+impl Default for ApplicationState {
+    fn default() -> Self {
+        ApplicationState::Applying
+    }
+}
+
 /// application for withdrawal
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -155,6 +176,7 @@ where
     BlockNumber: Copy + Default + Codec,
 {
     pub id: u32,
+    pub state: ApplicationState,
     pub applicant: AccountId,
     pub token: Token,
     pub balance: Balance,

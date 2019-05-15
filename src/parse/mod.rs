@@ -231,11 +231,11 @@ pub enum RuntimeStorage {
     #[strum(serialize = "XBridgeFeatures BitcoinTrusteeIntentionPropertiesOf", props(r#type = "map"))]
     XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(AccountId, BitcoinTrusteeIntentionProps),
     #[strum(serialize = "XBridgeFeatures BitcoinCrossChainBinding", props(r#type = "map"))]
-    XBridgeFeaturesBitcoinCrossChainBinding(AccountId, btc::Address),
+    XBridgeFeaturesBitcoinCrossChainBinding(AccountId, Vec<btc::Address>),
     #[strum(serialize = "XBridgeFeatures BitcoinCrossChainOf", props(r#type = "map"))]
     XBridgeFeaturesBitcoinCrossChainOf(btc::Address, (AccountId, Option<AccountId>)),
     #[strum(serialize = "XBridgeFeatures EthereumCrossChainBinding", props(r#type = "map"))]
-    XBridgeFeaturesEthereumCrossChainBinding(AccountId, EthereumAddress),
+    XBridgeFeaturesEthereumCrossChainBinding(AccountId, Vec<EthereumAddress>),
     #[strum(serialize = "XBridgeFeatures EthereumCrossChainOf", props(r#type = "map"))]
     XBridgeFeaturesEthereumCrossChainOf(EthereumAddress, (AccountId, Option<AccountId>)),
 }
