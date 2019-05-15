@@ -249,11 +249,11 @@ dependencies = [
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "sr-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "sr-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum_macros 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
 ]
 
 [[package]]
@@ -2021,39 +2021,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "sr-io"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "environmental 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hash-db 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libsecp256k1 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 3.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-state-machine 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-trie 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-state-machine 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-trie 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "sr-primitives"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "integer-sqrt 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 3.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
- "sr-io 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "sr-io 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
 ]
 
 [[package]]
 name = "sr-std"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2128,7 +2128,7 @@ dependencies = [
 [[package]]
 name = "substrate-panic-handler"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "backtrace 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2137,7 +2137,7 @@ dependencies = [
 [[package]]
 name = "substrate-primitives"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "base58 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "blake2-rfc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2155,7 +2155,7 @@ dependencies = [
  "schnorrkel 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
  "substrate-bip39 0.2.1 (git+https://github.com/paritytech/substrate-bip39)",
  "tiny-bip39 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "twox-hash 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2165,15 +2165,15 @@ dependencies = [
 [[package]]
 name = "substrate-state-machine"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "hash-db 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 3.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "substrate-panic-handler 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-trie 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "substrate-panic-handler 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-trie 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
  "trie-db 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "trie-root 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2181,13 +2181,13 @@ dependencies = [
 [[package]]
 name = "substrate-trie"
 version = "2.0.0"
-source = "git+https://github.com/chainpool/substrate?rev=96986d47#96986d478982d6cc2e55c5418b3749b3fa7afb3a"
+source = "git+https://github.com/chainpool/substrate?rev=598b74ed#598b74edd8d86b9d96485f956690f5ca9099ae53"
 dependencies = [
  "hash-db 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memory-db 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-codec 3.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
- "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)",
+ "sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
+ "substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)",
  "trie-db 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "trie-root 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2967,9 +2967,9 @@ dependencies = [
 "checksum siphasher 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9913c75df657d84a03fa689c016b0bb2863ff0b497b26a8d6e9703f8d5df03a8"
 "checksum slab 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 "checksum smallvec 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)" = "c4488ae950c49d403731982257768f48fada354a5203fe81f9bb6f43ca9002be"
-"checksum sr-io 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
-"checksum sr-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
-"checksum sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
+"checksum sr-io 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
+"checksum sr-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
+"checksum sr-std 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
 "checksum stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
 "checksum static_assertions 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "c19be23126415861cb3a23e501d34a708f7f9b2183c5252d690941c2e69199d5"
 "checksum string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b639411d0b9c738748b5397d5ceba08e648f4f1992231aa859af1a017f31f60b"
@@ -2979,10 +2979,10 @@ dependencies = [
 "checksum strum 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e5d1c33039533f051704951680f1adfd468fd37ac46816ded0d9ee068e60f05f"
 "checksum strum_macros 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "47cd23f5c7dee395a00fa20135e2ec0fffcdfa151c56182966d7a3261343432e"
 "checksum substrate-bip39 0.2.1 (git+https://github.com/paritytech/substrate-bip39)" = "<none>"
-"checksum substrate-panic-handler 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
-"checksum substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
-"checksum substrate-state-machine 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
-"checksum substrate-trie 2.0.0 (git+https://github.com/chainpool/substrate?rev=96986d47)" = "<none>"
+"checksum substrate-panic-handler 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
+"checksum substrate-primitives 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
+"checksum substrate-state-machine 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
+"checksum substrate-trie 2.0.0 (git+https://github.com/chainpool/substrate?rev=598b74ed)" = "<none>"
 "checksum subtle 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
 "checksum subtle 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "702662512f3ddeb74a64ce2fbbf3707ee1b6bb663d28bb054e0779bbc720d926"
 "checksum syn 0.15.29 (registry+https://github.com/rust-lang/crates.io-index)" = "1825685f977249735d510a242a6727b46efe914bb67e38d30c071b1b72b1d5c2"
