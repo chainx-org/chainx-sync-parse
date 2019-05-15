@@ -20,8 +20,8 @@ cd chainx-sync-parse
 cargo build --release
 
 # run
-cp /target/release/chainx-sync-parse .
-./start.sh
+# -h or --help for usage details
+./target/release/chainx-sync-parse -h
 ```
 
 ### 2. Register/Deregister
@@ -89,17 +89,20 @@ Parameter description:
 # compile
 cd ChainX
 git checkout stage/V0.9.10
-cargo build --release --features msgbus-log
-# or cargo build --release --features msgbus-redis
+cargo build --release --features msgbus-log # or cargo build --release --features msgbus-redis
 
 # run
 cp target/release/chainx .
-./sync-block.sh  # need to modify configuration manually.
+# features msgbus-log
+nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa 2>&1 | cat > sync.log &
+# features msgbus-redis
+echo flushall | redis-cli
+nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa &
 ```
 
 ## Feature - Sync strategy
 
-### sync-log (Enable Default)
+### sync-log (Enable by default, recommended)
 
 0. **Requirement**: None
 
@@ -114,7 +117,7 @@ cp target/release/chainx .
     # run
     # -h or --help for usage details
     ./target/release/chainx-sync-parse --sync-log <PATH>
-     ```
+    ```
 
 ### sync-redis (Alternative)
 
@@ -136,8 +139,8 @@ cp target/release/chainx .
     cargo build --release --no-default-features --features='std,msgbus-redis'
     
     # run
-    cp /target/release/chainx-sync-parse .
-    ./start.sh
+    # -h or --help for usage details
+    ./target/release/chainx-sync-parse --sync-redis <URL>
     ```
 
 ## Feature/pgsql (Optional)
@@ -161,6 +164,6 @@ See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for det
     cargo build --release --features pgsql
     
     # run
-    cp /target/release/chainx-sync-parse .
-    ./start.sh
+    # -h or --help for usage details
+    ./target/release/chainx-sync-parse -h
     ```
