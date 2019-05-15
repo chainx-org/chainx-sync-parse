@@ -495,11 +495,11 @@ pub struct TrusteeAddrInfo {
 
 impl IntoVecu8 for TrusteeAddrInfo {
     fn into_vecu8(self) -> Vec<u8> {
-        use parity_codec::Encode;
-        self.encode()
+        parity_codec::Encode::encode(&self)
     }
     fn from_vecu8(src: &[u8]) -> Option<Self> {
-        parity_codec::Decode::decode(&mut src.as_ref())
+        let mut src = src;
+        parity_codec::Decode::decode(&mut src)
     }
 }
 
