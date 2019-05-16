@@ -94,6 +94,11 @@ fn sync_log(path: &str, start_height: u64, queue: &BlockQueue) -> Result<JoinHan
 
         // handling sync block fallback
         if height < next_block_height {
+            // Ignore block data with block height 0
+            if height == 0 {
+                continue;
+            }
+
             insert_block_into_queue(queue, next_block_height, &stat);
             #[cfg(feature = "pgsql")]
             insert_block_into_pgsql(&pg_conn, next_block_height, &stat);

@@ -11,6 +11,53 @@ use self::primitives::*;
 use crate::types::{btc, MultiNodeIndex, Node};
 use crate::Result;
 
+#[macro_use]
+mod macros {
+    macro_rules! to_json {
+        ($prefix:ident, $value:ident => $v:ident) => {
+            to_json_impl!("value", $prefix, null, $value => $v)
+        };
+
+        ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {
+            {
+                *$k = match Decode::decode(&mut $key) {
+                    Some(key) => key,
+                    None => {
+                        let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
+                        error!("Runtime storage parse: {}", err);
+                        return Err(err.into());
+                    }
+                };
+                to_json_impl!("map", $prefix, $k, $value => $v)
+            }
+        };
+    }
+
+    macro_rules! to_json_impl {
+        ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
+            if $value.is_empty() {
+                debug!("Empty Value: [{:?}] may have been removed", $prefix);
+                return Ok(build_json!($type, $prefix, $k, null));
+            }
+            *$v = match Decode::decode(&mut $value.as_slice()) {
+                Some(value) => value,
+                None => {
+                    let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
+                    error!("Runtime storage parse: {}", err);
+                    return Err(err.into());
+                }
+            };
+            Ok(build_json!($type, $prefix, $k, $v))
+        }};
+    }
+
+    macro_rules! build_json {
+        ($type:expr, $prefix:ident, $key:ident, $value:ident) => {
+            json!({"type":$type, "prefix":$prefix, "key":$key, "value":$value})
+        };
+    }
+}
+
 #[rustfmt::skip]
 #[allow(clippy::large_enum_variant)]
 #[derive(PartialEq, Eq, Debug, IntoStaticStr, EnumIter, EnumProperty)]
@@ -61,6 +108,8 @@ pub enum RuntimeStorage {
     // xsystem ------------------------------------------------------------------------------------
     #[strum(serialize = "XSystem BlockProducer", props(r#type = "value"))]
     XSystemBlockProducer(AccountId),
+    #[strum(serialize = "XSystem NetworkProps", props(r#type = "value"))]
+    XSystemNetworkProps((NetworkType, AddressType)),
     // xaccounts ----------------------------------------------------------------------------------
     #[strum(serialize = "XAccounts IntentionOf", props(r#type = "map"))]
     XAccountsIntentionOf(Name, AccountId),
@@ -229,62 +278,13 @@ pub enum RuntimeStorage {
     #[strum(serialize = "XBridgeFeatures BitcoinTrusteeIntentionPropertiesOf", props(r#type = "map"))]
     XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(AccountId, BitcoinTrusteeIntentionProps),
     #[strum(serialize = "XBridgeFeatures BitcoinCrossChainBinding", props(r#type = "map"))]
-    XBridgeFeaturesBitcoinCrossChainBinding(AccountId, btc::Address),
+    XBridgeFeaturesBitcoinCrossChainBinding(AccountId, Vec<btc::Address>),
     #[strum(serialize = "XBridgeFeatures BitcoinCrossChainOf", props(r#type = "map"))]
     XBridgeFeaturesBitcoinCrossChainOf(btc::Address, (AccountId, Option<AccountId>)),
     #[strum(serialize = "XBridgeFeatures EthereumCrossChainBinding", props(r#type = "map"))]
-    XBridgeFeaturesEthereumCrossChainBinding(AccountId, EthereumAddress),
+    XBridgeFeaturesEthereumCrossChainBinding(AccountId, Vec<EthereumAddress>),
     #[strum(serialize = "XBridgeFeatures EthereumCrossChainOf", props(r#type = "map"))]
     XBridgeFeaturesEthereumCrossChainOf(EthereumAddress, (AccountId, Option<AccountId>)),
-}
-
-macro_rules! build_json {
-    ($type:expr, $prefix:ident, $key:ident, $value:ident) => {
-        json!({
-            "type":$type,
-            "prefix":$prefix,
-            "key":$key,
-            "value":$value,
-        })
-    };
-}
-
-macro_rules! to_value_json {
-    ($prefix:ident, $value:ident => $v:ident) => {
-        to_value_json_impl!("value", $prefix, null, $value => $v)
-    };
-}
-
-macro_rules! to_map_json {
-    ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {{
-        *$k = match Decode::decode(&mut $key) {
-            Some(key) => key,
-            None => {
-                let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                error!("Runtime storage parse: {}", err);
-                return Err(err.into());
-            }
-        };
-        to_value_json_impl!("map", $prefix, $k, $value => $v)
-    }};
-}
-
-macro_rules! to_value_json_impl {
-    ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
-        if $value.is_empty() {
-            debug!("Empty Value: [{:?}] may have been removed", $prefix);
-            return Ok(build_json!($type, $prefix, $k, null));
-        }
-        *$v = match Decode::decode(&mut $value.as_slice()) {
-            Some(value) => value,
-            None => {
-                let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                error!("Runtime storage parse: {}", err);
-                return Err(err.into());
-            }
-        };
-        Ok(build_json!($type, $prefix, $k, $v))
-    }};
 }
 
 impl RuntimeStorage {
@@ -320,115 +320,116 @@ impl RuntimeStorage {
 
         match self {
             // Substrate ==========================================================================
-            SystemAccountNonce(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            SystemBlockHash(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            IndicesNextEnumSet(ref mut v) => to_value_json!(prefix, value => v),
-            IndicesEnumSet(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            TimestampNow(ref mut v) => to_value_json!(prefix, value => v),
-            TimestampBlockPeriod(ref mut v) => to_value_json!(prefix, value => v),
-            TimestampMinimumPeriod(ref mut v) => to_value_json!(prefix, value => v),
-            TimestampWindowSize(ref mut v) => to_value_json!(prefix, value => v),
-            TimestampReportLatency(ref mut v) => to_value_json!(prefix, value => v),
-            SessionValidators(ref mut v) => to_value_json!(prefix, value => v),
-            SessionSessionLength(ref mut v) => to_value_json!(prefix, value => v),
-            SessionCurrentIndex(ref mut v) => to_value_json!(prefix, value => v),
-            SessionCurrentStart(ref mut v) => to_value_json!(prefix, value => v),
-            SessionForcingNewSession(ref mut v) => to_value_json!(prefix, value => v),
-            SessionNextKeyFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            SystemAccountNonce(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            SystemBlockHash(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            IndicesNextEnumSet(ref mut v) => to_json!(prefix, value => v),
+            IndicesEnumSet(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            TimestampNow(ref mut v) => to_json!(prefix, value => v),
+            TimestampBlockPeriod(ref mut v) => to_json!(prefix, value => v),
+            TimestampMinimumPeriod(ref mut v) => to_json!(prefix, value => v),
+            TimestampWindowSize(ref mut v) => to_json!(prefix, value => v),
+            TimestampReportLatency(ref mut v) => to_json!(prefix, value => v),
+            SessionValidators(ref mut v) => to_json!(prefix, value => v),
+            SessionSessionLength(ref mut v) => to_json!(prefix, value => v),
+            SessionCurrentIndex(ref mut v) => to_json!(prefix, value => v),
+            SessionCurrentStart(ref mut v) => to_json!(prefix, value => v),
+            SessionForcingNewSession(ref mut v) => to_json!(prefix, value => v),
+            SessionNextKeyFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             // ChainX =============================================================================
             // xsystem
-            XSystemBlockProducer(ref mut v) => to_value_json!(prefix, value => v),
+            XSystemBlockProducer(ref mut v) => to_json!(prefix, value => v),
+            XSystemNetworkProps(ref mut v) => to_json!(prefix, value => v),
             // xaccounts
-            XAccountsIntentionOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsIntentionNameOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAccountsTeamAddress(ref mut v) => to_value_json!(prefix, value => v),
-            XAccountsCouncilAddress(ref mut v) => to_value_json!(prefix, value => v),
+            XAccountsIntentionOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAccountsIntentionNameOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAccountsIntentionPropertiesOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAccountsTeamAddress(ref mut v) => to_json!(prefix, value => v),
+            XAccountsCouncilAddress(ref mut v) => to_json!(prefix, value => v),
             // xfee/manager
-            XFeeManagerSwitch(ref mut v) => to_value_json!(prefix, value => v),
-            XFeeManagerProducerFeeProportion(ref mut v) => to_value_json!(prefix, value => v),
-            XFeeManagerTransactionBaseFee(ref mut v) => to_value_json!(prefix, value => v),
-            XFeeManagerTransactionByteFee(ref mut v) => to_value_json!(prefix, value => v),
+            XFeeManagerSwitch(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerProducerFeeProportion(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerTransactionBaseFee(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerTransactionByteFee(ref mut v) => to_json!(prefix, value => v),
             // xassets/assets
-            XAssetsAssetList(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsAssetInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsTotalAssetBalance(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsMemoLen(ref mut v) => to_value_json!(prefix, value => v),
+            XAssetsAssetList(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsAssetInfo(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsAssetBalance(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsTotalAssetBalance(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsMemoLen(ref mut v) => to_json!(prefix, value => v),
             // xassets/records
-            XAssetsRecordsApplicationMHeader(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XAssetsRecordsSerialNumber(ref mut v) => to_value_json!(prefix, value => v),
+            XAssetsRecordsApplicationMHeader(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsRecordsSerialNumber(ref mut v) => to_json!(prefix, value => v),
             // xmining/staking
-            XStakingInitialReward(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingMinimumValidatorCount(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingBondingDuration(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingIntentionBondingDuration(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingSessionsPerEpoch(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingValidatorStakeThreshold(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingCurrentEra(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingIntentions(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingNextSessionsPerEra(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingLastEraLengthChange(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingForcingNewEra(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingStakeWeight(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XStakingIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XStakingNominationRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XStakingMinimumPenalty(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingOfflineValidatorsPerSession(ref mut v) => to_value_json!(prefix, value => v),
-            XStakingMissedOfPerSession(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XStakingInitialReward(ref mut v) => to_json!(prefix, value => v),
+            XStakingValidatorCount(ref mut v) => to_json!(prefix, value => v),
+            XStakingMinimumValidatorCount(ref mut v) => to_json!(prefix, value => v),
+            XStakingSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
+            XStakingBondingDuration(ref mut v) => to_json!(prefix, value => v),
+            XStakingIntentionBondingDuration(ref mut v) => to_json!(prefix, value => v),
+            XStakingSessionsPerEpoch(ref mut v) => to_json!(prefix, value => v),
+            XStakingValidatorStakeThreshold(ref mut v) => to_json!(prefix, value => v),
+            XStakingCurrentEra(ref mut v) => to_json!(prefix, value => v),
+            XStakingIntentions(ref mut v) => to_json!(prefix, value => v),
+            XStakingNextSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
+            XStakingLastEraLengthChange(ref mut v) => to_json!(prefix, value => v),
+            XStakingForcingNewEra(ref mut v) => to_json!(prefix, value => v),
+            XStakingStakeWeight(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingNominationRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingMinimumPenalty(ref mut v) => to_json!(prefix, value => v),
+            XStakingOfflineValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
+            XStakingMissedOfPerSession(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             // // xmining/tokens
-            XTokensTokenDiscount(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XTokensPseduIntentions(ref mut v) => to_value_json!(prefix, value => v),
-            XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XTokensDepositRecords(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XTokensTokenDiscount(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XTokensPseduIntentions(ref mut v) => to_json!(prefix, value => v),
+            XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XTokensDepositRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             // xmultisig
-            XMultiSigRootAddrList(ref mut v) => to_value_json!(prefix, value => v),
-            XMultiSigMultiSigAddrInfo(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XMultiSigPendingListFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XMultiSigMultiSigListItemFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XMultiSigMultiSigListLenFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XMultiSigRootAddrList(ref mut v) => to_json!(prefix, value => v),
+            XMultiSigMultiSigAddrInfo(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XMultiSigPendingListFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XMultiSigMultiSigListItemFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XMultiSigMultiSigListLenFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             // xdex/spot
-            XSpotTradingPairCount(ref mut v) => to_value_json!(prefix, value => v),
-            XSpotTradingPairOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotTradingPairInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotTradeHistoryIndexOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotOrderCountOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotOrderInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotQuotationsOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotHandicapOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XSpotPriceVolatility(ref mut v) => to_value_json!(prefix, value => v),
+            XSpotTradingPairCount(ref mut v) => to_json!(prefix, value => v),
+            XSpotTradingPairOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotTradingPairInfoOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotTradeHistoryIndexOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotOrderCountOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotOrderInfoOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotQuotationsOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotHandicapOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XSpotPriceVolatility(ref mut v) => to_json!(prefix, value => v),
             // xbridge/bitcoin
-            XBridgeOfBTCBestIndex(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCBlockHashFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeOfBTCTxFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeOfBTCInputAddrFor(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeOfBTCCurrentWithdrawalProposal(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCGenesisInfo(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCParamsInfo(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCNetworkId(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCReservedBlock(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCConfirmationNumber(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCBtcWithdrawalFee(ref mut v) => to_value_json!(prefix, value => v),
-            XBridgeOfBTCMaxWithdrawalCount(ref mut v) => to_value_json!(prefix, value => v),
+            XBridgeOfBTCBestIndex(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCBlockHashFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCTxFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCInputAddrFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCCurrentWithdrawalProposal(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCGenesisInfo(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCParamsInfo(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCNetworkId(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCReservedBlock(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCConfirmationNumber(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCBtcWithdrawalFee(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCMaxWithdrawalCount(ref mut v) => to_json!(prefix, value => v),
             // xbridge/sdot
-            XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeOfSDOTTotal(ref mut v) => to_value_json!(prefix, value => v),
+            XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfSDOTTotal(ref mut v) => to_json!(prefix, value => v),
             // xbridge/features
-            XBridgeFeaturesTrusteeMultiSigAddr(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesTrusteeInfoConfigOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesTrusteeSessionInfoLen(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesBitcoinTrusteeSessionInfoOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesBitcoinCrossChainBinding(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesBitcoinCrossChainOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesEthereumCrossChainBinding(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
-            XBridgeFeaturesEthereumCrossChainOf(ref mut k, ref mut v) => to_map_json!(prefix, key => k, value => v),
+            XBridgeFeaturesTrusteeMultiSigAddr(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesTrusteeInfoConfigOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesTrusteeSessionInfoLen(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinTrusteeSessionInfoOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinCrossChainBinding(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesBitcoinCrossChainOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesEthereumCrossChainBinding(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeFeaturesEthereumCrossChainOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
         }
     }
 }

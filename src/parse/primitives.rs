@@ -38,6 +38,22 @@ pub type Balance = u64;
 
 pub type XString = String;
 
+#[derive(PartialEq, Eq, Clone, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum NetworkType {
+    Mainnet,
+    Testnet,
+}
+
+impl Default for NetworkType {
+    fn default() -> Self {
+        NetworkType::Testnet
+    }
+}
+
+/// 44 for Mainnet, 42 for Testnet
+pub type AddressType = u32;
+
 // ============================================================================
 // xaccounts types.
 // ============================================================================
@@ -129,6 +145,27 @@ impl Default for AssetType {
 pub type AddrStr = XString;
 pub type Memo = XString;
 
+/// state machine for state is:
+/// Applying(lock token) => Processing(can't cancel) =>
+///        destroy token => NormalFinish|RootFinish (final state)
+///        release token => NormalCancel(can from Applying directly)|RootCancel (final state)
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum ApplicationState {
+    Applying,
+    Processing,
+    NormalFinish,
+    RootFinish,
+    NormalCancel,
+    RootCancel,
+}
+
+impl Default for ApplicationState {
+    fn default() -> Self {
+        ApplicationState::Applying
+    }
+}
+
 /// application for withdrawal
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -139,6 +176,7 @@ where
     BlockNumber: Copy + Default + Codec,
 {
     pub id: u32,
+    pub state: ApplicationState,
     pub applicant: AccountId,
     pub token: Token,
     pub balance: Balance,
@@ -457,11 +495,11 @@ pub struct TrusteeAddrInfo {
 
 impl IntoVecu8 for TrusteeAddrInfo {
     fn into_vecu8(self) -> Vec<u8> {
-        use parity_codec::Encode;
-        self.encode()
+        parity_codec::Encode::encode(&self)
     }
     fn from_vecu8(src: &[u8]) -> Option<Self> {
-        parity_codec::Decode::decode(&mut src.as_ref())
+        let mut src = src;
+        parity_codec::Decode::decode(&mut src)
     }
 }
 
