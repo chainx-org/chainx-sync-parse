@@ -123,7 +123,7 @@ impl PushClient {
         for i in 1..=self.config.retry_count {
             let ok = self.post::<String>(&body).unwrap_or_default();
             if ok == "OK" {
-                info!("Post message successfully");
+                info!("Post message successfully, height = {}", msg.height);
                 return Ok(());
             }
             warn!("Receive message response: {:?}", ok);
