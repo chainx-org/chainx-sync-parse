@@ -1,4 +1,6 @@
 mod formatter;
+#[macro_use]
+pub mod global;
 mod rotate;
 
 use std::fmt;
@@ -40,7 +42,7 @@ where
         slog::Logger::root(drain, slog_o!())
     };
 
-    let _guard = slog_scope::set_global_logger(logger);
+    global::set_global(logger);
 }
 
 /// A simple alias to `PlainDecorator<BufWriter<RotatingFileLogger>>`.
@@ -270,23 +272,3 @@ fn get_unified_log_level(lvl: Level) -> &'static str {
         Level::Trace => "TRACE",
     }
 }
-
-//pub fn convert_slog_level_to_log_level(lvl: slog::Level) -> log::Level {
-//    match lvl {
-//        slog::Level::Critical | Level::Error => log::Level::Error,
-//        slog::Level::Warning => log::Level::Warn,
-//        slog::Level::Debug => log::Level::Debug,
-//        slog::Level::Trace => log::Level::Trace,
-//        slog::Level::Info => log::Level::Info,
-//    }
-//}
-//
-//pub fn convert_log_level_to_slog_level(lvl: log::Level) -> slog::Level {
-//    match lvl {
-//        log::Level::Error => slog::Level::Error,
-//        log::Level::Warn => slog::Level::Warning,
-//        log::Level::Debug => slog::Level::Debug,
-//        log::Level::Trace => slog::Level::Trace,
-//        log::Level::Info => slog::Level::Info,
-//    }
-//}

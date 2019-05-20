@@ -1,13 +1,12 @@
-#[macro_use(slog_o, slog_error, slog_warn, slog_info, slog_debug)]
+#[macro_use(slog_o)]
 extern crate slog;
-#[macro_use]
-extern crate slog_scope;
 #[cfg(feature = "pgsql")]
 #[macro_use]
 extern crate diesel;
 
 mod cli;
 mod error;
+#[macro_use]
 pub mod logger;
 mod parse;
 #[cfg(feature = "pgsql")]

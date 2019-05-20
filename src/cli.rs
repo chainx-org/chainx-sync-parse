@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::time::Duration;
 
 use structopt::StructOpt;
 
@@ -28,22 +27,6 @@ pub struct CliConfig {
     )]
     pub log_path: PathBuf,
 
-    /// Specify the log level
-    #[structopt(
-        long = "log-level",
-        value_name = "LEVEL",
-        parse(from_str = "parse_log_level")
-    )]
-    pub log_level: slog::Level,
-
-    /// Specify the log rotation timespan
-    #[structopt(
-        long = "log-rotation-timespan",
-        value_name = "TIMESPAN",
-        parse(from_str = "parse_log_rotation_timespan")
-    )]
-    pub log_rotation_timespan: Duration,
-
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]
     #[structopt(
@@ -66,12 +49,4 @@ pub struct CliConfig {
     #[cfg(feature = "sync-log")]
     #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
     pub start_height: u64,
-}
-
-fn parse_log_level(input: &str) -> slog::Level {
-    std::str::FromStr::from_str(input).unwrap_or(slog::Level::Info)
-}
-
-fn parse_log_rotation_timespan(input: &str) -> Duration {
-
 }

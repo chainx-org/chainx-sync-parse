@@ -1,10 +1,4 @@
-#[macro_use(slog_info, slog_debug)]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 use std::collections::HashMap;
-use std::path::Path;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -29,7 +23,7 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
     //        .encoder(Box::new(PatternEncoder::new(
     //            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
     //        )))
-    //        .build(log_path)?;
+    //        .build(config.log_path)?;
     //
     //    let config = Config::builder()
     //        .appender(Appender::builder().build("console", Box::new(console)))
@@ -43,15 +37,12 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
     //
     //    log4rs::init_config(config).expect("Initializing log config should not be failed");
 
-    let log_rotation_timespan = chrono::Duration::from_std(Duration::from_secs(5))
+    let log_rotation_timespan = chrono::Duration::from_std(Duration::new(1, 0))
         .expect("config.log_rotation_timespan is an invalid duration.");
 
-    let drainer = logger::file_drainer(&config.log_path, log_rotation_timespan).expect(&format!(
-        "Failed to initialize log with file {:?}",
-        config.log_path
-    ));
+    let drainer = logger::file_drainer(&config.log_path, log_rotation_timespan)?;
 
-    let _ = logger::init_log(drainer, slog::Level::Info, true);
+    logger::init_log(drainer, slog::Level::Info, true);
 
     Ok(())
 }
