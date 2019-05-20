@@ -1,12 +1,14 @@
+#[macro_use(slog_o, slog_error, slog_warn, slog_info, slog_debug)]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 #[cfg(feature = "pgsql")]
 #[macro_use]
 extern crate diesel;
 
-#[macro_use]
-extern crate log;
-
 mod cli;
 mod error;
+pub mod logger;
 mod parse;
 #[cfg(feature = "pgsql")]
 mod pgsql;
@@ -19,7 +21,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-pub use self::cli::Cli;
+pub use self::cli::CliConfig;
 pub use self::error::{Error, Result};
 pub use self::parse::RuntimeStorage;
 #[cfg(feature = "pgsql")]

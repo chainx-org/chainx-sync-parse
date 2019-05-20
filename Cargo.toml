@@ -5,8 +5,14 @@ authors = ["ChainX <https://chainx.org>"]
 edition = "2018"
 
 [dependencies]
-log = "0.4"
-log4rs = "0.8"
+#log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
+slog = { version = "2.4", features = ["max_level_trace", "release_max_level_debug"] }
+slog-async = { version = "2.3", default-features = false }
+slog-term = "2.4"
+slog-scope = "4.1"
+#slog_derive = "0.1"
+chrono = "0.4"
+#log4rs = "0.8"
 failure = "0.1"
 failure_derive = "0.1"
 structopt = "0.2"

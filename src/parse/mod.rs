@@ -24,7 +24,7 @@ mod macros {
                     Some(key) => key,
                     None => {
                         let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                        error!("Runtime storage parse: {}", err);
+                        error!("Runtime storage parse error"; "err" => %err);
                         return Err(err.into());
                     }
                 };
@@ -43,7 +43,7 @@ mod macros {
                 Some(value) => value,
                 None => {
                     let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    error!("Runtime storage parse: {}", err);
+                    error!("Runtime storage parse error"; "err" => %err);
                     return Err(err.into());
                 }
             };

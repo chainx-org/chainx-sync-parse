@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::Duration;
 
 use structopt::StructOpt;
 
@@ -8,7 +9,7 @@ use structopt::StructOpt;
     author = "ChainX <https://chainx.org>",
     about = "Synchronize and parse ChainX sync-node data"
 )]
-pub struct Cli {
+pub struct CliConfig {
     /// Specify the port of register service
     #[structopt(
         short = "p",
@@ -20,12 +21,28 @@ pub struct Cli {
 
     /// Specify the log file path
     #[structopt(
-        long = "log-file-path",
+        long = "log-path",
         value_name = "PATH",
         default_value = "log/output.log",
         parse(from_os_str)
     )]
-    pub log_file_path: PathBuf,
+    pub log_path: PathBuf,
+
+    /// Specify the log level
+    #[structopt(
+        long = "log-level",
+        value_name = "LEVEL",
+        parse(from_str = "parse_log_level")
+    )]
+    pub log_level: slog::Level,
+
+    /// Specify the log rotation timespan
+    #[structopt(
+        long = "log-rotation-timespan",
+        value_name = "TIMESPAN",
+        parse(from_str = "parse_log_rotation_timespan")
+    )]
+    pub log_rotation_timespan: Duration,
 
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]
@@ -49,4 +66,12 @@ pub struct Cli {
     #[cfg(feature = "sync-log")]
     #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
     pub start_height: u64,
+}
+
+fn parse_log_level(input: &str) -> slog::Level {
+    std::str::FromStr::from_str(input).unwrap_or(slog::Level::Info)
+}
+
+fn parse_log_rotation_timespan(input: &str) -> Duration {
+
 }
