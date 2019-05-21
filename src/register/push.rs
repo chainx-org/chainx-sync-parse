@@ -110,7 +110,7 @@ impl PushClient {
         }
         for msg in messages {
             if let Err(err) = self.post_message(&msg) {
-                error!("Post error, msg: {:?}", msg; "err" => %err);
+                error!("Post error: {:?}, msg: {:?}", err, msg);
                 return Err(err);
             }
         }

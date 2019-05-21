@@ -1,58 +1,54 @@
+#[macro_use]
+extern crate log;
+
 use std::collections::HashMap;
 use std::thread::JoinHandle;
-use std::time::Duration;
 
-//use log::LevelFilter;
-//use log4rs::{
-//    append::{console::ConsoleAppender, file::FileAppender},
-//    config::{Appender, Config, Root},
-//    encode::pattern::PatternEncoder,
-//};
+use log::LevelFilter;
+use log4rs::{
+    append::{console::ConsoleAppender, file::FileAppender},
+    config::{Appender, Config, Root},
+    encode::pattern::PatternEncoder,
+};
 use serde_json::Value;
 use structopt::StructOpt;
 
 use chainx_sync_parse::*;
 
 fn init_log_with_config(config: &CliConfig) -> Result<()> {
-    //    let console = ConsoleAppender::builder()
-    //        .encoder(Box::new(PatternEncoder::new(
-    //            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
-    //        )))
-    //        .build();
-    //    let file = FileAppender::builder()
-    //        .encoder(Box::new(PatternEncoder::new(
-    //            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
-    //        )))
-    //        .build(config.log_path)?;
-    //
-    //    let config = Config::builder()
-    //        .appender(Appender::builder().build("console", Box::new(console)))
-    //        .appender(Appender::builder().build("file", Box::new(file)))
-    //        .build(
-    //            Root::builder()
-    //                .appenders(vec!["console", "file"])
-    //                .build(LevelFilter::Info),
-    //        )
-    //        .expect("Construct log config failure");
-    //
-    //    log4rs::init_config(config).expect("Initializing log config should not be failed");
+    let console = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
+        )))
+        .build();
+    let file = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
+        )))
+        .build(&config.log_path)?;
 
-    let log_rotation_timespan = chrono::Duration::from_std(Duration::new(1, 0))
-        .expect("config.log_rotation_timespan is an invalid duration.");
+    let config = Config::builder()
+        .appender(Appender::builder().build("console", Box::new(console)))
+        .appender(Appender::builder().build("file", Box::new(file)))
+        .build(
+            Root::builder()
+                .appenders(vec!["console", "file"])
+                .build(LevelFilter::Info),
+        )
+        .expect("Construct log config failure");
 
-    let drainer = logger::file_drainer(&config.log_path, log_rotation_timespan)?;
-
-    logger::init_log(drainer, slog::Level::Info, true);
-
+    log4rs::init_config(config).expect("Initializing log config should not be failed");
     Ok(())
 }
 
 fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<Vec<u8>, Value>) {
     let values: Vec<Value> = stat.values().cloned().collect();
     if queue.write().insert(h, values.clone()).is_none() {
-        info!("Insert new block #{} into block queue successfully", h; "block" => ?Value::Array(values).to_string());
+        info!("Insert new block #{} into block queue successfully", h);
+        info!("Block #{}: {:?}", h, Value::Array(values).to_string());
     } else {
-        info!("Insert updated block #{} into block queue successfully", h; "block" => ?Value::Array(values).to_string());
+        info!("Insert updated block #{} into block queue successfully", h);
+        info!("Block #{}: {:?}", h, Value::Array(values).to_string());
     }
 }
 
@@ -60,13 +56,11 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
     // for debug
     if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
         debug!(
-            "Block info";
-            "block_height" => height, "prefix_key" => ?prefix_key, "value" => ?value,
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, prefix_key, value,
         );
     } else {
         debug!(
-            "Block info";
-            "block_height" => height, "prefix_key" => ?key, "value" => ?value,
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, key, value,
         );
     }
 }
@@ -145,8 +139,8 @@ fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> 
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let client = Redis::connect(config.sync_redis_url)?;
-    info!("Connect redis [{}] successfully", config.sync_redis_url);
+    let client = Redis::connect(config.sync_redis_url.as_str())?;
+    info!("Connect redis [{}] successfully", &config.sync_redis_url);
     let sync_service = client.start_subscription()?;
 
     while let Ok(key) = client.recv_key() {
@@ -184,7 +178,6 @@ fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> 
 
             stat.clear();
         } else {
-            use slog::slog_error;
             error!("Redis query error");
             break;
         }

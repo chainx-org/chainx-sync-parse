@@ -5,23 +5,21 @@ authors = ["ChainX <https://chainx.org>"]
 edition = "2018"
 
 [dependencies]
-#log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
-#log4rs = "0.8"
-slog = { version = "2.4", features = ["max_level_trace", "release_max_level_debug"] }
-slog-async = { version = "2.3", default-features = false }
-slog-term = "2.4"
-arc-swap = "0.3"
-chrono = "0.4"
+#slog = { version = "2.4", features = ["max_level_trace", "release_max_level_debug"] }
+#slog-async = { version = "2.3", default-features = false }
+#slog-term = "2.4"
+#arc-swap = "0.3"
+#chrono = "0.4"
+log = { version = "0.4", features = ["max_level_trace", "release_max_level_debug"] }
+log4rs = "0.8"
 failure = "0.1"
 failure_derive = "0.1"
 structopt = "0.2"
-redis = "0.10"
 hex = "0.3"
 lazy_static = "1.3"
 byteorder = "1.3"
 parity-codec = "3.5.1"
 parity-codec-derive = "3.3"
-regex = "1.1"
 parking_lot = "0.7"
 reqwest = "0.9"
 semver = "0.9"
@@ -33,16 +31,20 @@ strum_macros = "0.15"
 jsonrpc-core = "10.1"
 jsonrpc-derive = "10.1"
 jsonrpc-http-server = "10.1"
-diesel = { version = "1.4", optional = true }
-dotenv = { version = "0.13", optional = true }
 
 # Substrate (the versoin used by ChainX)
 sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "598b74ed" }
 substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "598b74ed" }
-
 # bitcoin (the latest version of master branch of light-bitcoin)
 btc-chain = { package = "chain", git = "https://github.com/chainx-org/light-bitcoin" }
 btc-keys = { package = "keys", git = "https://github.com/chainx-org/light-bitcoin" }
+
+# For 'sync-log/sync-redis' feature
+regex = { version = "1.1", optional = true }
+redis = { version = "0.10", optional = true }
+# For 'pgsql' feature
+diesel = { version = "1.4", optional = true }
+dotenv = { version = "0.13", optional = true }
 
 [dev-dependencies]
 hyper = "0.12"
@@ -50,8 +52,8 @@ hyper = "0.12"
 [features]
 default = ["std", "sync-log"]
 std = []
-sync-log = []
-sync-redis = []
+sync-log = ["regex"]
+sync-redis = ["redis"]
 pgsql = [
     "diesel/postgres",
     "diesel/serde_json",

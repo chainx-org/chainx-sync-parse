@@ -38,7 +38,7 @@ impl RotatingFileLogger {
         let file_path = file_path.as_ref().to_path_buf();
         let file = open_log_file(&file_path)?;
         let file_attr = fs::metadata(&file_path)?;
-        let file_modified_time = file_attr.modified().unwrap().into();
+        let file_modified_time = file_attr.modified()?.into();
         let next_rotation_time = compute_rotation_time(file_modified_time, rotation_timespan);
         Ok(Self {
             next_rotation_time,
@@ -100,6 +100,6 @@ fn rotation_file_path_with_timestamp(
     timestamp: &DateTime<Utc>,
 ) -> PathBuf {
     let mut file_path = file_path.as_ref().as_os_str().to_os_string();
-    file_path.push(format!(".{}", timestamp.format("%Y-%m-%d-%H-%M-%S")));
+    file_path.push(format!(".{}", timestamp.format("%Y-%m-%d")));
     file_path.into()
 }

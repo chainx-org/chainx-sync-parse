@@ -50,7 +50,7 @@ impl Tail {
                                 tx.send(data).unwrap();
                             }
                         }
-                        Err(err) => error!("Tail read line error"; "err" => %err),
+                        Err(err) => error!("Tail read line error: {:?}", err),
                     }
                 }
             }
@@ -72,7 +72,7 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
         // key and value should be hex
         let key = hex::decode(&caps[2]).expect("Hex decode key should not be failed");
         let value = hex::decode(&caps[3]).expect("Hex decode value should not be failed");
-        info!(
+        debug!(
             "msgbus|height:[{}]|key:[{}]|value:[{}]",
             height,
             hex::encode(&key),

@@ -64,19 +64,19 @@ impl Redis {
             let mut pubsub = sub_conn.as_pubsub();
             pubsub
                 .subscribe(REDIS_KEY_EVENT_NOTIFICATION)
-                .unwrap_or_else(|err| error!("Subscribe error"; "err" => %err));
+                .unwrap_or_else(|err| error!("Subscribe error: {:?}", err));
 
             while let Ok(msg) = pubsub.get_message() {
                 if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {
                     let key: Vec<u8> = match msg.get_payload() {
                         Ok(key) => key,
                         Err(err) => {
-                            error!("Msg get payload error"; "err" => %err);
+                            error!("Msg get payload error: {:?}", err);
                             break;
                         }
                     };
                     if let Err(err) = tx.send(key) {
-                        error!("Send error"; "err" => %err);
+                        error!("Send error: {:?}", err);
                         break;
                     }
                 } else {
