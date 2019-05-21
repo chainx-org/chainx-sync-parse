@@ -108,12 +108,13 @@ fn sync_log(path: &str, start_height: u64, queue: &BlockQueue) -> Result<JoinHan
 
         // collect all data of the block with the same height
         if height == next_block_height {
-            if let Ok((prefix, value)) = RuntimeStorage::parse(&key, value) {
-                let mut prefix = prefix.as_bytes().to_vec();
-                prefix.extend_from_slice(&key);
-                stat.insert(prefix, value);
-            } else {
-                continue;
+            match RuntimeStorage::parse(&key, value) {
+                Ok((prefix, value)) => {
+                    let mut prefix = prefix.as_bytes().to_vec();
+                    prefix.extend_from_slice(&key);
+                    stat.insert(prefix, value);
+                }
+                Err(_) => continue,
             }
         } else {
             // when height > nex_block_height
@@ -200,7 +201,7 @@ fn main() -> Result<()> {
         .run(&format!("0.0.0.0:{}", cli.register_service_port))?;
 
     #[cfg(feature = "sync-log")]
-    let sync_service = sync_log(&cli.sync_log_path, 236957, &block_queue)?;
+    let sync_service = sync_log(&cli.sync_log_path, 236955, &block_queue)?;
     #[cfg(feature = "sync-redis")]
     let sync_service = sync_redis(&cli.sync_redis_url, &block_queue)?;
 
