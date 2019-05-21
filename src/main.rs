@@ -200,7 +200,7 @@ fn main() -> Result<()> {
         .run(&format!("0.0.0.0:{}", cli.register_service_port))?;
 
     #[cfg(feature = "sync-log")]
-    let sync_service = sync_log(&cli.sync_log_path, cli.start_height, &block_queue)?;
+    let sync_service = sync_log(&cli.sync_log_path, 236957, &block_queue)?;
     #[cfg(feature = "sync-redis")]
     let sync_service = sync_redis(&cli.sync_redis_url, &block_queue)?;
 

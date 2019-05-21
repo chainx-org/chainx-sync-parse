@@ -41,7 +41,7 @@ pub struct Cli {
     #[structopt(
         long = "sync-log",
         value_name = "PATH",
-        default_value = "data/data.log"
+        default_value = "data/data0.log"
     )]
     pub sync_log_path: String,
 
