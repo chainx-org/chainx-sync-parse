@@ -2,7 +2,6 @@
 extern crate log;
 
 use std::collections::HashMap;
-use std::path::Path;
 use std::thread::JoinHandle;
 
 use log::LevelFilter;
@@ -16,7 +15,7 @@ use structopt::StructOpt;
 
 use chainx_sync_parse::*;
 
-fn init_log_config(log_path: &Path) -> Result<()> {
+fn init_log_with_config(config: &CliConfig) -> Result<()> {
     let console = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
@@ -26,7 +25,7 @@ fn init_log_config(log_path: &Path) -> Result<()> {
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
         )))
-        .build(log_path)?;
+        .build(&config.log_path)?;
 
     let config = Config::builder()
         .appender(Appender::builder().build("console", Box::new(console)))
@@ -46,10 +45,10 @@ fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<Vec<u8>, V
     let values: Vec<Value> = stat.values().cloned().collect();
     if queue.write().insert(h, values.clone()).is_none() {
         info!("Insert new block #{} into block queue successfully", h);
-        info!("block info: {:?}", Value::Array(values).to_string());
+        info!("Block #{}: {:?}", h, Value::Array(values).to_string());
     } else {
         info!("Insert updated block #{} into block queue successfully", h);
-        info!("block info: {:?}", Value::Array(values).to_string());
+        info!("Block #{}: {:?}", h, Value::Array(values).to_string());
     }
 }
 
@@ -57,26 +56,24 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
     // for debug
     if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
         debug!(
-            "block_height: {:?}, prefix+key: {:?}, value: {:?}",
-            height, prefix_key, value
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, prefix_key, value,
         );
     } else {
         debug!(
-            "block_height: {:?}, prefix+key: Invalid UTF8 (hex: {:?}), value: {:?}",
-            height, key, value
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, key, value,
         );
     }
 }
 
 #[cfg(feature = "sync-log")]
-fn sync_log(path: &str, start_height: u64, queue: &BlockQueue) -> Result<JoinHandle<()>> {
+fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let mut next_block_height: u64 = 0;
     let mut stat = HashMap::new();
 
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let path = std::path::Path::new(path);
+    let path = std::path::Path::new(&config.sync_log_path);
     assert!(path.is_file());
     let file = std::fs::File::open(path)?;
 
@@ -87,7 +84,7 @@ fn sync_log(path: &str, start_height: u64, queue: &BlockQueue) -> Result<JoinHan
         debug_sync_block_info(height, &key, &value);
 
         // Ignore the parsing of the previous `start_height` blocks during synchronization
-        if height < start_height {
+        if height < config.start_height {
             next_block_height = height + 1;
             continue;
         }
@@ -134,7 +131,7 @@ fn sync_log(path: &str, start_height: u64, queue: &BlockQueue) -> Result<JoinHan
 }
 
 #[cfg(feature = "sync-redis")]
-fn sync_redis(url: &str, queue: &BlockQueue) -> Result<JoinHandle<()>> {
+fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let mut cur_block_height: u64 = 0;
     let mut next_block_height: u64 = 0;
     let mut stat = HashMap::new();
@@ -142,8 +139,8 @@ fn sync_redis(url: &str, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let client = Redis::connect(url)?;
-    info!("Connect redis [{:?}] successfully", url);
+    let client = Redis::connect(config.sync_redis_url.as_str())?;
+    info!("Connect redis [{}] successfully", &config.sync_redis_url);
     let sync_service = client.start_subscription()?;
 
     while let Ok(key) = client.recv_key() {
@@ -190,19 +187,19 @@ fn sync_redis(url: &str, queue: &BlockQueue) -> Result<JoinHandle<()>> {
 }
 
 fn main() -> Result<()> {
-    let cli = Cli::from_args();
+    let config = CliConfig::from_args();
 
-    init_log_config(&cli.log_file_path)?;
+    init_log_with_config(&config)?;
 
     let block_queue: BlockQueue = BlockQueue::default();
 
     let register_server = RegisterService::new(block_queue.clone())
-        .run(&format!("0.0.0.0:{}", cli.register_service_port))?;
+        .run(&format!("0.0.0.0:{}", config.register_service_port))?;
 
     #[cfg(feature = "sync-log")]
-    let sync_service = sync_log(&cli.sync_log_path, cli.start_height, &block_queue)?;
+    let sync_service = sync_log(&config, &block_queue)?;
     #[cfg(feature = "sync-redis")]
-    let sync_service = sync_redis(&cli.sync_redis_url, &block_queue)?;
+    let sync_service = sync_redis(&config, &block_queue)?;
 
     sync_service
         .join()

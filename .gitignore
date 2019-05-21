@@ -2,6 +2,5 @@
 **/*.rs.bk
 /.idea
 /log
-/record
 /.DS_Store
 nohup.out

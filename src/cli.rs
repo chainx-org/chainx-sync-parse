@@ -8,7 +8,7 @@ use structopt::StructOpt;
     author = "ChainX <https://chainx.org>",
     about = "Synchronize and parse ChainX sync-node data"
 )]
-pub struct Cli {
+pub struct CliConfig {
     /// Specify the port of register service
     #[structopt(
         short = "p",
@@ -20,12 +20,12 @@ pub struct Cli {
 
     /// Specify the log file path
     #[structopt(
-        long = "log-file-path",
+        long = "log-path",
         value_name = "PATH",
         default_value = "log/output.log",
         parse(from_os_str)
     )]
-    pub log_file_path: PathBuf,
+    pub log_path: PathBuf,
 
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]
