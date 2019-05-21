@@ -196,8 +196,8 @@ fn remove_block_from_queue(
 
     for h in min_block_height..=min_push_height {
         info!(
-            "Block status: queue len [{}], min height [{}], push height [{}], max height [{}]",
-            queue_len, min_block_height, min_push_height, max_block_height
+            "Block queue status: queue_len [{}], min_height [{}], push_height [{}], max_height [{}]",
+            queue_len, min_block_height, min_push_height, max_block_height,
         );
         queue.write().remove(&h);
     }

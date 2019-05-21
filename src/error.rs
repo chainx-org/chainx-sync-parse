@@ -29,6 +29,7 @@ pub enum ErrorKind {
     Send(#[cause] ::std::sync::mpsc::SendError<Vec<u8>>),
     #[fail(display = "{}", _0)]
     Recv(#[cause] ::std::sync::mpsc::RecvError),
+    #[cfg(feature = "sync-redis")]
     #[fail(display = "{}", _0)]
     Redis(#[cause] redis::RedisError),
     #[fail(display = "{}", _0)]
@@ -103,6 +104,7 @@ impl From<::std::sync::mpsc::RecvError> for Error {
     }
 }
 
+#[cfg(feature = "sync-redis")]
 impl From<redis::RedisError> for Error {
     fn from(err: redis::RedisError) -> Self {
         Error::from(ErrorKind::Redis(err))
@@ -159,6 +161,7 @@ impl From<Error> for jsonrpc_core::Error {
             ErrorKind::NetAddrParse(e) => rpc_error(ERROR + 4, e.description()),
             ErrorKind::Send(e) => rpc_error(ERROR + 5, e.description()),
             ErrorKind::Recv(e) => rpc_error(ERROR + 6, e.description()),
+            #[cfg(feature = "sync-redis")]
             ErrorKind::Redis(e) => rpc_error(ERROR + 7, e.description()),
             ErrorKind::Reqwest(e) => rpc_error(ERROR + 8, e.description()),
             ErrorKind::SerdeJson(e) => rpc_error(ERROR + 9, e.description()),
