@@ -6,7 +6,6 @@ extern crate log;
 #[macro_use]
 extern crate diesel;
 
-mod cli;
 mod error;
 //#[macro_use]
 //pub mod logger;
@@ -23,7 +22,6 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-pub use self::cli::CliConfig;
 pub use self::error::{Error, Result};
 pub use self::parse::RuntimeStorage;
 #[cfg(feature = "pgsql")]

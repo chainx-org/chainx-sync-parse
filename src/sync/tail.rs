@@ -1,5 +1,6 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufRead, BufReader};
+use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -14,17 +15,11 @@ lazy_static::lazy_static! {
 
 const BUFFER_SIZE: usize = 1 << 8;
 
-type StorageData = (u64, Vec<u8>, Vec<u8>); // height, key, value
+type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
 pub struct Tail {
     tx: mpsc::Sender<StorageData>,
     rx: mpsc::Receiver<StorageData>,
-}
-
-impl Default for Tail {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Tail {
@@ -33,11 +28,13 @@ impl Tail {
         Tail { tx, rx }
     }
 
-    pub fn run(&self, file: File) -> Result<thread::JoinHandle<()>> {
-        let mut reader = BufReader::new(file);
+    pub fn run(&self, file_path: impl AsRef<Path>) -> Result<thread::JoinHandle<()>> {
+        let file_path = file_path.as_ref().to_path_buf();
+        let file = open_log_file(&file_path)?;
         let tx = self.tx.clone();
 
         let handle = thread::spawn(move || {
+            let mut reader = BufReader::new(file);
             let mut line = Vec::with_capacity(BUFFER_SIZE);
             loop {
                 thread::sleep(Duration::from_millis(50));
@@ -46,6 +43,7 @@ impl Tail {
                     match reader.read_until(b'\n', &mut line) {
                         Ok(0) => break,
                         Ok(_) => {
+                            // TODO: slice sync log.
                             if let Some(data) = filter_line(&line) {
                                 tx.send(data).unwrap();
                             }
@@ -63,6 +61,20 @@ impl Tail {
     }
 }
 
+/// Opens sync log file. Creates a new log file if it doesn't exist.
+fn open_log_file(path: impl AsRef<Path>) -> io::Result<File> {
+    let path = path.as_ref();
+    let parent = path
+        .parent()
+        .expect("Unable to get parent directory of log file");
+    if !parent.is_dir() {
+        fs::create_dir_all(parent)?
+    }
+
+    OpenOptions::new().read(true).write(true).create(true).open(path)
+}
+
+/// Filter the sync log and extract the `msgbus` log data.
 fn filter_line(line: &[u8]) -> Option<StorageData> {
     if let Some(caps) = RE.captures(line) {
         let height = std::str::from_utf8(&caps[1])

@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate log;
 
+mod cli;
+
 use std::collections::HashMap;
 use std::thread::JoinHandle;
 
+use chainx_sync_parse::*;
 use log::LevelFilter;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
@@ -13,7 +16,7 @@ use log4rs::{
 use serde_json::Value;
 use structopt::StructOpt;
 
-use chainx_sync_parse::*;
+use self::cli::CliConfig;
 
 fn init_log_with_config(config: &CliConfig) -> Result<()> {
     let console = ConsoleAppender::builder()
@@ -56,11 +59,13 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
     // for debug
     if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
         debug!(
-            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, prefix_key, value,
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]",
+            height, prefix_key, value,
         );
     } else {
         debug!(
-            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, key, value,
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]",
+            height, key, value,
         );
     }
 }
@@ -73,12 +78,9 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let path = std::path::Path::new(&config.sync_log_path);
-    assert!(path.is_file());
-    let file = std::fs::File::open(path)?;
-
     let tail = Tail::new();
-    let sync_service = tail.run(file)?;
+    let path = std::path::Path::new(&config.sync_log_path);
+    let sync_service = tail.run(path)?;
 
     while let Ok((height, key, value)) = tail.recv_data() {
         debug_sync_block_info(height, &key, &value);
