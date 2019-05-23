@@ -12,7 +12,6 @@ use parking_lot::{Mutex, RwLock};
 use semver::Version;
 
 use self::push::{Message, PushClient};
-use self::rpc::RegisterApi;
 use crate::{BlockQueue, Result};
 
 #[derive(PartialEq, Clone, Debug)]
@@ -89,8 +88,8 @@ impl RegisterService {
     }
 
     pub fn run(self, url: &str) -> Result<jsonrpc_http_server::Server> {
-        let io = rpc_handler(self);
-        start_http_rpc_server(url, io)
+        let io = rpc::rpc_handler(self);
+        rpc::start_http_rpc_server(url, io)
     }
 
     fn spawn_new_push(&self, url: String, ctxt: RegisterContext, tx: PushSender) {
@@ -201,26 +200,6 @@ fn remove_block_from_queue(
         );
         queue.write().remove(&h);
     }
-}
-
-fn rpc_handler<R: RegisterApi>(register: R) -> jsonrpc_core::IoHandler {
-    let mut io = jsonrpc_core::IoHandler::default();
-    io.extend_with(register.to_delegate());
-    io
-}
-
-fn start_http_rpc_server(
-    url: &str,
-    io: jsonrpc_core::IoHandler,
-) -> Result<jsonrpc_http_server::Server> {
-    let server = jsonrpc_http_server::ServerBuilder::new(io)
-        .rest_api(jsonrpc_http_server::RestApi::Unsecure)
-        .cors(jsonrpc_http_server::DomainsValidation::AllowOnly(vec![
-            jsonrpc_http_server::AccessControlAllowOrigin::Any,
-        ]))
-        .start_http(&url.parse()?)?;
-    info!("Start http rpc server on: {:?}", url);
-    Ok(server)
 }
 
 #[cfg(test)]

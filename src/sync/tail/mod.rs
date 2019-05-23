@@ -1,5 +1,7 @@
+//mod logger;
+
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read};
 use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
@@ -13,7 +15,7 @@ lazy_static::lazy_static! {
     static ref RE: Regex = Regex::new(r"(?-u)INFO msgbus\|height:\[(\d*)]\|key:\[(.*)]\|value:\[(.*)]").unwrap();
 }
 
-const BUFFER_SIZE: usize = 1 << 8;
+const BUFFER_SIZE: usize = 1024;
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -33,26 +35,7 @@ impl Tail {
         let file = open_log_file(&file_path)?;
         let tx = self.tx.clone();
 
-        let handle = thread::spawn(move || {
-            let mut reader = BufReader::new(file);
-            let mut line = Vec::with_capacity(BUFFER_SIZE);
-            loop {
-                thread::sleep(Duration::from_millis(50));
-                loop {
-                    line.clear();
-                    match reader.read_until(b'\n', &mut line) {
-                        Ok(0) => break,
-                        Ok(_) => {
-                            // TODO: slice sync log.
-                            if let Some(data) = filter_line(&line) {
-                                tx.send(data).unwrap();
-                            }
-                        }
-                        Err(err) => error!("Tail read line error: {:?}", err),
-                    }
-                }
-            }
-        });
+        let handle = thread::spawn(move || sync_and_filter(&tx, file));
         Ok(handle)
     }
 
@@ -71,7 +54,32 @@ fn open_log_file(path: impl AsRef<Path>) -> io::Result<File> {
         fs::create_dir_all(parent)?
     }
 
-    OpenOptions::new().read(true).write(true).create(true).open(path)
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(path)
+}
+
+fn sync_and_filter(tx: &mpsc::Sender<StorageData>, file: impl Read) {
+    let mut reader = BufReader::new(file);
+    let mut line = Vec::with_capacity(BUFFER_SIZE);
+    loop {
+        thread::sleep(Duration::from_millis(50));
+        loop {
+            line.clear();
+            match reader.read_until(b'\n', &mut line) {
+                Ok(0) => break,
+                Ok(_) => {
+                    // TODO: slice sync log.
+                    if let Some(data) = filter_line(&line) {
+                        tx.send(data).unwrap();
+                    }
+                }
+                Err(err) => error!("Tail read line error: {:?}", err),
+            }
+        }
+    }
 }
 
 /// Filter the sync log and extract the `msgbus` log data.

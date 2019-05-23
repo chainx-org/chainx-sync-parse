@@ -56,3 +56,23 @@ impl RegisterApi for RegisterService {
         }
     }
 }
+
+pub fn rpc_handler<R: RegisterApi>(register: R) -> jsonrpc_core::IoHandler {
+    let mut io = jsonrpc_core::IoHandler::default();
+    io.extend_with(register.to_delegate());
+    io
+}
+
+pub fn start_http_rpc_server(
+    url: &str,
+    io: jsonrpc_core::IoHandler,
+) -> Result<jsonrpc_http_server::Server> {
+    let server = jsonrpc_http_server::ServerBuilder::new(io)
+        .rest_api(jsonrpc_http_server::RestApi::Unsecure)
+        .cors(jsonrpc_http_server::DomainsValidation::AllowOnly(vec![
+            jsonrpc_http_server::AccessControlAllowOrigin::Any,
+        ]))
+        .start_http(&url.parse()?)?;
+    info!("Start http rpc server on: {:?}", url);
+    Ok(server)
+}
