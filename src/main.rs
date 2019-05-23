@@ -40,7 +40,7 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
         )
         .expect("Construct log config failure");
 
-    log4rs::init_config(config).expect("Initializing log config should not be failed");
+    log4rs::init_config(config).expect("Initializing log config shouldn't be fail");
     Ok(())
 }
 

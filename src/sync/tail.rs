@@ -1,11 +1,11 @@
 //mod logger;
 
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::Duration as StdDuration;
 
 use regex::bytes::Regex;
 
@@ -16,6 +16,7 @@ lazy_static::lazy_static! {
 }
 
 const BUFFER_SIZE: usize = 1024;
+const BLOCK_NUMBER_PER_LOG_FILE: u64 = 50000;
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -33,9 +34,10 @@ impl Tail {
     pub fn run(&self, file_path: impl AsRef<Path>) -> Result<thread::JoinHandle<()>> {
         let file_path = file_path.as_ref().to_path_buf();
         let file = open_log_file(&file_path)?;
+        let file_copy = file.try_clone()?;
         let tx = self.tx.clone();
 
-        let handle = thread::spawn(move || sync_and_filter(&tx, file));
+        let handle = thread::spawn(move || sync_log_data(file, file_copy, &tx));
         Ok(handle)
     }
 
@@ -61,19 +63,28 @@ fn open_log_file(path: impl AsRef<Path>) -> io::Result<File> {
         .open(path)
 }
 
-fn sync_and_filter(tx: &mpsc::Sender<StorageData>, file: impl Read) {
+fn sync_log_data(file: File, file_copy: File, tx: &mpsc::Sender<StorageData>) {
     let mut reader = BufReader::new(file);
     let mut line = Vec::with_capacity(BUFFER_SIZE);
     loop {
-        thread::sleep(Duration::from_millis(50));
+        thread::sleep(StdDuration::from_millis(50));
         loop {
             line.clear();
             match reader.read_until(b'\n', &mut line) {
                 Ok(0) => break,
                 Ok(_) => {
-                    // TODO: slice sync log.
                     if let Some(data) = filter_line(&line) {
-                        tx.send(data).unwrap();
+                        let height = data.0;
+                        if height % BLOCK_NUMBER_PER_LOG_FILE == 0 {
+                            file_copy
+                                .set_len(0)
+                                .expect("Setting the length of underlying file shouldn't be fail");
+                            reader
+                                .seek(SeekFrom::Start(0))
+                                .expect("Seek the cursor of file shouldn't be fail");
+                            info!("Split sync node log, current block height #{}", height);
+                        }
+                        tx.send(data).expect("Send sync data shouldn't be fail");
                     }
                 }
                 Err(err) => error!("Tail read line error: {:?}", err),
@@ -88,10 +99,10 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
         let height = std::str::from_utf8(&caps[1])
             .unwrap()
             .parse::<u64>()
-            .expect("Parse height should not be failed");
+            .expect("Parse height should not be fail");
         // key and value should be hex
-        let key = hex::decode(&caps[2]).expect("Hex decode key should not be failed");
-        let value = hex::decode(&caps[3]).expect("Hex decode value should not be failed");
+        let key = hex::decode(&caps[2]).expect("Hex decode key should not be fail");
+        let value = hex::decode(&caps[3]).expect("Hex decode value should not be fail");
         debug!(
             "msgbus|height:[{}]|key:[{}]|value:[{}]",
             height,
