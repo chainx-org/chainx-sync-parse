@@ -72,7 +72,7 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
 
 #[cfg(feature = "sync-log")]
 fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
-    let mut next_block_height: u64 = 0;
+    let mut next_block_height: u64 = config.start_height;
     let mut stat = HashMap::new();
 
     #[cfg(feature = "pgsql")]

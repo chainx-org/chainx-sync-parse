@@ -80,11 +80,11 @@ impl FilterAndRotate {
         tx: mpsc::Sender<StorageData>,
     ) -> io::Result<Self> {
         let from_file_path = file_path.as_ref().to_path_buf();
-        let from_file = open_log_file(&from_file_path)?;
+        let from_file = read_sync_log_file(&from_file_path)?;
         let reader = BufReader::new(from_file);
 
         let to_file_path = rotation_file_path_with_height(file_path.as_ref(), start_height);
-        let to_file = open_log_file(&to_file_path)?;
+        let to_file = append_log_file(&to_file_path)?;
         let writer = BufWriter::new(to_file);
 
         Ok(Self {
@@ -136,7 +136,7 @@ impl FilterAndRotate {
 
         // Note: renaming files while they're open only works on Linux and macOS.
         let new_to_path = rotation_file_path_with_height(&self.file_path, self.height);
-        let new_to_file = open_log_file(&new_to_path)?;
+        let new_to_file = append_log_file(&new_to_path)?;
         self.writer = BufWriter::new(new_to_file);
         Ok(())
     }
@@ -155,19 +155,32 @@ fn rotation_file_path_with_height(file_path: &Path, height: u64) -> PathBuf {
 }
 
 /// Opens sync log file. Creates a new log file if it doesn't exist.
-fn open_log_file(file_path: &Path) -> io::Result<File> {
+fn read_sync_log_file(file_path: &Path) -> io::Result<File> {
+    check_parent_dir(file_path)?;
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(file_path)
+}
+
+/// Opens sync log file. Creates a new log file if it doesn't exist.
+fn append_log_file(file_path: &Path) -> io::Result<File> {
+    check_parent_dir(file_path)?;
+    OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(file_path)
+}
+
+fn check_parent_dir(file_path: &Path) -> io::Result<()> {
     let parent = file_path
         .parent()
         .expect("Unable to get parent directory of log file");
     if !parent.is_dir() {
         fs::create_dir_all(parent)?
     }
-
-    OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(file_path)
+    Ok(())
 }
 
 /// Filter the sync log and extract the `msgbus` log data.
