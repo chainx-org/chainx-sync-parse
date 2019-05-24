@@ -45,9 +45,9 @@ pub struct CliConfig {
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]
     #[structopt(
-    long = "sync-redis",
-    value_name = "URL",
-    default_value = "redis://127.0.0.1"
+        long = "sync-redis",
+        value_name = "URL",
+        default_value = "redis://127.0.0.1"
     )]
     pub sync_redis_url: String,
 }

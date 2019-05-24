@@ -4,7 +4,6 @@ extern crate log;
 mod cli;
 
 use std::collections::HashMap;
-use std::path::Path;
 use std::thread::JoinHandle;
 
 use chainx_sync_parse::*;

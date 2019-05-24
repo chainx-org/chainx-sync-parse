@@ -176,10 +176,10 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
             .unwrap()
             .parse::<u64>()
             .expect("Parse height should not be fail");
-        // Ignore block height 0
-        if height == 0 {
-            return None;
-        }
+//        // Ignore block height 0
+//        if height == 0 {
+//            return None;
+//        }
 
         // key and value should be hex
         let key = hex::decode(&caps[2]).expect(&format!(
