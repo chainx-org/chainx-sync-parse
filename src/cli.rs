@@ -32,7 +32,7 @@ pub struct CliConfig {
     #[structopt(
         long = "sync-log",
         value_name = "PATH",
-        default_value = "data/data0.log",
+        default_value = "log/sync.log",
         parse(from_os_str)
     )]
     pub sync_log_path: PathBuf,
