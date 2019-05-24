@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
 }
 
 const BUFFER_SIZE: usize = 1024;
-const BLOCK_NUMBER_PER_LOG_FILE: u64 = 3;
+const BLOCK_NUMBER_PER_LOG_FILE: u64 = 10000;
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 

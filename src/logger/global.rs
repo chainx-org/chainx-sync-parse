@@ -46,26 +46,26 @@ pub fn clear_global() {
     GLOBAL_LOGGER.store(Arc::new(discard_logger()));
 }
 
-///// Logs a critical level message using the global logger.
-//#[macro_export]
-//macro_rules! crit( ($($args:tt)+) => {
-//    slog::slog_crit![$crate::logger::global::borrow_global(), $($args)+]
-//};);
+/// Logs a critical level message using the global logger.
+#[macro_export]
+macro_rules! crit( ($($args:tt)+) => {
+    slog::slog_crit![$crate::logger::global::borrow_global(), $($args)+]
+};);
 
-///// Logs a error level message using the global logger.
-//#[macro_export]
-//macro_rules! error( ($($args:tt)+) => {
-//    slog::slog_error![$crate::logger::global::borrow_global(), $($args)+]
-//};);
+/// Logs a error level message using the global logger.
+#[macro_export]
+macro_rules! error( ($($args:tt)+) => {
+    slog::slog_error![$crate::logger::global::borrow_global(), $($args)+]
+};);
 
-///// Logs a warning level message using the global logger.
-//#[macro_export]
-//macro_rules! warn( ($($args:tt)+) => {
-//    slog::slog_warn![$crate::logger::global::borrow_global(), $($args)+]
-//};);
+/// Logs a warning level message using the global logger.
+#[macro_export]
+macro_rules! warn( ($($args:tt)+) => {
+    slog::slog_warn![$crate::logger::global::borrow_global(), $($args)+]
+};);
 
 /// Logs a info level message using the global logger.
 #[macro_export]
-macro_rules! msgbus_log( ($($args:tt)+) => {
-    slog::slog_info![borrow_global(), $($args)+]
+macro_rules! info( ($($args:tt)+) => {
+    slog::slog_info![$crate::logger::global::borrow_global(), $($args)+]
 };);
