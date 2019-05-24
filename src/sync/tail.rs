@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
 }
 
 const BUFFER_SIZE: usize = 1024;
-const BLOCK_NUMBER_PER_LOG_FILE: u64 = 10000;
+const BLOCK_NUMBER_PER_LOG_FILE: u64 = 3;
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -63,6 +63,8 @@ pub struct FilterAndRotate {
     writer: BufWriter<File>,
     /// Sync log file path
     file_path: PathBuf,
+    /// Indicates whether the genesis block has been scanned
+    is_genesis: bool,
 }
 
 impl Drop for FilterAndRotate {
@@ -92,6 +94,7 @@ impl FilterAndRotate {
             reader,
             writer,
             file_path: file_path.as_ref().to_path_buf(),
+            is_genesis: true,
         })
     }
 
@@ -102,11 +105,8 @@ impl FilterAndRotate {
             match self.reader.read_until(b'\n', &mut line) {
                 Ok(0) => thread::sleep(StdDuration::from_millis(50)),
                 Ok(_) => {
-                    let _ = self.writer.write(&line);
-
-                    if let Some(data) = filter_line(&line) {
+                    if let Some(data) = filter_line(&line, &mut self.is_genesis) {
                         self.height = data.0;
-
                         if self.should_rotate() {
                             self.rotate().expect("Rotate log shouldn't be fail");
                             info!("Split sync node log, current block height #{}", self.height);
@@ -117,6 +117,7 @@ impl FilterAndRotate {
                             .send(data)
                             .expect("Send sync data shouldn't be fail");
                     }
+                    let _ = self.writer.write(&line);
                 }
                 Err(err) => error!("Tail read line error: {:?}", err),
             }
@@ -170,18 +171,24 @@ fn open_log_file(file_path: &Path) -> io::Result<File> {
 }
 
 /// Filter the sync log and extract the `msgbus` log data.
-fn filter_line(line: &[u8]) -> Option<StorageData> {
+fn filter_line(line: &[u8], is_genesis: &mut bool) -> Option<StorageData> {
     if let Some(caps) = RE.captures(line) {
         let height = std::str::from_utf8(&caps[1])
             .unwrap()
             .parse::<u64>()
             .expect("Parse height should not be fail");
-//        // Ignore block height 0
-//        if height == 0 {
-//            return None;
-//        }
 
-        // key and value should be hex
+        // Ignore the block with height 0 (except genesis block)
+        {
+            if height != 0 {
+                *is_genesis = false;
+            }
+            if !*is_genesis && height == 0 {
+                return None;
+            }
+        }
+
+        // Key and value should be hex
         let key = hex::decode(&caps[2]).expect(&format!(
             "Hex decode key should not be fail: block #{}, key={:?}",
             height, &caps[2]
