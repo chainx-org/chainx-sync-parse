@@ -20,12 +20,27 @@ pub struct CliConfig {
 
     /// Specify the log file path
     #[structopt(
-        long = "log-path",
+        long = "log",
         value_name = "PATH",
-        default_value = "log/output.log",
+        default_value = "log/sync_parse.log",
         parse(from_os_str)
     )]
     pub log_path: PathBuf,
+
+    /// Specify the sync log path
+    #[cfg(feature = "sync-log")]
+    #[structopt(
+        long = "sync-log",
+        value_name = "PATH",
+        default_value = "log/sync.log",
+        parse(from_os_str)
+    )]
+    pub sync_log_path: PathBuf,
+
+    /// Specify the block height to start syncing
+    #[cfg(feature = "sync-log")]
+    #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
+    pub start_height: u64,
 
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]
@@ -35,18 +50,4 @@ pub struct CliConfig {
         default_value = "redis://127.0.0.1"
     )]
     pub sync_redis_url: String,
-
-    /// Specify the sync log path
-    #[cfg(feature = "sync-log")]
-    #[structopt(
-        long = "sync-log",
-        value_name = "PATH",
-        default_value = "data/data.log"
-    )]
-    pub sync_log_path: String,
-
-    /// Specify the block height to start syncing
-    #[cfg(feature = "sync-log")]
-    #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
-    pub start_height: u64,
 }

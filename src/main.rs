@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate log;
 
+mod cli;
+
 use std::collections::HashMap;
 use std::thread::JoinHandle;
 
+use chainx_sync_parse::*;
 use log::LevelFilter;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
@@ -13,7 +16,7 @@ use log4rs::{
 use serde_json::Value;
 use structopt::StructOpt;
 
-use chainx_sync_parse::*;
+use self::cli::CliConfig;
 
 fn init_log_with_config(config: &CliConfig) -> Result<()> {
     let console = ConsoleAppender::builder()
@@ -37,7 +40,7 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
         )
         .expect("Construct log config failure");
 
-    log4rs::init_config(config).expect("Initializing log config should not be failed");
+    log4rs::init_config(config).expect("Initializing log config shouldn't be fail");
     Ok(())
 }
 
@@ -56,29 +59,27 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
     // for debug
     if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
         debug!(
-            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, prefix_key, value,
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]",
+            height, prefix_key, value,
         );
     } else {
         debug!(
-            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]", height, key, value,
+            "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]",
+            height, key, value,
         );
     }
 }
 
 #[cfg(feature = "sync-log")]
 fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
-    let mut next_block_height: u64 = 0;
+    let mut next_block_height: u64 = config.start_height;
     let mut stat = HashMap::new();
 
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
 
-    let path = std::path::Path::new(&config.sync_log_path);
-    assert!(path.is_file());
-    let file = std::fs::File::open(path)?;
-
     let tail = Tail::new();
-    let sync_service = tail.run(file)?;
+    let sync_service = tail.run(&config.sync_log_path, config.start_height)?;
 
     while let Ok((height, key, value)) = tail.recv_data() {
         debug_sync_block_info(height, &key, &value);
@@ -91,11 +92,6 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
 
         // handling sync block fallback
         if height < next_block_height {
-            // Ignore block data with block height 0
-            if height == 0 {
-                continue;
-            }
-
             insert_block_into_queue(queue, next_block_height, &stat);
             #[cfg(feature = "pgsql")]
             insert_block_into_pgsql(&pg_conn, next_block_height, &stat);
@@ -105,12 +101,13 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
 
         // collect all data of the block with the same height
         if height == next_block_height {
-            if let Ok((prefix, value)) = RuntimeStorage::parse(&key, value) {
-                let mut prefix = prefix.as_bytes().to_vec();
-                prefix.extend_from_slice(&key);
-                stat.insert(prefix, value);
-            } else {
-                continue;
+            match RuntimeStorage::parse(&key, value) {
+                Ok((prefix, value)) => {
+                    let mut prefix = prefix.as_bytes().to_vec();
+                    prefix.extend_from_slice(&key);
+                    stat.insert(prefix, value);
+                }
+                Err(_) => continue,
             }
         } else {
             // when height > nex_block_height

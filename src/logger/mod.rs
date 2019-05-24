@@ -1,7 +1,7 @@
 mod formatter;
 #[macro_use]
 pub mod global;
-mod rotate;
+pub mod rotate;
 
 use std::fmt;
 use std::io::{self, BufWriter};
@@ -36,10 +36,10 @@ where
             .build()
             .filter_level(level)
             .fuse();
-        slog::Logger::root(drain, slog_o!())
+        slog::Logger::root(drain, slog::slog_o!())
     } else {
         let drain = LogAndFuse(Mutex::new(drain).filter_level(level));
-        slog::Logger::root(drain, slog_o!())
+        slog::Logger::root(drain, slog::slog_o!())
     };
 
     global::set_global(logger);
@@ -120,7 +120,7 @@ where
         if let Err(e) = self.0.log(record, values) {
             let fatal_drainer = Mutex::new(term_drainer()).ignore_res();
             fatal_drainer.log(record, values).unwrap();
-            let fatal_logger = slog::Logger::root(fatal_drainer, slog_o!());
+            let fatal_logger = slog::Logger::root(fatal_drainer, slog::slog_o!());
             slog::slog_crit!(
                 fatal_logger,
                 "logger encountered error, cannot continue working";

@@ -93,8 +93,8 @@ cargo build --release --features msgbus-log # or cargo build --release --feature
 
 # run
 cp target/release/chainx .
-# features msgbus-log
-nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa 2>&1 | cat > sync.log &
+# features msgbus-log, `sync.log` is the param specified by `chainx-sync-parse --sync-log=<PATH>`
+nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa &>> sync.log &
 # features msgbus-redis
 echo flushall | redis-cli
 nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa &
@@ -116,7 +116,7 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
     
     # run
     # -h or --help for usage details
-    ./target/release/chainx-sync-parse --sync-log <PATH>
+    ./target/release/chainx-sync-parse
     ```
 
 ### sync-redis (Alternative)

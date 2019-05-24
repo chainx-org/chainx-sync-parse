@@ -313,7 +313,7 @@ impl RuntimeStorage {
     }
 
     #[rustfmt::skip]
-    #[allow(clippy::cyclomatic_complexity)]
+    #[allow(clippy::cognitive_complexity)]
     fn decode_by_type(&mut self, prefix: &str, key: &[u8], value: Vec<u8>) -> Result<serde_json::Value> {
         use RuntimeStorage::*;
         let mut key = self.match_key(prefix, key)?;

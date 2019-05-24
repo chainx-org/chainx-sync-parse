@@ -16,7 +16,7 @@ use slog::Logger;
 
 /// Creates a logger that simply discards everything.
 fn discard_logger() -> Logger {
-    Logger::root(slog::Discard, slog_o!())
+    Logger::root(slog::Discard, slog::slog_o!())
 }
 
 lazy_static::lazy_static! {
@@ -49,35 +49,23 @@ pub fn clear_global() {
 /// Logs a critical level message using the global logger.
 #[macro_export]
 macro_rules! crit( ($($args:tt)+) => {
-    ::slog::slog_crit![$crate::logger::global::borrow_global(), $($args)+]
+    slog::slog_crit![$crate::logger::global::borrow_global(), $($args)+]
 };);
 
 /// Logs a error level message using the global logger.
 #[macro_export]
 macro_rules! error( ($($args:tt)+) => {
-    ::slog::slog_error![$crate::logger::global::borrow_global(), $($args)+]
+    slog::slog_error![$crate::logger::global::borrow_global(), $($args)+]
 };);
 
 /// Logs a warning level message using the global logger.
 #[macro_export]
 macro_rules! warn( ($($args:tt)+) => {
-    ::slog::slog_warn![$crate::logger::global::borrow_global(), $($args)+]
+    slog::slog_warn![$crate::logger::global::borrow_global(), $($args)+]
 };);
 
 /// Logs a info level message using the global logger.
 #[macro_export]
 macro_rules! info( ($($args:tt)+) => {
-    ::slog::slog_info![$crate::logger::global::borrow_global(), $($args)+]
-};);
-
-/// Logs a debug level message using the global logger.
-#[macro_export]
-macro_rules! debug( ($($args:tt)+) => {
-    ::slog::slog_debug![$crate::logger::global::borrow_global(), $($args)+]
-};);
-
-/// Logs a trace level message using the global logger.
-#[macro_export]
-macro_rules! trace( ($($args:tt)+) => {
-    ::slog::slog_trace![$crate::logger::global::borrow_global(), $($args)+]
+    slog::slog_info![$crate::logger::global::borrow_global(), $($args)+]
 };);
