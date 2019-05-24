@@ -1,8 +1,6 @@
-//mod logger;
-
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, Seek, SeekFrom};
-use std::path::Path;
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration as StdDuration;
@@ -16,7 +14,7 @@ lazy_static::lazy_static! {
 }
 
 const BUFFER_SIZE: usize = 1024;
-const BLOCK_NUMBER_PER_LOG_FILE: u64 = 50000;
+const BLOCK_NUMBER_PER_LOG_FILE: u64 = 10000;
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -25,19 +23,27 @@ pub struct Tail {
     rx: mpsc::Receiver<StorageData>,
 }
 
+impl Default for Tail {
+    fn default() -> Self {
+        let (tx, rx) = mpsc::channel();
+        Self { tx, rx }
+    }
+}
+
 impl Tail {
     pub fn new() -> Tail {
-        let (tx, rx) = mpsc::channel();
-        Tail { tx, rx }
+        Tail::default()
     }
 
-    pub fn run(&self, file_path: impl AsRef<Path>) -> Result<thread::JoinHandle<()>> {
-        let file_path = file_path.as_ref().to_path_buf();
-        let file = open_log_file(&file_path)?;
-        let file_copy = file.try_clone()?;
+    pub fn run(
+        &self,
+        file_path: impl AsRef<Path>,
+        start_height: u64,
+    ) -> Result<thread::JoinHandle<()>> {
         let tx = self.tx.clone();
+        let mut filter_and_rotate = FilterAndRotate::new(file_path, start_height, tx)?;
 
-        let handle = thread::spawn(move || sync_log_data(file, file_copy, &tx));
+        let handle = thread::spawn(move || filter_and_rotate.run());
         Ok(handle)
     }
 
@@ -46,10 +52,110 @@ impl Tail {
     }
 }
 
+/// This FileLogger rotates logs according to block height.
+/// After rotating, the original log file would be renamed to "{original name}.{height}"
+/// Note: log file will *not* be compressed or otherwise modified.
+pub struct FilterAndRotate {
+    tx: mpsc::Sender<StorageData>,
+    height: u64,
+    last_height: u64,
+    reader: BufReader<File>,
+    writer: BufWriter<File>,
+    /// Sync log file path
+    file_path: PathBuf,
+}
+
+impl Drop for FilterAndRotate {
+    fn drop(&mut self) {
+        let _ = self.writer.flush();
+    }
+}
+
+impl FilterAndRotate {
+    pub fn new(
+        file_path: impl AsRef<Path>,
+        start_height: u64,
+        tx: mpsc::Sender<StorageData>,
+    ) -> io::Result<Self> {
+        let from_file_path = file_path.as_ref().to_path_buf();
+        let from_file = open_log_file(&from_file_path)?;
+        let reader = BufReader::new(from_file);
+
+        let to_file_path = rotation_file_path_with_height(file_path.as_ref(), start_height);
+        let to_file = open_log_file(&to_file_path)?;
+        let writer = BufWriter::new(to_file);
+
+        Ok(Self {
+            tx,
+            height: start_height,
+            last_height: start_height,
+            reader,
+            writer,
+            file_path: file_path.as_ref().to_path_buf(),
+        })
+    }
+
+    pub fn run(&mut self) {
+        let mut line = Vec::with_capacity(BUFFER_SIZE);
+        loop {
+            line.clear();
+            match self.reader.read_until(b'\n', &mut line) {
+                Ok(0) => thread::sleep(StdDuration::from_millis(50)),
+                Ok(_) => {
+                    let _ = self.writer.write(&line);
+
+                    if let Some(data) = filter_line(&line) {
+                        self.height = data.0;
+
+                        if self.should_rotate() {
+                            self.rotate().expect("Rotate log shouldn't be fail");
+                            info!("Split sync node log, current block height #{}", self.height);
+                        }
+                        self.last_height = self.height;
+
+                        self.tx
+                            .send(data)
+                            .expect("Send sync data shouldn't be fail");
+                    }
+                }
+                Err(err) => error!("Tail read line error: {:?}", err),
+            }
+        }
+    }
+
+    fn should_rotate(&mut self) -> bool {
+        (self.height != 0)
+            && (self.height != self.last_height)
+            && (self.height % BLOCK_NUMBER_PER_LOG_FILE == 0)
+    }
+
+    /// Rotates the current file and updates the next rotation time.
+    fn rotate(&mut self) -> io::Result<()> {
+        self.flush()?;
+
+        // Note: renaming files while they're open only works on Linux and macOS.
+        let new_to_path = rotation_file_path_with_height(&self.file_path, self.height);
+        let new_to_file = open_log_file(&new_to_path)?;
+        self.writer = BufWriter::new(new_to_file);
+        Ok(())
+    }
+
+    /// Flushes the log file, without rotation.
+    fn flush(&mut self) -> io::Result<()> {
+        self.writer.flush()
+    }
+}
+
+/// Rotates file path with given block height.
+fn rotation_file_path_with_height(file_path: &Path, height: u64) -> PathBuf {
+    let mut file_path = file_path.as_os_str().to_os_string();
+    file_path.push(format!(".{}", height));
+    file_path.into()
+}
+
 /// Opens sync log file. Creates a new log file if it doesn't exist.
-fn open_log_file(path: impl AsRef<Path>) -> io::Result<File> {
-    let path = path.as_ref();
-    let parent = path
+fn open_log_file(file_path: &Path) -> io::Result<File> {
+    let parent = file_path
         .parent()
         .expect("Unable to get parent directory of log file");
     if !parent.is_dir() {
@@ -60,37 +166,7 @@ fn open_log_file(path: impl AsRef<Path>) -> io::Result<File> {
         .read(true)
         .write(true)
         .create(true)
-        .open(path)
-}
-
-fn sync_log_data(file: File, file_copy: File, tx: &mpsc::Sender<StorageData>) {
-    let mut reader = BufReader::new(file);
-    let mut line = Vec::with_capacity(BUFFER_SIZE);
-    loop {
-        thread::sleep(StdDuration::from_millis(50));
-        loop {
-            line.clear();
-            match reader.read_until(b'\n', &mut line) {
-                Ok(0) => break,
-                Ok(_) => {
-                    if let Some(data) = filter_line(&line) {
-                        let height = data.0;
-                        if height % BLOCK_NUMBER_PER_LOG_FILE == 0 {
-                            file_copy
-                                .set_len(0)
-                                .expect("Setting the length of underlying file shouldn't be fail");
-                            reader
-                                .seek(SeekFrom::Start(0))
-                                .expect("Seek the cursor of file shouldn't be fail");
-                            info!("Split sync node log, current block height #{}", height);
-                        }
-                        tx.send(data).expect("Send sync data shouldn't be fail");
-                    }
-                }
-                Err(err) => error!("Tail read line error: {:?}", err),
-            }
-        }
-    }
+        .open(file_path)
 }
 
 /// Filter the sync log and extract the `msgbus` log data.
@@ -100,9 +176,20 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
             .unwrap()
             .parse::<u64>()
             .expect("Parse height should not be fail");
+        // Ignore block height 0
+        if height == 0 {
+            return None;
+        }
+
         // key and value should be hex
-        let key = hex::decode(&caps[2]).expect("Hex decode key should not be fail");
-        let value = hex::decode(&caps[3]).expect("Hex decode value should not be fail");
+        let key = hex::decode(&caps[2]).expect(&format!(
+            "Hex decode key should not be fail: block #{}, key={:?}",
+            height, &caps[2]
+        ));
+        let value = hex::decode(&caps[3]).expect(&format!(
+            "Hex decode value should not be fail: block #{}, value={:?}",
+            height, &caps[3]
+        ));
         debug!(
             "msgbus|height:[{}]|key:[{}]|value:[{}]",
             height,
@@ -114,6 +201,35 @@ fn filter_line(line: &[u8]) -> Option<StorageData> {
         None
     }
 }
+
+//fn sync_log_data(file: File, file_copy: File, tx: &mpsc::Sender<StorageData>) {
+//    let mut reader = BufReader::new(file);
+//    let mut line = Vec::with_capacity(BUFFER_SIZE);
+//
+//    loop {
+//        line.clear();
+//        match reader.read_until(b'\n', &mut line) {
+//            Ok(0) => thread::sleep(StdDuration::from_millis(50)),
+//            Ok(_) => {
+//                info!("{}", std::str::from_utf8(&line).unwrap_or(""));
+//                if let Some(data) = filter_line(&line) {
+//                    let height = data.0;
+//                    if height % BLOCK_NUMBER_PER_LOG_FILE == 0 {
+//                        file_copy
+//                            .set_len(0)
+//                            .expect("Setting the length of underlying file shouldn't be fail");
+//                        reader
+//                            .seek(SeekFrom::Start(0))
+//                            .expect("Seek the cursor of file shouldn't be fail");
+//                        info!("Split sync node log, current block height #{}", height);
+//                    }
+//                    tx.send(data).expect("Send sync data shouldn't be fail");
+//                }
+//            }
+//            Err(err) => error!("Tail read line error: {:?}", err),
+//        }
+//    }
+//}
 
 #[cfg(test)]
 mod tests {

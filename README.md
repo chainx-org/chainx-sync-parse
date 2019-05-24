@@ -116,7 +116,7 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
     
     # run
     # -h or --help for usage details
-    ./target/release/chainx-sync-parse --sync-log <PATH>
+    ./target/release/chainx-sync-parse
     ```
 
 ### sync-redis (Alternative)

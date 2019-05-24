@@ -100,6 +100,6 @@ fn rotation_file_path_with_timestamp(
     timestamp: &DateTime<Utc>,
 ) -> PathBuf {
     let mut file_path = file_path.as_ref().as_os_str().to_os_string();
-    file_path.push(format!(".{}", timestamp.format("%Y-%m-%d")));
+    file_path.push(format!(".{}", timestamp.format("%Y-%m-%d-%H:%M:%S")));
     file_path.into()
 }

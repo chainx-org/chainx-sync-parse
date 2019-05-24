@@ -4,6 +4,7 @@ extern crate log;
 mod cli;
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::thread::JoinHandle;
 
 use chainx_sync_parse::*;
@@ -79,8 +80,7 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let pg_conn = establish_connection();
 
     let tail = Tail::new();
-    let path = std::path::Path::new(&config.sync_log_path);
-    let sync_service = tail.run(path)?;
+    let sync_service = tail.run(&config.sync_log_path, config.start_height)?;
 
     while let Ok((height, key, value)) = tail.recv_data() {
         debug_sync_block_info(height, &key, &value);
