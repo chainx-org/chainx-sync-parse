@@ -171,8 +171,6 @@ pub enum RuntimeStorage {
     XStakingValidatorStakeThreshold(Balance),
     #[strum(serialize = "XStaking CurrentEra", props(r#type = "value"))]
     XStakingCurrentEra(BlockNumber),
-    #[strum(serialize = "XStaking Intentions", props(r#type = "value"))]
-    XStakingIntentions(Vec<AccountId>),
     #[strum(serialize = "XStaking NextSessionsPerEra", props(r#type = "value"))]
     XStakingNextSessionsPerEra(BlockNumber),
     #[strum(serialize = "XStaking LastEraLengthChange", props(r#type = "value"))]
@@ -181,8 +179,8 @@ pub enum RuntimeStorage {
     XStakingForcingNewEra(()),
     #[strum(serialize = "XStaking StakeWeight", props(r#type = "map"))]
     XStakingStakeWeight(AccountId, Balance),
-    #[strum(serialize = "XStaking IntentionProfiles", props(r#type = "map"))]
-    XStakingIntentionProfiles(AccountId, IntentionProfs<Balance, BlockNumber>),
+    #[strum(serialize = "XStaking Intentions", props(r#type = "linked_map"))]
+    XStakingIntentions(AccountId, IntentionProfs<Balance, BlockNumber>),
     #[strum(serialize = "XStaking NominationRecords", props(r#type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
     #[strum(serialize = "XStaking MinimumPenalty", props(r#type = "value"))]
@@ -302,7 +300,7 @@ impl RuntimeStorage {
 
     fn match_key<'a>(&self, prefix: &str, key: &'a [u8]) -> Result<&'a [u8]> {
         let key = match self.get_str("type") {
-            Some("map") => &key[prefix.len()..],
+            Some("map") | Some("linked_map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
                 error!("Runtime storage parse: get storage type failed");
@@ -371,12 +369,11 @@ impl RuntimeStorage {
             XStakingSessionsPerEpoch(ref mut v) => to_json!(prefix, value => v),
             XStakingValidatorStakeThreshold(ref mut v) => to_json!(prefix, value => v),
             XStakingCurrentEra(ref mut v) => to_json!(prefix, value => v),
-            XStakingIntentions(ref mut v) => to_json!(prefix, value => v),
             XStakingNextSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
             XStakingLastEraLengthChange(ref mut v) => to_json!(prefix, value => v),
             XStakingForcingNewEra(ref mut v) => to_json!(prefix, value => v),
             XStakingStakeWeight(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
-            XStakingIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingIntentions(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingNominationRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingMinimumPenalty(ref mut v) => to_json!(prefix, value => v),
             XStakingOfflineValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
