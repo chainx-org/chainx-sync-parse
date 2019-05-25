@@ -171,8 +171,6 @@ pub enum RuntimeStorage {
     XStakingValidatorStakeThreshold(Balance),
     #[strum(serialize = "XStaking CurrentEra", props(r#type = "value"))]
     XStakingCurrentEra(BlockNumber),
-    #[strum(serialize = "XStaking Intentions", props(r#type = "value"))]
-    XStakingIntentions(Vec<AccountId>),
     #[strum(serialize = "XStaking NextSessionsPerEra", props(r#type = "value"))]
     XStakingNextSessionsPerEra(BlockNumber),
     #[strum(serialize = "XStaking LastEraLengthChange", props(r#type = "value"))]
@@ -181,8 +179,12 @@ pub enum RuntimeStorage {
     XStakingForcingNewEra(()),
     #[strum(serialize = "XStaking StakeWeight", props(r#type = "map"))]
     XStakingStakeWeight(AccountId, Balance),
-    #[strum(serialize = "XStaking IntentionProfiles", props(r#type = "map"))]
-    XStakingIntentionProfiles(AccountId, IntentionProfs<Balance, BlockNumber>),
+//    #[strum(serialize = "XStaking Intentions", props(r#type = "value"))]
+//    XStakingIntentions(Vec<AccountId>),
+//    #[strum(serialize = "XStaking IntentionProfiles", props(r#type = "map"))]
+//    XStakingIntentionProfiles(AccountId, IntentionProfs<Balance, BlockNumber>),
+//    #[strum(serialize = "XStaking Intentions", props(r#type = "linked_map"))]
+//    XStakingIntentions(AccountId, IntentionProfs<Balance, BlockNumber>),
     #[strum(serialize = "XStaking NominationRecords", props(r#type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
     #[strum(serialize = "XStaking MinimumPenalty", props(r#type = "value"))]
@@ -294,6 +296,12 @@ impl RuntimeStorage {
             if key.starts_with(prefix.as_bytes()) {
                 let json = storage.decode_by_type(&prefix, key, value)?;
                 return Ok((prefix, json));
+            } else if key.starts_with("XStaking Intentions".as_bytes()) {
+                error!(
+                    "XStakingIntentions: key [{:?}], value [{:?}]",
+                    hex::encode(&key),
+                    hex::encode(&value)
+                );
             }
         }
         debug!("Runtime storage parse: No matching key found");
@@ -371,12 +379,13 @@ impl RuntimeStorage {
             XStakingSessionsPerEpoch(ref mut v) => to_json!(prefix, value => v),
             XStakingValidatorStakeThreshold(ref mut v) => to_json!(prefix, value => v),
             XStakingCurrentEra(ref mut v) => to_json!(prefix, value => v),
-            XStakingIntentions(ref mut v) => to_json!(prefix, value => v),
             XStakingNextSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
             XStakingLastEraLengthChange(ref mut v) => to_json!(prefix, value => v),
             XStakingForcingNewEra(ref mut v) => to_json!(prefix, value => v),
             XStakingStakeWeight(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
-            XStakingIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+//            XStakingIntentions(ref mut v) => to_json!(prefix, value => v),
+//            XStakingIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+//            XStakingIntentions(_, _) => error!("XStakingIntentions: key[{}], value[{}]", key, value),
             XStakingNominationRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingMinimumPenalty(ref mut v) => to_json!(prefix, value => v),
             XStakingOfflineValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),

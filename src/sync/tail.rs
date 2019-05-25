@@ -81,11 +81,11 @@ impl FilterAndRotate {
     ) -> io::Result<Self> {
         let from_file_path = file_path.as_ref().to_path_buf();
         let from_file = read_sync_log_file(&from_file_path)?;
-        let reader = BufReader::new(from_file);
+        let reader = BufReader::with_capacity(10 * BUFFER_SIZE, from_file);
 
         let to_file_path = rotation_file_path_with_height(file_path.as_ref(), start_height);
         let to_file = append_log_file(&to_file_path)?;
-        let writer = BufWriter::new(to_file);
+        let writer = BufWriter::with_capacity(10 * BUFFER_SIZE, to_file);
 
         Ok(Self {
             tx,
@@ -167,10 +167,7 @@ fn read_sync_log_file(file_path: &Path) -> io::Result<File> {
 /// Opens sync log file. Creates a new log file if it doesn't exist.
 fn append_log_file(file_path: &Path) -> io::Result<File> {
     check_parent_dir(file_path)?;
-    OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file_path)
+    OpenOptions::new().append(true).create(true).open(file_path)
 }
 
 fn check_parent_dir(file_path: &Path) -> io::Result<()> {
