@@ -33,8 +33,8 @@ jsonrpc-derive = "10.1"
 jsonrpc-http-server = "10.1"
 
 # Substrate (the versoin used by ChainX)
-sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "598b74ed" }
-substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "598b74ed" }
+sr-primitives = { git = "https://github.com/chainpool/substrate", rev = "7bb49d23" }
+substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "7bb49d23" }
 # bitcoin (the latest version of master branch of light-bitcoin)
 btc-chain = { package = "chain", git = "https://github.com/chainx-org/light-bitcoin" }
 btc-keys = { package = "keys", git = "https://github.com/chainx-org/light-bitcoin" }
