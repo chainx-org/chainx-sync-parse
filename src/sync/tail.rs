@@ -15,6 +15,7 @@ lazy_static::lazy_static! {
 }
 
 const BUFFER_SIZE: usize = 1024;
+const ROTATE_DELAY_SECONDS: u64 = 10; // 10 seconds
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -91,7 +92,7 @@ impl FilterAndRotate {
         loop {
             line.clear();
             if self.should_rotate() {
-                thread::sleep(StdDuration::from_secs(5));
+                thread::sleep(StdDuration::from_secs(ROTATE_DELAY_SECONDS));
                 let _ = self.rotate();
             }
             match self.reader.read_until(b'\n', &mut line) {
