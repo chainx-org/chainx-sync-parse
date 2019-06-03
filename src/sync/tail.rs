@@ -1,5 +1,6 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader};
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
@@ -59,6 +60,7 @@ impl Tail {
 pub struct FilterAndRotate {
     tx: mpsc::Sender<StorageData>,
     file_path: PathBuf,
+    fd: RawFd,
     reader: BufReader<File>,
     next_rotation_time: Date<Local>,
     start_height: u64,
@@ -74,13 +76,16 @@ impl FilterAndRotate {
     ) -> io::Result<Self> {
         let sync_log_path = file_path.as_ref().to_path_buf();
         let sync_log_file = read_sync_log_file(&sync_log_path)?;
+        let fd = sync_log_file.as_raw_fd();
+        info!("Sync log file path: {:?}, file description: {:?}", sync_log_path, fd);
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
         let next_rotation_time = compute_next_rotation_time();
 
         Ok(Self {
             tx,
-            reader,
             file_path: file_path.as_ref().to_path_buf(),
+            fd,
+            reader,
             next_rotation_time,
             start_height,
             is_genesis: true,
@@ -92,8 +97,11 @@ impl FilterAndRotate {
         loop {
             line.clear();
             if self.should_rotate() {
+                // Waiting for the logrotate task to complete
                 thread::sleep(StdDuration::from_secs(ROTATE_DELAY_SECONDS));
+                info!("Start rotating sync log, datetime: {:?}", Local::now());
                 let _ = self.rotate();
+                info!("Finish rotating sync log");
             }
             match self.reader.read_until(b'\n', &mut line) {
                 Ok(0) => thread::sleep(StdDuration::from_millis(50)),
@@ -113,12 +121,15 @@ impl FilterAndRotate {
     }
 
     fn should_rotate(&mut self) -> bool {
-        Local::today() > self.next_rotation_time
+        Local::today() == self.next_rotation_time
     }
 
     /// Rotates the current file and updates the next rotation time.
     fn rotate(&mut self) -> io::Result<()> {
-        let sync_log_file = read_sync_log_file(&self.file_path)?;
+        let sync_log_file = File::open(&self.file_path)?;
+        let new_fd = sync_log_file.as_raw_fd();
+        info!("Sync log file description: {:?}, new file description: {:?}", self.fd, new_fd);
+        self.fd = new_fd;
         self.reader = BufReader::new(sync_log_file);
         self.update_next_rotation_time();
         Ok(())
