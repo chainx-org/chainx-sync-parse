@@ -1,12 +1,10 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader};
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::io::{self, BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration as StdDuration;
+use std::time::Duration;
 
-use chrono::{Date, Local};
 use regex::bytes::Regex;
 
 use crate::Result;
@@ -16,7 +14,6 @@ lazy_static::lazy_static! {
 }
 
 const BUFFER_SIZE: usize = 1024;
-const ROTATE_DELAY_SECONDS: u64 = 10; // 10 seconds
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -43,9 +40,8 @@ impl Tail {
         start_height: u64,
     ) -> Result<thread::JoinHandle<()>> {
         let tx = self.tx.clone();
-        let mut filter_and_rotate = FilterAndRotate::new(file_path, start_height, tx)?;
-
-        let handle = thread::spawn(move || filter_and_rotate.run());
+        let mut tail_impl = TailImpl::new(file_path, start_height, tx)?;
+        let handle = thread::spawn(move || tail_impl.run());
         Ok(handle)
     }
 
@@ -54,21 +50,16 @@ impl Tail {
     }
 }
 
-/// This FileLogger rotates logs according to block height.
-/// After rotating, the original log file would be renamed to "{original name}.{height}"
-/// Note: log file will *not* be compressed or otherwise modified.
-pub struct FilterAndRotate {
+pub struct TailImpl {
     tx: mpsc::Sender<StorageData>,
-    file_path: PathBuf,
-    fd: RawFd,
     reader: BufReader<File>,
-    next_rotation_time: Date<Local>,
+    lock_file: PathBuf,
     start_height: u64,
     /// Indicates whether the genesis block has been scanned
     is_genesis: bool,
 }
 
-impl FilterAndRotate {
+impl TailImpl {
     pub fn new(
         file_path: impl AsRef<Path>,
         start_height: u64,
@@ -76,17 +67,13 @@ impl FilterAndRotate {
     ) -> io::Result<Self> {
         let sync_log_path = file_path.as_ref().to_path_buf();
         let sync_log_file = read_sync_log_file(&sync_log_path)?;
-        let fd = sync_log_file.as_raw_fd();
-        info!("Sync log file path: {:?}, file description: {:?}", sync_log_path, fd);
+        info!("Start reading sync log (path: {:?})", sync_log_path);
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
-        let next_rotation_time = compute_next_rotation_time();
-
+        let lock_file = lock_file_path(&sync_log_path);
         Ok(Self {
             tx,
-            file_path: file_path.as_ref().to_path_buf(),
-            fd,
             reader,
-            next_rotation_time,
+            lock_file,
             start_height,
             is_genesis: true,
         })
@@ -97,14 +84,14 @@ impl FilterAndRotate {
         loop {
             line.clear();
             if self.should_rotate() {
-                // Waiting for the logrotate task to complete
-                thread::sleep(StdDuration::from_secs(ROTATE_DELAY_SECONDS));
-                info!("Start rotating sync log, datetime: {:?}", Local::now());
-                let _ = self.rotate();
+                info!("Start rotating sync log");
+                if let Err(e) = self.rotate() {
+                    error!("Failed to rotate sync log: {:?}", e);
+                }
                 info!("Finish rotating sync log");
             }
             match self.reader.read_until(b'\n', &mut line) {
-                Ok(0) => thread::sleep(StdDuration::from_millis(50)),
+                Ok(0) => thread::sleep(Duration::from_millis(50)),
                 Ok(_) => {
                     if let Some(data) = filter_line(&line, &mut self.is_genesis) {
                         let height = data.0;
@@ -120,32 +107,25 @@ impl FilterAndRotate {
         }
     }
 
+    /// Check whether LOCK file is exists.
     fn should_rotate(&mut self) -> bool {
-        Local::today() == self.next_rotation_time
+        self.lock_file.exists()
     }
 
-    /// Rotates the current file and updates the next rotation time.
+    /// Rotate the current file and delete LOCK file.
     fn rotate(&mut self) -> io::Result<()> {
-        let sync_log_file = File::open(&self.file_path)?;
-        let new_fd = sync_log_file.as_raw_fd();
-        info!("Sync log file description: {:?}, new file description: {:?}", self.fd, new_fd);
-        self.fd = new_fd;
-        self.reader = BufReader::new(sync_log_file);
-        self.update_next_rotation_time();
+        let _ = self.reader.seek(SeekFrom::Start(0))?;
+        info!("Seek sync log to start position");
+        self.delete_lock_file()?;
         Ok(())
     }
 
-    /// Updates the next rotation time.
-    fn update_next_rotation_time(&mut self) {
-        self.next_rotation_time = compute_next_rotation_time();
+    /// Delete LOCK file
+    fn delete_lock_file(&mut self) -> io::Result<()> {
+        fs::remove_file(&self.lock_file)?;
+        info!("Deleted LOCK file");
+        Ok(())
     }
-}
-
-/// Compute next rotate time.
-fn compute_next_rotation_time() -> Date<Local> {
-    let now = Local::today();
-    let next = now.succ();
-    next
 }
 
 /// Opens sync log file. Creates a new log file if it doesn't exist.
@@ -166,6 +146,15 @@ fn check_parent_dir(file_path: &Path) -> io::Result<()> {
         fs::create_dir_all(parent)?
     }
     Ok(())
+}
+
+fn lock_file_path(file_path: &Path) -> PathBuf {
+    let parent = file_path
+        .parent()
+        .expect("Unable to get parent directory of log file");
+    let mut parent = parent.to_path_buf();
+    parent.push("LOCK");
+    parent
 }
 
 /// Filter the sync log and extract the `msgbus` log data.
