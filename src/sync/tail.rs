@@ -204,7 +204,7 @@ fn filter_line(line: &[u8], is_genesis: &mut bool) -> Option<StorageData> {
             "Hex decode value should not be fail: block #{}, value={:?}",
             height, &caps[3]
         ));
-        debug!(
+        info!(
             "msgbus|height:[{}]|key:[{}]|value:[{}]",
             height,
             hex::encode(&key),

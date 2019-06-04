@@ -9,7 +9,16 @@ use std::thread::JoinHandle;
 use chainx_sync_parse::*;
 use log::LevelFilter;
 use log4rs::{
-    append::{console::ConsoleAppender, file::FileAppender},
+    append::{
+        console::ConsoleAppender,
+        rolling_file::{
+            policy::{
+                self,
+                compound::{roll, trigger},
+            },
+            RollingFileAppender,
+        },
+    },
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
@@ -18,24 +27,34 @@ use structopt::StructOpt;
 
 use self::cli::CliConfig;
 
+const ROLLING_FILE_SIZE_LIMIT: u64 = 500 * 1024 * 1024; // 500 MB
+const ROLLING_FILE_COUNT: u32 = 50;
+
 fn init_log_with_config(config: &CliConfig) -> Result<()> {
     let console = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
         )))
         .build();
-    let file = FileAppender::builder()
+
+    let trigger = trigger::size::SizeTrigger::new(ROLLING_FILE_SIZE_LIMIT);
+    let roll_pattern = format!("{}.{{}}.gz", config.parse_log_path.to_str().unwrap());
+    let roll = roll::fixed_window::FixedWindowRoller::builder()
+        .build(roll_pattern.as_str(), ROLLING_FILE_COUNT)
+        .expect("Building fixed window roller should't be fail");
+    let policy = policy::compound::CompoundPolicy::new(Box::new(trigger), Box::new(roll));
+    let rolling_file = RollingFileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
         )))
-        .build(&config.log_path)?;
+        .build(&config.parse_log_path, Box::new(policy))?;
 
     let config = Config::builder()
         .appender(Appender::builder().build("console", Box::new(console)))
-        .appender(Appender::builder().build("file", Box::new(file)))
+        .appender(Appender::builder().build("rolling_file", Box::new(rolling_file)))
         .build(
             Root::builder()
-                .appenders(vec!["console", "file"])
+                .appenders(vec!["console", "rolling_file"])
                 .build(LevelFilter::Info),
         )
         .expect("Construct log config failure");

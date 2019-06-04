@@ -3,8 +3,7 @@ use std::path::Path;
 use chainx_sync_parse::{Result, Tail};
 
 fn main() -> Result<()> {
-    let path = Path::new("./data/tail.log");
-
+    let path = Path::new("./test_data/tail.log");
     let tail = Tail::new();
     let handle = tail.run(&path, 0)?;
 

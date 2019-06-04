@@ -18,14 +18,14 @@ pub struct CliConfig {
     )]
     pub register_service_port: u16,
 
-    /// Specify the log file path
+    /// Specify the parse log file path
     #[structopt(
         long = "log",
         value_name = "PATH",
-        default_value = "log/sync_parse.log",
+        default_value = "log/parse.log",
         parse(from_os_str)
     )]
-    pub log_path: PathBuf,
+    pub parse_log_path: PathBuf,
 
     /// Specify the sync log path
     #[cfg(feature = "sync-log")]
