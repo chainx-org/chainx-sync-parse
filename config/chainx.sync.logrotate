@@ -1,13 +1,12 @@
 /home/koushiro/Code/Work/bin/log/sync.log {
 	daily
-	rotate 10
+	rotate 30
 	missingok
-	create
+	copytruncate
 	dateext
 	dateformat .%Y-%m-%d-%H.%s
 	compress
 	delaycompress
-	copytruncate
 	sharedscripts
 	postrotate
         	touch /home/koushiro/Code/Work/bin/log/LOCK
