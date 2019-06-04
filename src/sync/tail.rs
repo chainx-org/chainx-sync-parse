@@ -196,14 +196,18 @@ fn filter_line(line: &[u8], is_genesis: &mut bool) -> Option<StorageData> {
         }
 
         // Key and value should be hex
-        let key = hex::decode(&caps[2]).expect(&format!(
-            "Hex decode key should not be fail: block #{}, key={:?}",
-            height, &caps[2]
-        ));
-        let value = hex::decode(&caps[3]).expect(&format!(
-            "Hex decode value should not be fail: block #{}, value={:?}",
-            height, &caps[3]
-        ));
+        let key = hex::decode(&caps[2]).unwrap_or_else(|_| {
+            panic!(
+                "Decoding hex key fail: block #{}, key={:?}",
+                height, &caps[2]
+            )
+        });
+        let value = hex::decode(&caps[3]).unwrap_or_else(|_| {
+            panic!(
+                "Decoding hex value fail: block #{}, value={:?}",
+                height, &caps[3]
+            )
+        });
         info!(
             "msgbus|height:[{}]|key:[{}]|value:[{}]",
             height,
