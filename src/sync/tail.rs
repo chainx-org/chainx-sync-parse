@@ -79,9 +79,7 @@ impl TailImpl {
             enable_sync_log: config.enable_sync_log,
             reader,
             line,
-            /*
-            lock_file,
-            */
+            /*lock_file,*/
             is_genesis: true,
         })
     }
@@ -104,7 +102,7 @@ impl TailImpl {
                     if let Some(data) = self.filter_line() {
                         let height = data.0;
                         if height > self.stop_height {
-                            warn!("Finish scanning, the process will EXIT in 5s...");
+                            warn!("Finish scanning, the process will EXIT in 10s...");
                             thread::sleep(Duration::from_secs(5));
                             std::process::exit(0);
                         }
