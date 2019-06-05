@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-use chainx_sync_parse::{Result, Tail, CliConfig};
+use chainx_sync_parse::{CliConfig, Result, Tail};
 
 fn main() -> Result<()> {
     let config = CliConfig::from_args();

@@ -1,6 +1,6 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader/*, Seek, SeekFrom*/};
-use std::path::{Path, /*PathBuf*/};
+use std::io::{BufRead, BufReader /*, Seek, SeekFrom*/};
+use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -291,8 +291,8 @@ mod tests {
         assert_eq!(height, 0);
         assert_eq!(key, "XAssets AssetInfo\u{c}PCX".to_string());
         assert_eq!(
-value,
-hex::decode("0c5043583c506f6c6b61646f7420436861696e58000800b0436861696e5827732063727970746f2063757272656e637920696e20506f6c6b61646f742065636f6c6f6779010000000000000000").unwrap(),
-);
+            value,
+            hex::decode("0c5043583c506f6c6b61646f7420436861696e58000800b0436861696e5827732063727970746f2063757272656e637920696e20506f6c6b61646f742065636f6c6f6779010000000000000000").unwrap(),
+        );
     }
 }
