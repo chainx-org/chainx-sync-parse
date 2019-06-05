@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate log;
 
-mod cli;
-
 use std::collections::HashMap;
 use std::thread::JoinHandle;
 
@@ -25,10 +23,7 @@ use log4rs::{
 use serde_json::Value;
 use structopt::StructOpt;
 
-use self::cli::CliConfig;
-
-const ROLLING_FILE_SIZE_LIMIT: u64 = 500 * 1024 * 1024; // 500 MB
-const ROLLING_FILE_COUNT: u32 = 50;
+const MB_SIZE: u64 = 1024 * 1024; // 1 MB
 
 fn init_log_with_config(config: &CliConfig) -> Result<()> {
     let console = ConsoleAppender::builder()
@@ -37,10 +32,10 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
         )))
         .build();
 
-    let trigger = trigger::size::SizeTrigger::new(ROLLING_FILE_SIZE_LIMIT);
+    let trigger = trigger::size::SizeTrigger::new(config.roll_log_size * MB_SIZE);
     let roll_pattern = format!("{}.{{}}.gz", config.parse_log_path.to_str().unwrap());
     let roll = roll::fixed_window::FixedWindowRoller::builder()
-        .build(roll_pattern.as_str(), ROLLING_FILE_COUNT)
+        .build(roll_pattern.as_str(), config.roll_log_count)
         .expect("Building fixed window roller should't be fail");
     let policy = policy::compound::CompoundPolicy::new(Box::new(trigger), Box::new(roll));
     let rolling_file = RollingFileAppender::builder()
@@ -49,7 +44,7 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
         )))
         .build(&config.parse_log_path, Box::new(policy))?;
 
-    let config = Config::builder()
+    let log_config = Config::builder()
         .appender(Appender::builder().build("console", Box::new(console)))
         .appender(Appender::builder().build("rolling_file", Box::new(rolling_file)))
         .build(
@@ -59,7 +54,7 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
         )
         .expect("Construct log config failure");
 
-    log4rs::init_config(config).expect("Initializing log config shouldn't be fail");
+    log4rs::init_config(log_config).expect("Initializing log config shouldn't be fail");
     Ok(())
 }
 
@@ -98,7 +93,7 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let pg_conn = establish_connection();
 
     let tail = Tail::new();
-    let sync_service = tail.run(&config.sync_log_path, config.start_height)?;
+    let sync_service = tail.run(config)?;
 
     while let Ok((height, key, value)) = tail.recv_data() {
         debug_sync_block_info(height, &key, &value);

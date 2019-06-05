@@ -1,6 +1,6 @@
 /home/koushiro/Code/Work/bin/log/sync.log {
 	daily
-	rotate 30
+	rotate 7
 	missingok
 	copytruncate
 	dateext

@@ -1,13 +1,13 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, BufReader/*, Seek, SeekFrom*/};
+use std::path::{Path, /*PathBuf*/};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
 use regex::bytes::Regex;
 
-use crate::Result;
+use crate::{CliConfig, Result};
 
 lazy_static::lazy_static! {
     static ref RE: Regex = Regex::new(r"(?-u)INFO msgbus\|height:\[(\d*)]\|key:\[(.*)]\|value:\[(.*)]").unwrap();
@@ -34,14 +34,13 @@ impl Tail {
         Tail::default()
     }
 
-    pub fn run(
-        &self,
-        file_path: impl AsRef<Path>,
-        start_height: u64,
-    ) -> Result<thread::JoinHandle<()>> {
+    pub fn run(&self, config: &CliConfig) -> Result<thread::JoinHandle<()>> {
         let tx = self.tx.clone();
-        let mut tail_impl = TailImpl::new(file_path, start_height, tx)?;
-        let handle = thread::spawn(move || tail_impl.run());
+        let mut tail_impl = TailImpl::new(tx, config)?;
+        let handle = thread::spawn(move || {
+            tail_impl.run();
+            error!("Tail thread exists abnormally");
+        });
         Ok(handle)
     }
 
@@ -52,32 +51,39 @@ impl Tail {
 
 pub struct TailImpl {
     tx: mpsc::Sender<StorageData>,
-    line: Vec<u8>,
+    start_height: u64,
+    stop_height: u64,
+    /// A flag that indicates whether the sync log is also recorded in parse log.
+    enable_sync_log: bool,
     reader: BufReader<File>,
+    line: Vec<u8>,
+    /*
     /// A file lock that indicates whether the sync log file has a rotate event.
     lock_file: PathBuf,
-    start_height: u64,
+    */
     /// A flag that indicates whether the genesis block has been scanned.
     is_genesis: bool,
 }
 
 impl TailImpl {
-    pub fn new(
-        file_path: impl AsRef<Path>,
-        start_height: u64,
-        tx: mpsc::Sender<StorageData>,
-    ) -> Result<Self> {
-        let sync_log_path = file_path.as_ref().to_path_buf();
-        let sync_log_file = read_sync_log_file(&sync_log_path)?;
-        info!("Start reading sync log (path: {:?})", sync_log_path);
+    pub fn new(tx: mpsc::Sender<StorageData>, config: &CliConfig) -> Result<Self> {
+        let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
+        info!("Start reading sync log (path: {:?})", &config.sync_log_path);
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
-        let lock_file = lock_file_path(&sync_log_path)?;
+        let line = Vec::with_capacity(BUFFER_SIZE);
+        /*
+        let lock_file = lock_file_path(&config.sync_log_path)?;
+        */
         Ok(Self {
             tx,
-            line: Vec::with_capacity(BUFFER_SIZE),
+            start_height: config.start_height,
+            stop_height: config.stop_height,
+            enable_sync_log: config.enable_sync_log,
             reader,
+            line,
+            /*
             lock_file,
-            start_height,
+            */
             is_genesis: true,
         })
     }
@@ -85,6 +91,7 @@ impl TailImpl {
     pub fn run(&mut self) {
         loop {
             self.line.clear();
+            /*
             if self.should_rotate() {
                 info!("Start rotating sync log");
                 if let Err(e) = self.rotate() {
@@ -92,6 +99,7 @@ impl TailImpl {
                 }
                 info!("Finish rotating sync log");
             }
+            */
             match self.reader.read_until(b'\n', &mut self.line) {
                 Ok(0) => thread::sleep(Duration::from_millis(50)),
                 Ok(_) => self.filter_send(),
@@ -101,7 +109,7 @@ impl TailImpl {
     }
 
     fn filter_send(&mut self) {
-        if let Some(data) = filter_line(&self.line, &mut self.is_genesis) {
+        if let Some(data) = self.filter_line() {
             let height = data.0;
             if height >= self.start_height {
                 self.tx
@@ -111,6 +119,36 @@ impl TailImpl {
         }
     }
 
+    /// Filter the sync log and extract the `msgbus` log data.
+    fn filter_line(&mut self) -> Option<StorageData> {
+        if let Some(caps) = RE.captures(&self.line) {
+            let height = std::str::from_utf8(&caps[1])
+                .unwrap()
+                .parse::<u64>()
+                .expect("Parse height should not be fail");
+
+            // Ignore the block with height 0 (except genesis block)
+            {
+                if height != 0 {
+                    self.is_genesis = false;
+                }
+                if !self.is_genesis && height == 0 {
+                    return None;
+                }
+            }
+
+            // Key and value should be hex
+            let key = decode_hex("key", height, &caps[2]);
+            let value = decode_hex("value", height, &caps[3]);
+            record_sync_log(self.enable_sync_log, height, &key, &value);
+
+            Some((height, key, value))
+        } else {
+            None
+        }
+    }
+
+    /*
     /// Check whether LOCK file is exists.
     fn should_rotate(&mut self) -> bool {
         self.lock_file.exists()
@@ -145,6 +183,7 @@ impl TailImpl {
         info!("Deleted LOCK file");
         Ok(())
     }
+    */
 }
 
 /// Opens sync log file. Creates a new log file if it doesn't exist.
@@ -168,6 +207,7 @@ fn check_parent_dir(file_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/*
 fn lock_file_path(file_path: &Path) -> Result<PathBuf> {
     let parent = file_path
         .parent()
@@ -176,47 +216,32 @@ fn lock_file_path(file_path: &Path) -> Result<PathBuf> {
     parent.push("LOCK");
     Ok(parent)
 }
+*/
 
-/// Filter the sync log and extract the `msgbus` log data.
-fn filter_line(line: &[u8], is_genesis: &mut bool) -> Option<StorageData> {
-    if let Some(caps) = RE.captures(line) {
-        let height = std::str::from_utf8(&caps[1])
-            .unwrap()
-            .parse::<u64>()
-            .expect("Parse height should not be fail");
+fn decode_hex(name: &str, height: u64, cap: &[u8]) -> Vec<u8> {
+    hex::decode(cap).unwrap_or_else(|_| {
+        panic!(
+            "Decoding hex {} fail: block #{}, key={:?}",
+            name, height, cap
+        )
+    })
+}
 
-        // Ignore the block with height 0 (except genesis block)
-        {
-            if height != 0 {
-                *is_genesis = false;
-            }
-            if !*is_genesis && height == 0 {
-                return None;
-            }
-        }
-
-        // Key and value should be hex
-        let key = hex::decode(&caps[2]).unwrap_or_else(|_| {
-            panic!(
-                "Decoding hex key fail: block #{}, key={:?}",
-                height, &caps[2]
-            )
-        });
-        let value = hex::decode(&caps[3]).unwrap_or_else(|_| {
-            panic!(
-                "Decoding hex value fail: block #{}, value={:?}",
-                height, &caps[3]
-            )
-        });
+fn record_sync_log(enable: bool, height: u64, key: &[u8], value: &[u8]) {
+    if enable {
         info!(
             "msgbus|height:[{}]|key:[{}]|value:[{}]",
             height,
-            hex::encode(&key),
-            hex::encode(&value)
+            hex::encode(key),
+            hex::encode(value)
         );
-        Some((height, key, value))
     } else {
-        None
+        debug!(
+            "msgbus|height:[{}]|key:[{}]|value:[{}]",
+            height,
+            hex::encode(key),
+            hex::encode(value)
+        );
     }
 }
 
@@ -266,8 +291,8 @@ mod tests {
         assert_eq!(height, 0);
         assert_eq!(key, "XAssets AssetInfo\u{c}PCX".to_string());
         assert_eq!(
-            value,
-            hex::decode("0c5043583c506f6c6b61646f7420436861696e58000800b0436861696e5827732063727970746f2063757272656e637920696e20506f6c6b61646f742065636f6c6f6779010000000000000000").unwrap(),
-        );
+value,
+hex::decode("0c5043583c506f6c6b61646f7420436861696e58000800b0436861696e5827732063727970746f2063757272656e637920696e20506f6c6b61646f742065636f6c6f6779010000000000000000").unwrap(),
+);
     }
 }
