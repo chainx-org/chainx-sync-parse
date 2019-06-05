@@ -20,7 +20,7 @@ pub struct CliConfig {
 
     /// Specify the parse log file path
     #[structopt(
-        long = "log",
+        long = "parse-log",
         value_name = "PATH",
         default_value = "log/parse.log",
         parse(from_os_str)
@@ -45,19 +45,23 @@ pub struct CliConfig {
     )]
     pub sync_log_path: PathBuf,
 
-    /// Recording sync log to parse log at INFO level
+    /// Recording sync log to parse log at INFO level, or at DEBUG level
     #[cfg(feature = "sync-log")]
     #[structopt(long = "enable-sync-log")]
     pub enable_sync_log: bool,
 
-    /// Specify the block height to start syncing
+    /// Specify the starting block height to scan, range: [start,stop)
     #[cfg(feature = "sync-log")]
     #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
     pub start_height: u64,
 
-    /// Specify the block height to stop syncing
+    /// Specify the stoping block height to scan
     #[cfg(feature = "sync-log")]
-    #[structopt(long = "stop-height", value_name = "HEIGHT", default_value = "0")]
+    #[structopt(
+        long = "stop-height",
+        value_name = "HEIGHT",
+        default_value = "18446744073709551615"
+    )]
     pub stop_height: u64,
 
     /// Specify the url of redis server

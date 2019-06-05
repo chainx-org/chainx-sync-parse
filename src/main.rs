@@ -58,6 +58,27 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
     Ok(())
 }
 
+fn version_info() {
+    info!("============================================================");
+    info!(
+        "Release Version:   {}",
+        option_env!("CARGO_PKG_VERSION").unwrap_or("Unknown")
+    );
+    info!(
+        "Git Commit Hash:   {}",
+        option_env!("BUILD_GIT_HASH").unwrap_or("Unknown")
+    );
+    info!(
+        "Git Commit Branch: {}",
+        option_env!("BUILD_GIT_BRANCH").unwrap_or("Unknown")
+    );
+    info!(
+        "Rust Version:      {}",
+        option_env!("BUILD_RUSTC_VERSION").unwrap_or("Unknown")
+    );
+    info!("============================================================");
+}
+
 fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<Vec<u8>, Value>) {
     let values: Vec<Value> = stat.values().cloned().collect();
     if queue.write().insert(h, values.clone()).is_none() {
@@ -86,8 +107,14 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
 
 #[cfg(feature = "sync-log")]
 fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
-    let mut next_block_height: u64 = config.start_height;
-    let mut stat = HashMap::new();
+    assert!(
+        config.start_height < config.stop_height,
+        "Invalid block height range"
+    );
+    info!(
+        "Scanned block height range, [start: {}, stop: {})",
+        config.start_height, config.stop_height
+    );
 
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
@@ -95,14 +122,11 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
     let tail = Tail::new();
     let sync_service = tail.run(config)?;
 
+    let mut stat = HashMap::new();
+    let mut next_block_height: u64 = config.start_height;
+
     while let Ok((height, key, value)) = tail.recv_data() {
         debug_sync_block_info(height, &key, &value);
-
-        // Ignore the parsing of the previous `start_height` blocks during synchronization
-        if height < config.start_height {
-            next_block_height = height + 1;
-            continue;
-        }
 
         // handling sync block fallback
         if height < next_block_height {
@@ -199,8 +223,12 @@ fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> 
 
 fn main() -> Result<()> {
     let config = CliConfig::from_args();
-
     init_log_with_config(&config)?;
+    version_info();
+    info!(
+        "Start logging [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
+        config.parse_log_path, config.roll_log_size, config.roll_log_count
+    );
 
     let block_queue: BlockQueue = BlockQueue::default();
 

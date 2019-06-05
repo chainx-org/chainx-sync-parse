@@ -67,13 +67,11 @@ pub struct TailImpl {
 
 impl TailImpl {
     pub fn new(tx: mpsc::Sender<StorageData>, config: &CliConfig) -> Result<Self> {
+        info!("Start reading sync log [path: {:?}]", &config.sync_log_path);
         let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
-        info!("Start reading sync log (path: {:?})", &config.sync_log_path);
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
         let line = Vec::with_capacity(BUFFER_SIZE);
-        /*
-        let lock_file = lock_file_path(&config.sync_log_path)?;
-        */
+        /*let lock_file = lock_file_path(&config.sync_log_path)?;*/
         Ok(Self {
             tx,
             start_height: config.start_height,
@@ -102,19 +100,22 @@ impl TailImpl {
             */
             match self.reader.read_until(b'\n', &mut self.line) {
                 Ok(0) => thread::sleep(Duration::from_millis(50)),
-                Ok(_) => self.filter_send(),
+                Ok(_) => {
+                    if let Some(data) = self.filter_line() {
+                        let height = data.0;
+                        if height > self.stop_height {
+                            warn!("Finish scanning, the process will EXIT in 5s...");
+                            thread::sleep(Duration::from_secs(5));
+                            std::process::exit(0);
+                        }
+                        if height >= self.start_height {
+                            self.tx
+                                .send(data)
+                                .expect("Send sync data shouldn't be fail");
+                        }
+                    }
+                }
                 Err(err) => error!("Failed to read the sync logs in buffer: {:?}", err),
-            }
-        }
-    }
-
-    fn filter_send(&mut self) {
-        if let Some(data) = self.filter_line() {
-            let height = data.0;
-            if height >= self.start_height {
-                self.tx
-                    .send(data)
-                    .expect("Send sync data shouldn't be fail");
             }
         }
     }
@@ -149,6 +150,17 @@ impl TailImpl {
     }
 
     /*
+    fn filter_send(&mut self) {
+        if let Some(data) = self.filter_line() {
+            let height = data.0;
+            if height >= self.start_height {
+                self.tx
+                    .send(data)
+                    .expect("Send sync data shouldn't be fail");
+            }
+        }
+    }
+
     /// Check whether LOCK file is exists.
     fn should_rotate(&mut self) -> bool {
         self.lock_file.exists()

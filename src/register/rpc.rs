@@ -9,7 +9,7 @@ use super::{Context, RegisterService};
 use crate::Result;
 
 /// Register API
-#[rpc]
+#[rpc(server)]
 pub trait RegisterApi {
     /// Register
     #[rpc(name = "register")]

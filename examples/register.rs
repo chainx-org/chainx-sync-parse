@@ -38,12 +38,7 @@ struct Opt {
     )]
     ip: [u8; 4],
     /// Specify the port of register service
-    #[structopt(
-        short = "p",
-        long = "port",
-        default_value = "12345",
-        parse(from_str = "parse_port")
-    )]
+    #[structopt(short = "p", long = "port", default_value = "12345")]
     port: u16,
 }
 
@@ -55,10 +50,6 @@ fn parse_ip_addr(ip_addr: &str) -> [u8; 4] {
     let mut ip = [0u8; 4];
     ip.copy_from_slice(ip_addr.as_slice());
     ip
-}
-
-fn parse_port(port: &str) -> u16 {
-    port.parse::<u16>().unwrap()
 }
 
 fn main() {
