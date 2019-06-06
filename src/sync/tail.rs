@@ -39,7 +39,7 @@ impl Tail {
         let mut tail_impl = TailImpl::new(tx, config)?;
         let handle = thread::spawn(move || {
             tail_impl.run();
-            error!("Tail thread exists abnormally");
+            error!(target: "parse", "Tail thread exists abnormally");
         });
         Ok(handle)
     }
@@ -53,8 +53,6 @@ pub struct TailImpl {
     tx: mpsc::Sender<StorageData>,
     start_height: u64,
     stop_height: u64,
-    /// A flag that indicates whether the sync log is also recorded in parse log.
-    enable_sync_log: bool,
     reader: BufReader<File>,
     line: Vec<u8>,
     /*
@@ -67,7 +65,7 @@ pub struct TailImpl {
 
 impl TailImpl {
     pub fn new(tx: mpsc::Sender<StorageData>, config: &CliConfig) -> Result<Self> {
-        info!("Start reading sync log [path: {:?}]", &config.sync_log_path);
+        info!(target: "parse", "Start reading sync log [path: {:?}]", &config.sync_log_path);
         let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
         let line = Vec::with_capacity(BUFFER_SIZE);
@@ -76,7 +74,6 @@ impl TailImpl {
             tx,
             start_height: config.start_height,
             stop_height: config.stop_height,
-            enable_sync_log: config.enable_sync_log,
             reader,
             line,
             /*lock_file,*/
@@ -89,11 +86,11 @@ impl TailImpl {
             self.line.clear();
             /*
             if self.should_rotate() {
-                info!("Start rotating sync log");
+                info!(target: "parse", "Start rotating sync log");
                 if let Err(e) = self.rotate() {
-                    error!("Failed to rotate sync log: {:?}", e);
+                    error!(target: "parse", "Failed to rotate sync log: {:?}", e);
                 }
-                info!("Finish rotating sync log");
+                info!(target: "parse", "Finish rotating sync log");
             }
             */
             match self.reader.read_until(b'\n', &mut self.line) {
@@ -102,7 +99,8 @@ impl TailImpl {
                     if let Some(data) = self.filter_line() {
                         let height = data.0;
                         if height > self.stop_height {
-                            warn!("Finish scanning, the process will EXIT in 10s...");
+                            warn!(
+                                target: "parse","Finish scanning, the process will EXIT in 10s...");
                             thread::sleep(Duration::from_secs(5));
                             std::process::exit(0);
                         }
@@ -113,7 +111,7 @@ impl TailImpl {
                         }
                     }
                 }
-                Err(err) => error!("Failed to read the sync logs in buffer: {:?}", err),
+                Err(err) => error!(target: "parse", "Failed to read the sync logs in buffer: {:?}", err),
             }
         }
     }
@@ -139,7 +137,7 @@ impl TailImpl {
             // Key and value should be hex
             let key = decode_hex("key", height, &caps[2]);
             let value = decode_hex("value", height, &caps[3]);
-            record_sync_log(self.enable_sync_log, height, &key, &value);
+            record_sync_log(height, &key, &value);
 
             Some((height, key, value))
         } else {
@@ -171,18 +169,19 @@ impl TailImpl {
             self.line.clear();
             match self.reader.read_until(b'\n', &mut self.line) {
                 Ok(0) => {
-                    info!("Finish reading the remaining sync logs in buffer");
+                    info!(target: "parse", "Finish reading the remaining sync logs in buffer");
                     break;
                 }
                 Ok(_) => self.filter_send(),
                 Err(err) => error!(
+                    target: "parse",
                     "Failed to read the remaining sync logs in buffer: {:?}",
                     err
                 ),
             }
         }
         let _ = self.reader.seek(SeekFrom::Start(0))?;
-        info!("Seek sync log to start position");
+        info!(target: "parse", "Seek sync log to start position");
         self.delete_lock_file()?;
         Ok(())
     }
@@ -190,7 +189,7 @@ impl TailImpl {
     /// Delete LOCK file
     fn delete_lock_file(&mut self) -> Result<()> {
         fs::remove_file(&self.lock_file)?;
-        info!("Deleted LOCK file");
+        info!(target: "parse", "Deleted LOCK file");
         Ok(())
     }
     */
@@ -237,22 +236,14 @@ fn decode_hex(name: &str, height: u64, cap: &[u8]) -> Vec<u8> {
     })
 }
 
-fn record_sync_log(enable: bool, height: u64, key: &[u8], value: &[u8]) {
-    if enable {
-        info!(
-            "msgbus|height:[{}]|key:[{}]|value:[{}]",
-            height,
-            hex::encode(key),
-            hex::encode(value)
-        );
-    } else {
-        debug!(
-            "msgbus|height:[{}]|key:[{}]|value:[{}]",
-            height,
-            hex::encode(key),
-            hex::encode(value)
-        );
-    }
+fn record_sync_log(height: u64, key: &[u8], value: &[u8]) {
+    info!(
+        target: "msgbus",
+        "msgbus|height:[{}]|key:[{}]|value:[{}]",
+        height,
+        hex::encode(key),
+        hex::encode(value)
+    );
 }
 
 #[cfg(test)]

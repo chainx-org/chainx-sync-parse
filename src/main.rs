@@ -17,7 +17,7 @@ use log4rs::{
             RollingFileAppender,
         },
     },
-    config::{Appender, Config, Root},
+    config,
     encode::pattern::PatternEncoder,
 };
 use serde_json::Value;
@@ -32,24 +32,47 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
         )))
         .build();
 
-    let trigger = trigger::size::SizeTrigger::new(config.roll_log_size * MB_SIZE);
+    let trigger = trigger::size::SizeTrigger::new(config.parse_roll_size * MB_SIZE);
     let roll_pattern = format!("{}.{{}}.gz", config.parse_log_path.to_str().unwrap());
     let roll = roll::fixed_window::FixedWindowRoller::builder()
-        .build(roll_pattern.as_str(), config.roll_log_count)
+        .build(roll_pattern.as_str(), config.parse_roll_count)
         .expect("Building fixed window roller should't be fail");
     let policy = policy::compound::CompoundPolicy::new(Box::new(trigger), Box::new(roll));
-    let rolling_file = RollingFileAppender::builder()
+    let parse_roll_file = RollingFileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
         )))
         .build(&config.parse_log_path, Box::new(policy))?;
 
-    let log_config = Config::builder()
-        .appender(Appender::builder().build("console", Box::new(console)))
-        .appender(Appender::builder().build("rolling_file", Box::new(rolling_file)))
+    let trigger = trigger::size::SizeTrigger::new(config.msgbus_roll_size * MB_SIZE);
+    let roll_pattern = format!("{}.{{}}.gz", config.msgbus_log_path.to_str().unwrap());
+    let roll = roll::fixed_window::FixedWindowRoller::builder()
+        .build(roll_pattern.as_str(), config.msgbus_roll_count)
+        .expect("Building fixed window roller should't be fail");
+    let policy = policy::compound::CompoundPolicy::new(Box::new(trigger), Box::new(roll));
+    let msgbus_roll_file = RollingFileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
+        )))
+        .build(&config.msgbus_log_path, Box::new(policy))?;
+
+    let log_config = config::Config::builder()
+        .appender(config::Appender::builder().build("console", Box::new(console)))
+        .appender(config::Appender::builder().build("parse_roll", Box::new(parse_roll_file)))
+        .appender(config::Appender::builder().build("msgbus_roll", Box::new(msgbus_roll_file)))
+        .logger(
+            config::Logger::builder()
+                .appender("parse_roll")
+                .build("parse", LevelFilter::Info),
+        )
+        .logger(
+            config::Logger::builder()
+                .appender("msgbus_roll")
+                .build("msgbus", LevelFilter::Info),
+        )
         .build(
-            Root::builder()
-                .appenders(vec!["console", "rolling_file"])
+            config::Root::builder()
+                .appender("console")
                 .build(LevelFilter::Info),
         )
         .expect("Construct log config failure");
@@ -59,34 +82,38 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
 }
 
 fn version_info() {
-    info!("============================================================");
+    info!(target: "parse", "============================================================");
     info!(
+        target: "parse",
         "Release Version:   {}",
         option_env!("CARGO_PKG_VERSION").unwrap_or("Unknown")
     );
     info!(
+        target: "parse",
         "Git Commit Hash:   {}",
         option_env!("BUILD_GIT_HASH").unwrap_or("Unknown")
     );
     info!(
+        target: "parse",
         "Git Commit Branch: {}",
         option_env!("BUILD_GIT_BRANCH").unwrap_or("Unknown")
     );
     info!(
+        target: "parse",
         "Rust Version:      {}",
         option_env!("BUILD_RUSTC_VERSION").unwrap_or("Unknown")
     );
-    info!("============================================================");
+    info!(target: "parse", "============================================================");
 }
 
 fn insert_block_into_queue(queue: &BlockQueue, h: u64, stat: &HashMap<Vec<u8>, Value>) {
     let values: Vec<Value> = stat.values().cloned().collect();
     if queue.write().insert(h, values.clone()).is_none() {
-        info!("Insert new block #{} into block queue successfully", h);
-        info!("Block #{}: {:?}", h, Value::Array(values).to_string());
+        info!(target: "parse", "Insert new block #{} into block queue successfully", h);
+        info!(target: "parse", "Block #{}: {:?}", h, Value::Array(values).to_string());
     } else {
-        info!("Insert updated block #{} into block queue successfully", h);
-        info!("Block #{}: {:?}", h, Value::Array(values).to_string());
+        info!(target: "parse", "Insert updated block #{} into block queue successfully", h);
+        info!(target: "parse", "Block #{}: {:?}", h, Value::Array(values).to_string());
     }
 }
 
@@ -94,11 +121,13 @@ fn debug_sync_block_info(height: u64, key: &[u8], value: &[u8]) {
     // for debug
     if let Ok(prefix_key) = ::std::str::from_utf8(&key) {
         debug!(
+            target: "parse",
             "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]",
             height, prefix_key, value,
         );
     } else {
         debug!(
+            target: "parse",
             "Block info: block_height [{:?}], prefix_key [{:?}], value [{:?}]",
             height, key, value,
         );
@@ -111,10 +140,7 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
         config.start_height < config.stop_height,
         "Invalid block height range"
     );
-    info!(
-        "Scanned block height range, [start: {}, stop: {})",
-        config.start_height, config.stop_height
-    );
+    info!(target: "parse", "Scanned block height range, [start: {}, stop: {})", config.start_height, config.stop_height);
 
     #[cfg(feature = "pgsql")]
     let pg_conn = establish_connection();
@@ -175,7 +201,7 @@ fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> 
     let pg_conn = establish_connection();
 
     let client = Redis::connect(config.sync_redis_url.as_str())?;
-    info!("Connect redis [{}] successfully", &config.sync_redis_url);
+    info!(target: "parse", "Connect redis [{}] successfully", &config.sync_redis_url);
     let sync_service = client.start_subscription()?;
 
     while let Ok(key) = client.recv_key() {
@@ -213,7 +239,7 @@ fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> 
 
             stat.clear();
         } else {
-            error!("Redis query error");
+            error!(target: "parse", "Redis query error");
             break;
         }
     }
@@ -226,8 +252,14 @@ fn main() -> Result<()> {
     init_log_with_config(&config)?;
     version_info();
     info!(
+        target: "parse",
         "Start logging [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
-        config.parse_log_path, config.roll_log_size, config.roll_log_count
+        config.parse_log_path, config.parse_roll_size, config.parse_roll_count
+    );
+    info!(
+        target: "parse",
+        "Msgbus log [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
+        config.msgbus_log_path, config.msgbus_roll_size, config.msgbus_roll_count
     );
 
     let block_queue: BlockQueue = BlockQueue::default();
