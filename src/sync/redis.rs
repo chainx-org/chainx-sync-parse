@@ -65,9 +65,7 @@ impl Redis {
             let mut pubsub = sub_conn.as_pubsub();
             pubsub
                 .subscribe(REDIS_KEY_EVENT_NOTIFICATION)
-                .unwrap_or_else(|err| {
-                    error!(target: "parse", "Subscribe error: {:?}", err)
-                });
+                .unwrap_or_else(|err| error!(target: "parse", "Subscribe error: {:?}", err));
 
             while let Ok(msg) = pubsub.get_message() {
                 if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {

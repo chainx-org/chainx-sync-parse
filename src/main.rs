@@ -253,7 +253,7 @@ fn main() -> Result<()> {
     version_info();
     info!(
         target: "parse",
-        "Start logging [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
+        "Parse log [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
         config.parse_log_path, config.parse_roll_size, config.parse_roll_count
     );
     info!(

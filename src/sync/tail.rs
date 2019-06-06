@@ -1,6 +1,6 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader /*, Seek, SeekFrom*/};
-use std::path::Path;
+use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -55,10 +55,8 @@ pub struct TailImpl {
     stop_height: u64,
     reader: BufReader<File>,
     line: Vec<u8>,
-    /*
     /// A file lock that indicates whether the sync log file has a rotate event.
     lock_file: PathBuf,
-    */
     /// A flag that indicates whether the genesis block has been scanned.
     is_genesis: bool,
 }
@@ -69,14 +67,14 @@ impl TailImpl {
         let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
         let line = Vec::with_capacity(BUFFER_SIZE);
-        /*let lock_file = lock_file_path(&config.sync_log_path)?;*/
+        let lock_file = lock_file_path(&config.sync_log_path)?;
         Ok(Self {
             tx,
             start_height: config.start_height,
             stop_height: config.stop_height,
             reader,
             line,
-            /*lock_file,*/
+            lock_file,
             is_genesis: true,
         })
     }
@@ -84,7 +82,6 @@ impl TailImpl {
     pub fn run(&mut self) {
         loop {
             self.line.clear();
-            /*
             if self.should_rotate() {
                 info!(target: "parse", "Start rotating sync log");
                 if let Err(e) = self.rotate() {
@@ -92,15 +89,13 @@ impl TailImpl {
                 }
                 info!(target: "parse", "Finish rotating sync log");
             }
-            */
             match self.reader.read_until(b'\n', &mut self.line) {
                 Ok(0) => thread::sleep(Duration::from_millis(50)),
                 Ok(_) => {
                     if let Some(data) = self.filter_line() {
                         let height = data.0;
                         if height > self.stop_height {
-                            warn!(
-                                target: "parse","Finish scanning, the process will EXIT in 10s...");
+                            warn!(target: "parse", "Finish scanning, the process will EXIT in 10s...");
                             thread::sleep(Duration::from_secs(5));
                             std::process::exit(0);
                         }
@@ -111,7 +106,20 @@ impl TailImpl {
                         }
                     }
                 }
-                Err(err) => error!(target: "parse", "Failed to read the sync logs in buffer: {:?}", err),
+                Err(err) => {
+                    error!(target: "parse", "Failed to read the sync logs in buffer: {:?}", err)
+                }
+            }
+        }
+    }
+
+    fn filter_send(&mut self) {
+        if let Some(data) = self.filter_line() {
+            let height = data.0;
+            if height >= self.start_height {
+                self.tx
+                    .send(data)
+                    .expect("Send sync data shouldn't be fail");
             }
         }
     }
@@ -145,18 +153,6 @@ impl TailImpl {
         }
     }
 
-    /*
-    fn filter_send(&mut self) {
-        if let Some(data) = self.filter_line() {
-            let height = data.0;
-            if height >= self.start_height {
-                self.tx
-                    .send(data)
-                    .expect("Send sync data shouldn't be fail");
-            }
-        }
-    }
-
     /// Check whether LOCK file is exists.
     fn should_rotate(&mut self) -> bool {
         self.lock_file.exists()
@@ -165,6 +161,14 @@ impl TailImpl {
     /// Rotate the current file and delete LOCK file.
     fn rotate(&mut self) -> Result<()> {
         // Read all remaining logs in buffer
+        self.flush_reader_buffer();
+        let _ = self.reader.seek(SeekFrom::Start(0))?;
+        info!(target: "parse", "Seek sync log to start position");
+        self.delete_lock_file()?;
+        Ok(())
+    }
+
+    fn flush_reader_buffer(&mut self) {
         loop {
             self.line.clear();
             match self.reader.read_until(b'\n', &mut self.line) {
@@ -180,10 +184,6 @@ impl TailImpl {
                 ),
             }
         }
-        let _ = self.reader.seek(SeekFrom::Start(0))?;
-        info!(target: "parse", "Seek sync log to start position");
-        self.delete_lock_file()?;
-        Ok(())
     }
 
     /// Delete LOCK file
@@ -192,7 +192,6 @@ impl TailImpl {
         info!(target: "parse", "Deleted LOCK file");
         Ok(())
     }
-    */
 }
 
 /// Opens sync log file. Creates a new log file if it doesn't exist.
@@ -216,7 +215,6 @@ fn check_parent_dir(file_path: &Path) -> Result<()> {
     Ok(())
 }
 
-/*
 fn lock_file_path(file_path: &Path) -> Result<PathBuf> {
     let parent = file_path
         .parent()
@@ -225,7 +223,6 @@ fn lock_file_path(file_path: &Path) -> Result<PathBuf> {
     parent.push("LOCK");
     Ok(parent)
 }
-*/
 
 fn decode_hex(name: &str, height: u64, cap: &[u8]) -> Vec<u8> {
     hex::decode(cap).unwrap_or_else(|_| {
