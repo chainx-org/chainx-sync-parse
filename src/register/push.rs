@@ -103,14 +103,14 @@ impl PushClient {
     }
 
     pub fn post_big_message(&self, msg: Message) -> Result<()> {
-        info!("Post message: {:?}", &msg);
+        info!(target:"parse", "Post message: {:?}", &msg);
         let messages = msg.split(MSG_CHUNK_SIZE_LIMIT);
         if messages.len() != 1 {
-            info!("The message was split into {} messages", messages.len());
+            info!(target: "parse", "The message was split into {} messages", messages.len());
         }
         for msg in messages {
             if let Err(err) = self.post_message(&msg) {
-                error!("Post error: {:?}, msg: {:?}", err, msg);
+                error!(target: "parse", "Post error: {:?}, msg: {:?}", err, msg);
                 return Err(err);
             }
         }
@@ -119,21 +119,23 @@ impl PushClient {
 
     pub fn post_message(&self, msg: &Message) -> Result<()> {
         let body: Value = json!(msg);
-        debug!("Send message request: {:?}", body);
+        debug!(target: "parse", "Send message request: {:?}", body);
         for i in 1..=self.config.retry_count {
             let ok = self.post::<String>(&body).unwrap_or_default();
             if ok == "OK" {
-                info!("Post message successfully, height = {}", msg.height);
+                info!(target: "parse", "Post message successfully, height = {}", msg.height);
                 return Ok(());
             }
-            warn!("Receive message response: {:?}", ok);
             warn!(
-                "Send message request retry ({}/{})",
+                target: "parse","Receive message response: {:?}", ok);
+            warn!(
+
+                target: "parse","Send message request retry ({}/{})",
                 i, self.config.retry_count
             );
             thread::sleep(self.config.retry_interval);
         }
-        error!("Reach the limitation of retries");
+        error!(target: "parse", "Reach the limitation of retries");
         Err("Reach the limitation of retries".into())
     }
 

@@ -24,7 +24,7 @@ mod macros {
                     Some(key) => key,
                     None => {
                         let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                        error!("Runtime storage parse error: {:?}", err);
+                        error!(target: "parse", "Runtime storage parse error: {:?}", err);
                         return Err(err.into());
                     }
                 };
@@ -36,14 +36,14 @@ mod macros {
     macro_rules! to_json_impl {
         ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
             if $value.is_empty() {
-                debug!("Empty Value: [{:?}] may have been removed", $prefix);
+                debug!(target: "parse", "Empty Value: [{:?}] may have been removed", $prefix);
                 return Ok(build_json!($type, $prefix, $k, null));
             }
             *$v = match Decode::decode(&mut $value.as_slice()) {
                 Some(value) => value,
                 None => {
                     let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    error!("Runtime storage parse error: {:?}", err);
+                    error!(target: "parse", "Runtime storage parse error: {:?}", err);
                     return Err(err.into());
                 }
             };
@@ -294,7 +294,7 @@ impl RuntimeStorage {
                 return Ok((prefix, json));
             }
         }
-        debug!("Runtime storage parse: No matching key found");
+        debug!(target: "parse", "Runtime storage parse: No matching key found");
         Err("No matching key found".into())
     }
 
@@ -303,7 +303,7 @@ impl RuntimeStorage {
             Some("map") | Some("linked_map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
-                error!("Runtime storage parse: get storage type failed");
+                error!(target: "parse", "Runtime storage parse: get storage type failed");
                 return Err("Invalid storage type".into());
             }
         };

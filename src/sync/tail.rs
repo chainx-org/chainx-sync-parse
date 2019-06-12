@@ -1,20 +1,19 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, BufReader /*Seek, SeekFrom*/};
+use std::path::Path;
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration as StdDuration;
+use std::time::Duration;
 
 use regex::bytes::Regex;
 
-use crate::Result;
+use crate::{CliConfig, Result};
 
 lazy_static::lazy_static! {
     static ref RE: Regex = Regex::new(r"(?-u)INFO msgbus\|height:\[(\d*)]\|key:\[(.*)]\|value:\[(.*)]").unwrap();
 }
 
 const BUFFER_SIZE: usize = 1024;
-const BLOCK_NUMBER_PER_LOG_FILE: u64 = 10000;
 
 type StorageData = (u64, Vec<u8>, Vec<u8>); // (height, key, value)
 
@@ -35,15 +34,13 @@ impl Tail {
         Tail::default()
     }
 
-    pub fn run(
-        &self,
-        file_path: impl AsRef<Path>,
-        start_height: u64,
-    ) -> Result<thread::JoinHandle<()>> {
+    pub fn run(&self, config: &CliConfig) -> Result<thread::JoinHandle<()>> {
         let tx = self.tx.clone();
-        let mut filter_and_rotate = FilterAndRotate::new(file_path, start_height, tx)?;
-
-        let handle = thread::spawn(move || filter_and_rotate.run());
+        let mut tail_impl = TailImpl::new(tx, config)?;
+        let handle = thread::spawn(move || {
+            tail_impl.run();
+            error!(target: "parse", "Tail thread exists abnormally");
+        });
         Ok(handle)
     }
 
@@ -52,201 +49,211 @@ impl Tail {
     }
 }
 
-/// This FileLogger rotates logs according to block height.
-/// After rotating, the original log file would be renamed to "{original name}.{height}"
-/// Note: log file will *not* be compressed or otherwise modified.
-pub struct FilterAndRotate {
+pub struct TailImpl {
     tx: mpsc::Sender<StorageData>,
-    height: u64,
-    last_height: u64,
+    start_height: u64,
+    stop_height: u64,
     reader: BufReader<File>,
-    writer: BufWriter<File>,
-    /// Sync log file path
-    file_path: PathBuf,
-    /// Indicates whether the genesis block has been scanned
+    line: Vec<u8>,
+    /*
+    /// A file lock that indicates whether the sync log file has a rotate event.
+    lock_file: PathBuf,
+    */
+    /// A flag that indicates whether the genesis block has been scanned.
     is_genesis: bool,
 }
 
-impl Drop for FilterAndRotate {
-    fn drop(&mut self) {
-        let _ = self.writer.flush();
-    }
-}
-
-impl FilterAndRotate {
-    pub fn new(
-        file_path: impl AsRef<Path>,
-        start_height: u64,
-        tx: mpsc::Sender<StorageData>,
-    ) -> io::Result<Self> {
-        let from_file_path = file_path.as_ref().to_path_buf();
-        let from_file = read_sync_log_file(&from_file_path)?;
-        let reader = BufReader::with_capacity(10 * BUFFER_SIZE, from_file);
-
-        let to_file_path = rotation_file_path_with_height(file_path.as_ref(), start_height);
-        let to_file = append_log_file(&to_file_path)?;
-        let writer = BufWriter::with_capacity(10 * BUFFER_SIZE, to_file);
-
+impl TailImpl {
+    pub fn new(tx: mpsc::Sender<StorageData>, config: &CliConfig) -> Result<Self> {
+        info!(target: "parse", "Start reading sync log [path: {:?}]", &config.sync_log_path);
+        let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
+        let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
+        let line = Vec::with_capacity(BUFFER_SIZE);
+        /*
+        let lock_file = lock_file_path(&config.sync_log_path)?;
+        */
         Ok(Self {
             tx,
-            height: start_height,
-            last_height: start_height,
+            start_height: config.start_height,
+            stop_height: config.stop_height,
             reader,
-            writer,
-            file_path: file_path.as_ref().to_path_buf(),
+            line,
+            /*
+            lock_file,
+            */
             is_genesis: true,
         })
     }
 
     pub fn run(&mut self) {
-        let mut line = Vec::with_capacity(BUFFER_SIZE);
         loop {
-            line.clear();
-            match self.reader.read_until(b'\n', &mut line) {
-                Ok(0) => thread::sleep(StdDuration::from_millis(50)),
-                Ok(_) => {
-                    if let Some(data) = filter_line(&line, &mut self.is_genesis) {
-                        self.height = data.0;
-                        if self.should_rotate() {
-                            self.rotate().expect("Rotate log shouldn't be fail");
-                            info!("Split sync node log, current block height #{}", self.height);
-                        }
-                        self.last_height = self.height;
-
-                        self.tx
-                            .send(data)
-                            .expect("Send sync data shouldn't be fail");
-                    }
-                    let _ = self.writer.write(&line);
+            self.line.clear();
+            /*
+            if self.should_rotate() {
+                info!(target: "parse", "Start rotating sync log");
+                if let Err(e) = self.rotate() {
+                    error!(target: "parse", "Failed to rotate sync log: {:?}", e);
                 }
-                Err(err) => error!("Tail read line error: {:?}", err),
+                info!(target: "parse", "Finish rotating sync log");
+            }
+            */
+            match self.reader.read_until(b'\n', &mut self.line) {
+                Ok(0) => thread::sleep(Duration::from_millis(50)),
+                Ok(_) => {
+                    if let Some(data) = self.filter_line() {
+                        let height = data.0;
+                        if height > self.stop_height {
+                            warn!(target: "parse", "Finish scanning, the process will EXIT in 10s...");
+                            thread::sleep(Duration::from_secs(5));
+                            std::process::exit(0);
+                        }
+                        if height >= self.start_height {
+                            self.tx
+                                .send(data)
+                                .expect("Send sync data shouldn't be fail");
+                        }
+                    }
+                }
+                Err(err) => {
+                    error!(target: "parse", "Failed to read the sync logs in buffer: {:?}", err)
+                }
             }
         }
     }
 
-    fn should_rotate(&mut self) -> bool {
-        (self.height != 0)
-            && (self.height != self.last_height)
-            && (self.height % BLOCK_NUMBER_PER_LOG_FILE == 0)
+    /// Filter the sync log and extract the `msgbus` log data.
+    fn filter_line(&mut self) -> Option<StorageData> {
+        if let Some(caps) = RE.captures(&self.line) {
+            let height = std::str::from_utf8(&caps[1])
+                .unwrap()
+                .parse::<u64>()
+                .expect("Parse height should not be fail");
+
+            // Ignore the block with height 0 (except genesis block)
+            {
+                if height != 0 {
+                    self.is_genesis = false;
+                }
+                if !self.is_genesis && height == 0 {
+                    return None;
+                }
+            }
+
+            // Key and value should be hex
+            let key = decode_hex("key", height, &caps[2]);
+            let value = decode_hex("value", height, &caps[3]);
+            record_sync_log(height, &key, &value);
+
+            Some((height, key, value))
+        } else {
+            None
+        }
     }
 
-    /// Rotates the current file and updates the next rotation time.
-    fn rotate(&mut self) -> io::Result<()> {
-        self.flush()?;
+    /*
+    /// Check whether LOCK file is exists.
+    fn should_rotate(&mut self) -> bool {
+        self.lock_file.exists()
+    }
 
-        // Note: renaming files while they're open only works on Linux and macOS.
-        let new_to_path = rotation_file_path_with_height(&self.file_path, self.height);
-        let new_to_file = append_log_file(&new_to_path)?;
-        self.writer = BufWriter::new(new_to_file);
+    /// Rotate the current file and delete LOCK file.
+    fn rotate(&mut self) -> Result<()> {
+        // Read all remaining logs in buffer
+        self.flush_reader_buffer();
+        let _ = self.reader.seek(SeekFrom::Start(0))?;
+        info!(target: "parse", "Seek sync log to start position");
+        self.delete_lock_file()?;
         Ok(())
     }
 
-    /// Flushes the log file, without rotation.
-    fn flush(&mut self) -> io::Result<()> {
-        self.writer.flush()
+    fn flush_reader_buffer(&mut self) {
+        loop {
+            self.line.clear();
+            match self.reader.read_until(b'\n', &mut self.line) {
+                Ok(0) => {
+                    info!(target: "parse", "Finish reading the remaining sync logs in buffer");
+                    break;
+                }
+                Ok(_) => self.filter_send(),
+                Err(err) => error!(
+                    target: "parse",
+                    "Failed to read the remaining sync logs in buffer: {:?}",
+                    err
+                ),
+            }
+        }
     }
-}
 
-/// Rotates file path with given block height.
-fn rotation_file_path_with_height(file_path: &Path, height: u64) -> PathBuf {
-    let mut file_path = file_path.as_os_str().to_os_string();
-    file_path.push(format!(".{}", height));
-    file_path.into()
+    fn filter_send(&mut self) {
+        if let Some(data) = self.filter_line() {
+            let height = data.0;
+            if height >= self.start_height {
+                self.tx
+                    .send(data)
+                    .expect("Send sync data shouldn't be fail");
+            }
+        }
+    }
+
+    /// Delete LOCK file
+    fn delete_lock_file(&mut self) -> Result<()> {
+        fs::remove_file(&self.lock_file)?;
+        info!(target: "parse", "Deleted LOCK file");
+        Ok(())
+    }
+    */
 }
 
 /// Opens sync log file. Creates a new log file if it doesn't exist.
-fn read_sync_log_file(file_path: &Path) -> io::Result<File> {
+fn read_sync_log_file(file_path: &Path) -> Result<File> {
     check_parent_dir(file_path)?;
-    OpenOptions::new()
+    let file = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
-        .open(file_path)
+        .open(file_path)?;
+    Ok(file)
 }
 
-/// Opens sync log file. Creates a new log file if it doesn't exist.
-fn append_log_file(file_path: &Path) -> io::Result<File> {
-    check_parent_dir(file_path)?;
-    OpenOptions::new().append(true).create(true).open(file_path)
-}
-
-fn check_parent_dir(file_path: &Path) -> io::Result<()> {
+fn check_parent_dir(file_path: &Path) -> Result<()> {
     let parent = file_path
         .parent()
-        .expect("Unable to get parent directory of log file");
+        .ok_or("Unable to get parent directory of log file")?;
     if !parent.is_dir() {
         fs::create_dir_all(parent)?
     }
     Ok(())
 }
 
-/// Filter the sync log and extract the `msgbus` log data.
-fn filter_line(line: &[u8], is_genesis: &mut bool) -> Option<StorageData> {
-    if let Some(caps) = RE.captures(line) {
-        let height = std::str::from_utf8(&caps[1])
-            .unwrap()
-            .parse::<u64>()
-            .expect("Parse height should not be fail");
+/*
+fn lock_file_path(file_path: &Path) -> Result<PathBuf> {
+    let parent = file_path
+        .parent()
+        .ok_or("Unable to get parent directory of log file")?;
+    let mut parent = parent.to_path_buf();
+    parent.push("LOCK");
+    Ok(parent)
+}
+*/
 
-        // Ignore the block with height 0 (except genesis block)
-        {
-            if height != 0 {
-                *is_genesis = false;
-            }
-            if !*is_genesis && height == 0 {
-                return None;
-            }
-        }
-
-        // Key and value should be hex
-        let key = hex::decode(&caps[2]).expect(&format!(
-            "Hex decode key should not be fail: block #{}, key={:?}",
-            height, &caps[2]
-        ));
-        let value = hex::decode(&caps[3]).expect(&format!(
-            "Hex decode value should not be fail: block #{}, value={:?}",
-            height, &caps[3]
-        ));
-        debug!(
-            "msgbus|height:[{}]|key:[{}]|value:[{}]",
-            height,
-            hex::encode(&key),
-            hex::encode(&value)
-        );
-        Some((height, key, value))
-    } else {
-        None
-    }
+fn decode_hex(name: &str, height: u64, cap: &[u8]) -> Vec<u8> {
+    hex::decode(cap).unwrap_or_else(|_| {
+        panic!(
+            "Decoding hex {} fail: block #{}, key={:?}",
+            name, height, cap
+        )
+    })
 }
 
-//fn sync_log_data(file: File, file_copy: File, tx: &mpsc::Sender<StorageData>) {
-//    let mut reader = BufReader::new(file);
-//    let mut line = Vec::with_capacity(BUFFER_SIZE);
-//
-//    loop {
-//        line.clear();
-//        match reader.read_until(b'\n', &mut line) {
-//            Ok(0) => thread::sleep(StdDuration::from_millis(50)),
-//            Ok(_) => {
-//                info!("{}", std::str::from_utf8(&line).unwrap_or(""));
-//                if let Some(data) = filter_line(&line) {
-//                    let height = data.0;
-//                    if height % BLOCK_NUMBER_PER_LOG_FILE == 0 {
-//                        file_copy
-//                            .set_len(0)
-//                            .expect("Setting the length of underlying file shouldn't be fail");
-//                        reader
-//                            .seek(SeekFrom::Start(0))
-//                            .expect("Seek the cursor of file shouldn't be fail");
-//                        info!("Split sync node log, current block height #{}", height);
-//                    }
-//                    tx.send(data).expect("Send sync data shouldn't be fail");
-//                }
-//            }
-//            Err(err) => error!("Tail read line error: {:?}", err),
-//        }
-//    }
-//}
+fn record_sync_log(height: u64, key: &[u8], value: &[u8]) {
+    debug!(
+        target: "msgbus",
+        "msgbus|height:[{}]|key:[{}]|value:[{}]",
+        height,
+        hex::encode(key),
+        hex::encode(value)
+    );
+}
 
 #[cfg(test)]
 mod tests {

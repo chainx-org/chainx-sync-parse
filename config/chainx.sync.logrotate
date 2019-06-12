@@ -1,0 +1,14 @@
+/home/koushiro/Code/Work/bin/log/sync.log {
+	daily
+	rotate 7
+	missingok
+	copytruncate
+	dateext
+	dateformat .%Y-%m-%d-%H.%s
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+        	touch /home/koushiro/Code/Work/bin/log/LOCK
+	endscript
+}

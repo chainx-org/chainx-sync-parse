@@ -3,7 +3,7 @@
 The program is used to synchronize and parse sync-node data, 
 providing 1:N external subscription service.
 
-Follow the stage/V0.9.10 branch of ChainX.
+Follow the mainnet branch of ChainX.
 
 ## Usage
 
@@ -28,7 +28,7 @@ cargo build --release
 
 Subscribe to the prefixes of needed runtime storage by register api.
 
-The structure of Runtime storage is consistent with the [ChainX - stage/V0.9.10](https://github.com/chainpool/ChainX/tree/stage/V0.9.10) and [substrate](https://github.com/chainpool/substrate).
+The structure of Runtime storage is consistent with the [ChainX - mainnet](https://github.com/chainpool/ChainX/tree/mainnet) and [substrate](https://github.com/chainpool/substrate).
 
 **Register**:
 
@@ -88,8 +88,8 @@ Parameter description:
 ```bash
 # compile
 cd ChainX
-git checkout stage/V0.9.10
-cargo build --release --features msgbus-log # or cargo build --release --features msgbus-redis
+git checkout mainnet
+cargo build --release --features msgbus-log # or cargo build --release --features msgbus-redis (not recommanded)
 
 # run
 cp target/release/chainx .
@@ -115,8 +115,27 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
     cargo build --release
     
     # run
+    ./target/release/chainx-sync-parse -h
     # -h or --help for usage details
-    ./target/release/chainx-sync-parse
+    chainx-sync-parse 0.0.0
+    ChainX <https://chainx.org>
+    Synchronize and parse ChainX sync data
+    
+    USAGE:
+        chainx-sync-parse [OPTIONS]
+    
+    FLAGS:
+        -h, --help       Prints help information
+        -V, --version    Prints version information
+    
+    OPTIONS:
+            --parse-log <PATH>            Specify the parse log file path [default: log/parse.log]
+            --parse-roll-count <COUNT>    Specify the roll count of parse log [default: 10]
+            --parse-roll-size <SIZE>      Specify the roll size of parse log, unit: MB [default: 100]
+        -p, --port <PORT>                 Specify the port of register service [default: 3030]
+            --start-height <HEIGHT>       Specify the starting block height to scan, range: [start,stop) [default: 0]
+            --stop-height <HEIGHT>        Specify the stoping block height to scan [default: 18446744073709551615]
+            --sync-log <PATH>             Specify the sync log path [default: log/sync.log]
     ```
 
 ### sync-redis (Alternative)

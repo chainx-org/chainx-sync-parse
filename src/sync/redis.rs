@@ -40,6 +40,7 @@ impl Redis {
             .arg("LIMIT").arg(0).arg(1)
             .query(&self.conn)?;
         debug!(
+            target: "parse",
             "key: {:?}, score: {:?}",
             ::std::str::from_utf8(&key).unwrap_or("Contains invalid UTF8"), score
         );
@@ -48,7 +49,7 @@ impl Redis {
 
     fn query_value(&self, key: &[u8]) -> Result<Vec<u8>> {
         let value: Vec<u8> = redis::cmd("GET").arg(key).query(&self.conn)?;
-        debug!("value: {:?}", value);
+        debug!(target: "parse", "value: {:?}", value);
         Ok(value)
     }
 
@@ -64,28 +65,28 @@ impl Redis {
             let mut pubsub = sub_conn.as_pubsub();
             pubsub
                 .subscribe(REDIS_KEY_EVENT_NOTIFICATION)
-                .unwrap_or_else(|err| error!("Subscribe error: {:?}", err));
+                .unwrap_or_else(|err| error!(target: "parse", "Subscribe error: {:?}", err));
 
             while let Ok(msg) = pubsub.get_message() {
                 if msg.get_channel_name() == REDIS_KEY_EVENT_NOTIFICATION {
                     let key: Vec<u8> = match msg.get_payload() {
                         Ok(key) => key,
                         Err(err) => {
-                            error!("Msg get payload error: {:?}", err);
+                            error!(target: "parse", "Msg get payload error: {:?}", err);
                             break;
                         }
                     };
                     if let Err(err) = tx.send(key) {
-                        error!("Send error: {:?}", err);
+                        error!(target: "parse", "Send error: {:?}", err);
                         break;
                     }
                 } else {
-                    warn!("Wrong channel");
+                    warn!(target: "parse", "Wrong channel");
                     break;
                 }
             }
 
-            error!("Pubsub get msg error, exit subscription loop");
+            error!(target: "parse", "Pubsub get msg error, exit subscription loop");
         });
 
         Ok(thread)

@@ -1,15 +1,11 @@
-use std::fs::File;
-use std::path::Path;
+use structopt::StructOpt;
 
-use chainx_sync_parse::{Result, Tail};
+use chainx_sync_parse::{CliConfig, Result, Tail};
 
 fn main() -> Result<()> {
-    let path = Path::new("./data/tail.log");
-    assert!(path.is_file());
-    let file = File::open(path)?;
-
+    let config = CliConfig::from_args();
     let tail = Tail::new();
-    let handle = tail.run(file)?;
+    let handle = tail.run(&config)?;
 
     while let Ok((height, key, value)) = tail.recv_data() {
         if let Ok(key) = std::str::from_utf8(&key) {
