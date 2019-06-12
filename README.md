@@ -115,8 +115,27 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
     cargo build --release
     
     # run
+    ./target/release/chainx-sync-parse -h
     # -h or --help for usage details
-    ./target/release/chainx-sync-parse
+    chainx-sync-parse 0.0.0
+    ChainX <https://chainx.org>
+    Synchronize and parse ChainX sync data
+    
+    USAGE:
+        chainx-sync-parse [OPTIONS]
+    
+    FLAGS:
+        -h, --help       Prints help information
+        -V, --version    Prints version information
+    
+    OPTIONS:
+            --parse-log <PATH>            Specify the parse log file path [default: log/parse.log]
+            --parse-roll-count <COUNT>    Specify the roll count of parse log [default: 10]
+            --parse-roll-size <SIZE>      Specify the roll size of parse log, unit: MB [default: 100]
+        -p, --port <PORT>                 Specify the port of register service [default: 3030]
+            --start-height <HEIGHT>       Specify the starting block height to scan, range: [start,stop) [default: 0]
+            --stop-height <HEIGHT>        Specify the stoping block height to scan [default: 18446744073709551615]
+            --sync-log <PATH>             Specify the sync log path [default: log/sync.log]
     ```
 
 ### sync-redis (Alternative)

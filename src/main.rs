@@ -43,7 +43,7 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
         )))
         .build(&config.parse_log_path, Box::new(policy))?;
-
+    /*
     let trigger = trigger::size::SizeTrigger::new(config.msgbus_roll_size * MB_SIZE);
     let roll_pattern = format!("{}.{{}}.gz", config.msgbus_log_path.to_str().unwrap());
     let roll = roll::fixed_window::FixedWindowRoller::builder()
@@ -55,21 +55,24 @@ fn init_log_with_config(config: &CliConfig) -> Result<()> {
             "{d(%Y-%m-%d %H:%M:%S)} {h({l})} - {m}\n",
         )))
         .build(&config.msgbus_log_path, Box::new(policy))?;
+    */
 
     let log_config = config::Config::builder()
         .appender(config::Appender::builder().build("console", Box::new(console)))
         .appender(config::Appender::builder().build("parse_roll", Box::new(parse_roll_file)))
-        .appender(config::Appender::builder().build("msgbus_roll", Box::new(msgbus_roll_file)))
+        /*.appender(config::Appender::builder().build("msgbus_roll", Box::new(msgbus_roll_file)))*/
         .logger(
             config::Logger::builder()
                 .appender("parse_roll")
                 .build("parse", LevelFilter::Info),
         )
+        /*
         .logger(
             config::Logger::builder()
                 .appender("msgbus_roll")
                 .build("msgbus", LevelFilter::Info),
         )
+        */
         .build(
             config::Root::builder()
                 .appender("console")
@@ -256,11 +259,13 @@ fn main() -> Result<()> {
         "Parse log [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
         config.parse_log_path, config.parse_roll_size, config.parse_roll_count
     );
+    /*
     info!(
         target: "parse",
         "Msgbus log [path: {:?}, roll size: {:?}MB, roll count: {:?}]",
         config.msgbus_log_path, config.msgbus_roll_size, config.msgbus_roll_count
     );
+    */
 
     let block_queue: BlockQueue = BlockQueue::default();
 

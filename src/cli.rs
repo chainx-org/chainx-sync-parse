@@ -34,7 +34,7 @@ pub struct CliConfig {
     /// Specify the roll count of parse log
     #[structopt(long = "parse-roll-count", value_name = "COUNT", default_value = "10")]
     pub parse_roll_count: u32,
-
+    /*
     /// Specify the msgbus log path
     #[cfg(feature = "sync-log")]
     #[structopt(
@@ -58,7 +58,7 @@ pub struct CliConfig {
         default_value = "100"
     )]
     pub msgbus_roll_count: u32,
-
+    */
     /// Specify the sync log path
     #[cfg(feature = "sync-log")]
     #[structopt(
