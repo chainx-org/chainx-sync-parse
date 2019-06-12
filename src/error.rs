@@ -1,8 +1,8 @@
+use std::error::Error as StdError;
 use std::fmt;
 
 use failure::{Backtrace, Context};
 use failure_derive::Fail;
-use std::error::Error as StdError;
 
 #[derive(Debug)]
 pub struct Error {
@@ -74,6 +74,17 @@ impl From<Context<ErrorKind>> for Error {
     }
 }
 
+impl<'a> From<&'a str> for Error {
+    fn from(s: &'a str) -> Self {
+        Error::from(ErrorKind::Msg(s.into()))
+    }
+}
+impl From<String> for Error {
+    fn from(s: String) -> Self {
+        Error::from(ErrorKind::Msg(s))
+    }
+}
+
 impl From<::std::fmt::Error> for Error {
     fn from(err: ::std::fmt::Error) -> Self {
         Error::from(ErrorKind::Fmt(err))
@@ -126,17 +137,6 @@ impl From<serde_json::Error> for Error {
 impl From<semver::SemVerError> for Error {
     fn from(err: semver::SemVerError) -> Self {
         Error::from(ErrorKind::SemVer(err))
-    }
-}
-
-impl<'a> From<&'a str> for Error {
-    fn from(s: &'a str) -> Self {
-        Error::from(ErrorKind::Msg(s.into()))
-    }
-}
-impl From<String> for Error {
-    fn from(s: String) -> Self {
-        Error::from(ErrorKind::Msg(s))
     }
 }
 
