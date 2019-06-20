@@ -89,7 +89,7 @@ impl TailImpl {
                             error!(target: "parse", "Failed to rotate sync log: {:?}", e);
                         }
                     }
-                    thread::sleep(Duration::from_secs(1));
+                    thread::sleep(Duration::from_secs(3));
                     self.counter += 1;
                 },
                 Ok(_) => {
@@ -134,7 +134,7 @@ impl TailImpl {
 
     /// Check whether cannot read the log for a long time.
     fn should_rotate(&mut self) -> bool {
-        self.counter >= 5
+        self.counter >= 10
     }
 
     /// Rotate the current file.
@@ -145,24 +145,6 @@ impl TailImpl {
         info!(target: "parse", "Finish rotating sync log");
         Ok(())
     }
-
-    /*fn flush_reader_buffer(&mut self) {
-        loop {
-            self.line.clear();
-            match self.reader.read_until(b'\n', &mut self.line) {
-                Ok(0) => {
-                    info!(target: "parse", "Finish reading the remaining sync logs in buffer");
-                    break;
-                }
-                Ok(_) => self.filter_send(),
-                Err(err) => error!(
-                    target: "parse",
-                    "Failed to read the remaining sync logs in buffer: {:?}",
-                    err
-                ),
-            }
-        }
-    }*/
 
     fn filter_send(&mut self) {
         if let Some(data) = self.filter_line() {
@@ -178,14 +160,6 @@ impl TailImpl {
                     .expect("Send sync data shouldn't be fail");
             }
         }
-        /*if let Some(data) = self.filter_line() {
-            let height = data.0;
-            if height >= self.start_height {
-                self.tx
-                    .send(data)
-                    .expect("Send sync data shouldn't be fail");
-            }
-        }*/
     }
 }
 
