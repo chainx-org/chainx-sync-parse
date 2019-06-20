@@ -50,7 +50,7 @@ pub struct CliConfig {
     #[structopt(long = "start-height", value_name = "HEIGHT", default_value = "0")]
     pub start_height: u64,
 
-    /// Specify the stoping block height to scan
+    /// Specify the stopping block height to scan
     #[cfg(feature = "sync-log")]
     #[structopt(
         long = "stop-height",
@@ -58,6 +58,16 @@ pub struct CliConfig {
         default_value = "18446744073709551615"
     )]
     pub stop_height: u64,
+
+
+    /// Specify the sync log rotate interval, unit: second
+    #[cfg(feature = "sync-log")]
+    #[structopt(
+        long = "log-rotate-interval",
+        value_name = "SECOND",
+        default_value = "30"
+    )]
+    pub log_rotate_interval: u32,
 
     /// Specify the url of redis server
     #[cfg(feature = "sync-redis")]

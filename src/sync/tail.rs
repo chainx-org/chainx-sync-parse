@@ -56,7 +56,8 @@ pub struct TailImpl {
     stop_height: u64,
     reader: BufReader<File>,
     line: Vec<u8>,
-    counter: u8,
+    counter: u32,
+    rotate_interval: u32,
     /// A flag that indicates whether the genesis block has been scanned.
     is_genesis: bool,
 }
@@ -75,6 +76,7 @@ impl TailImpl {
             reader,
             line,
             counter: 0,
+            rotate_interval: config.log_rotate_interval,
             is_genesis: true,
         })
     }
@@ -89,7 +91,7 @@ impl TailImpl {
                             error!(target: "parse", "Failed to rotate sync log: {:?}", e);
                         }
                     }
-                    thread::sleep(Duration::from_secs(3));
+                    thread::sleep(Duration::from_secs(1));
                     self.counter += 1;
                 }
                 Ok(_) => {
@@ -134,7 +136,7 @@ impl TailImpl {
 
     /// Check whether cannot read the sync log for a long time.
     fn should_rotate(&mut self) -> bool {
-        self.counter >= 10
+        self.counter >= self.rotate_interval
     }
 
     /// Rotate the current file.
