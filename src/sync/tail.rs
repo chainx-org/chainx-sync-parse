@@ -91,7 +91,7 @@ impl TailImpl {
                     }
                     thread::sleep(Duration::from_secs(3));
                     self.counter += 1;
-                },
+                }
                 Ok(_) => {
                     self.counter = 0;
                     self.filter_send();
@@ -132,7 +132,7 @@ impl TailImpl {
         }
     }
 
-    /// Check whether cannot read the log for a long time.
+    /// Check whether cannot read the sync log for a long time.
     fn should_rotate(&mut self) -> bool {
         self.counter >= 10
     }
