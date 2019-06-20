@@ -59,8 +59,7 @@ pub struct CliConfig {
     )]
     pub stop_height: u64,
 
-
-    /// Specify the sync log rotate interval, unit: second
+    /// Specify the sync log rotate interval, unit: SECOND
     #[cfg(feature = "sync-log")]
     #[structopt(
         long = "log-rotate-interval",
