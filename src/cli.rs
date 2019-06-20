@@ -28,37 +28,13 @@ pub struct CliConfig {
     pub parse_log_path: PathBuf,
 
     /// Specify the roll size of parse log, unit: MB
-    #[structopt(long = "parse-roll-size", value_name = "SIZE", default_value = "100")]
+    #[structopt(long = "parse-roll-size", value_name = "SIZE", default_value = "200")]
     pub parse_roll_size: u64,
 
     /// Specify the roll count of parse log
-    #[structopt(long = "parse-roll-count", value_name = "COUNT", default_value = "10")]
+    #[structopt(long = "parse-roll-count", value_name = "COUNT", default_value = "5")]
     pub parse_roll_count: u32,
-    /*
-    /// Specify the msgbus log path
-    #[cfg(feature = "sync-log")]
-    #[structopt(
-        long = "msgbus-log",
-        value_name = "PATH",
-        default_value = "log/msgbus.log",
-        parse(from_os_str)
-    )]
-    pub msgbus_log_path: PathBuf,
 
-    /// Specify the roll size of msgbus log, unit: MB
-    #[cfg(feature = "sync-log")]
-    #[structopt(long = "msgbus-roll-size", value_name = "SIZE", default_value = "1000")]
-    pub msgbus_roll_size: u64,
-
-    /// Specify the roll count of msgbus log
-    #[cfg(feature = "sync-log")]
-    #[structopt(
-        long = "msgbus-roll-count",
-        value_name = "COUNT",
-        default_value = "100"
-    )]
-    pub msgbus_roll_count: u32,
-    */
     /// Specify the sync log path
     #[cfg(feature = "sync-log")]
     #[structopt(

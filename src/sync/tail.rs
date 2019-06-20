@@ -1,6 +1,6 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader /*Seek, SeekFrom*/};
-use std::path::Path;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -51,14 +51,12 @@ impl Tail {
 
 pub struct TailImpl {
     tx: mpsc::Sender<StorageData>,
+    sync_log_path: PathBuf,
     start_height: u64,
     stop_height: u64,
     reader: BufReader<File>,
     line: Vec<u8>,
-    /*
-    /// A file lock that indicates whether the sync log file has a rotate event.
-    lock_file: PathBuf,
-    */
+    counter: u8,
     /// A flag that indicates whether the genesis block has been scanned.
     is_genesis: bool,
 }
@@ -69,18 +67,14 @@ impl TailImpl {
         let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
         let line = Vec::with_capacity(BUFFER_SIZE);
-        /*
-        let lock_file = lock_file_path(&config.sync_log_path)?;
-        */
         Ok(Self {
             tx,
+            sync_log_path: config.sync_log_path.clone(),
             start_height: config.start_height,
             stop_height: config.stop_height,
             reader,
             line,
-            /*
-            lock_file,
-            */
+            counter: 0,
             is_genesis: true,
         })
     }
@@ -88,31 +82,19 @@ impl TailImpl {
     pub fn run(&mut self) {
         loop {
             self.line.clear();
-            /*
-            if self.should_rotate() {
-                info!(target: "parse", "Start rotating sync log");
-                if let Err(e) = self.rotate() {
-                    error!(target: "parse", "Failed to rotate sync log: {:?}", e);
-                }
-                info!(target: "parse", "Finish rotating sync log");
-            }
-            */
             match self.reader.read_until(b'\n', &mut self.line) {
-                Ok(0) => thread::sleep(Duration::from_millis(50)),
-                Ok(_) => {
-                    if let Some(data) = self.filter_line() {
-                        let height = data.0;
-                        if height > self.stop_height {
-                            warn!(target: "parse", "Finish scanning, the process will EXIT in 10s...");
-                            thread::sleep(Duration::from_secs(5));
-                            std::process::exit(0);
-                        }
-                        if height >= self.start_height {
-                            self.tx
-                                .send(data)
-                                .expect("Send sync data shouldn't be fail");
+                Ok(0) => {
+                    if self.should_rotate() {
+                        if let Err(e) = self.rotate() {
+                            error!(target: "parse", "Failed to rotate sync log: {:?}", e);
                         }
                     }
+                    thread::sleep(Duration::from_secs(1));
+                    self.counter += 1;
+                },
+                Ok(_) => {
+                    self.counter = 0;
+                    self.filter_send();
                 }
                 Err(err) => {
                     error!(target: "parse", "Failed to read the sync logs in buffer: {:?}", err)
@@ -150,23 +132,21 @@ impl TailImpl {
         }
     }
 
-    /*
-    /// Check whether LOCK file is exists.
+    /// Check whether cannot read the log for a long time.
     fn should_rotate(&mut self) -> bool {
-        self.lock_file.exists()
+        self.counter >= 5
     }
 
-    /// Rotate the current file and delete LOCK file.
+    /// Rotate the current file.
     fn rotate(&mut self) -> Result<()> {
-        // Read all remaining logs in buffer
-        self.flush_reader_buffer();
-        let _ = self.reader.seek(SeekFrom::Start(0))?;
-        info!(target: "parse", "Seek sync log to start position");
-        self.delete_lock_file()?;
+        info!(target: "parse", "Start rotating sync log");
+        let sync_log_file = read_sync_log_file(&self.sync_log_path)?;
+        self.reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
+        info!(target: "parse", "Finish rotating sync log");
         Ok(())
     }
 
-    fn flush_reader_buffer(&mut self) {
+    /*fn flush_reader_buffer(&mut self) {
         loop {
             self.line.clear();
             match self.reader.read_until(b'\n', &mut self.line) {
@@ -182,26 +162,31 @@ impl TailImpl {
                 ),
             }
         }
-    }
+    }*/
 
     fn filter_send(&mut self) {
         if let Some(data) = self.filter_line() {
             let height = data.0;
+            if height > self.stop_height {
+                warn!(target: "parse", "Finish scanning, the process will EXIT in 10s...");
+                thread::sleep(Duration::from_secs(5));
+                std::process::exit(0);
+            }
             if height >= self.start_height {
                 self.tx
                     .send(data)
                     .expect("Send sync data shouldn't be fail");
             }
         }
+        /*if let Some(data) = self.filter_line() {
+            let height = data.0;
+            if height >= self.start_height {
+                self.tx
+                    .send(data)
+                    .expect("Send sync data shouldn't be fail");
+            }
+        }*/
     }
-
-    /// Delete LOCK file
-    fn delete_lock_file(&mut self) -> Result<()> {
-        fs::remove_file(&self.lock_file)?;
-        info!(target: "parse", "Deleted LOCK file");
-        Ok(())
-    }
-    */
 }
 
 /// Opens sync log file. Creates a new log file if it doesn't exist.
@@ -224,17 +209,6 @@ fn check_parent_dir(file_path: &Path) -> Result<()> {
     }
     Ok(())
 }
-
-/*
-fn lock_file_path(file_path: &Path) -> Result<PathBuf> {
-    let parent = file_path
-        .parent()
-        .ok_or("Unable to get parent directory of log file")?;
-    let mut parent = parent.to_path_buf();
-    parent.push("LOCK");
-    Ok(parent)
-}
-*/
 
 fn decode_hex(name: &str, height: u64, cap: &[u8]) -> Vec<u8> {
     hex::decode(cap).unwrap_or_else(|_| {
