@@ -129,13 +129,14 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
         -V, --version    Prints version information
     
     OPTIONS:
-            --parse-log <PATH>            Specify the parse log file path [default: log/parse.log]
-            --parse-roll-count <COUNT>    Specify the roll count of parse log [default: 10]
-            --parse-roll-size <SIZE>      Specify the roll size of parse log, unit: MB [default: 100]
-        -p, --port <PORT>                 Specify the port of register service [default: 3030]
-            --start-height <HEIGHT>       Specify the starting block height to scan, range: [start,stop) [default: 0]
-            --stop-height <HEIGHT>        Specify the stoping block height to scan [default: 18446744073709551615]
-            --sync-log <PATH>             Specify the sync log path [default: log/sync.log]
+            --log-rotate-interval <SECOND>    Specify the sync log rotate interval, unit: SECOND [default: 30]
+            --parse-log <PATH>                Specify the parse log file path [default: log/parse.log]
+            --parse-roll-count <COUNT>        Specify the roll count of parse log [default: 5]
+            --parse-roll-size <SIZE>          Specify the roll size of parse log, unit: MB [default: 200]
+        -p, --port <PORT>                     Specify the port of register service [default: 3030]
+            --start-height <HEIGHT>           Specify the starting block height to scan, range: [start,stop) [default: 0]
+            --stop-height <HEIGHT>            Specify the stopping block height to scan [default: 18446744073709551615]
+            --sync-log <PATH>                 Specify the sync log path [default: log/sync.log]
     ```
 
 ### sync-redis (Alternative)
