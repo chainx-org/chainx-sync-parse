@@ -1,10 +1,11 @@
 use std::fmt;
 
-use parity_codec_derive::{Decode, Encode};
+use parity_codec::{Decode, Encode};
 #[cfg(feature = "std")]
-use serde::de::{Deserialize, Deserializer, Error, Visitor};
-#[cfg(feature = "std")]
-use serde::ser::{Serialize, Serializer};
+use serde::{
+    de::{Error, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -92,7 +93,7 @@ impl<'de> Visitor<'de> for BytesVisitor {
 
 #[cfg(test)]
 mod tests {
-    use serde_derive::{Deserialize, Serialize};
+    use serde::{Deserialize, Serialize};
     use serde_json::json;
 
     use super::*;

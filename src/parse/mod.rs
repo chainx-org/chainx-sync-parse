@@ -24,7 +24,7 @@ mod macros {
                     Some(key) => key,
                     None => {
                         let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                        error!(target: "parse", "Runtime storage parse error: {:?}", err);
+                        error!("Runtime storage parse error: {:?}", err);
                         return Err(err.into());
                     }
                 };
@@ -36,14 +36,14 @@ mod macros {
     macro_rules! to_json_impl {
         ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
             if $value.is_empty() {
-                debug!(target: "parse", "Empty Value: [{:?}] may have been removed", $prefix);
+                debug!("Empty Value: [{:?}] may have been removed", $prefix);
                 return Ok(build_json!($type, $prefix, $k, null));
             }
             *$v = match Decode::decode(&mut $value.as_slice()) {
                 Some(value) => value,
                 None => {
                     let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    error!(target: "parse", "Runtime storage parse error: {:?}", err);
+                    error!("Runtime storage parse error: {:?}", err);
                     return Err(err.into());
                 }
             };
@@ -171,6 +171,8 @@ pub enum RuntimeStorage {
     XStakingValidatorStakeThreshold(Balance),
     #[strum(serialize = "XStaking CurrentEra", props(r#type = "value"))]
     XStakingCurrentEra(BlockNumber),
+    #[strum(serialize = "XStaking DistributionRatio", props(r#type = "value"))]
+    XStakingDistributionRatio((u32, u32)),
     #[strum(serialize = "XStaking NextSessionsPerEra", props(r#type = "value"))]
     XStakingNextSessionsPerEra(BlockNumber),
     #[strum(serialize = "XStaking LastEraLengthChange", props(r#type = "value"))]
@@ -294,7 +296,7 @@ impl RuntimeStorage {
                 return Ok((prefix, json));
             }
         }
-        debug!(target: "parse", "Runtime storage parse: No matching key found");
+        debug!("Runtime storage parse: No matching key found");
         Err("No matching key found".into())
     }
 
@@ -303,7 +305,7 @@ impl RuntimeStorage {
             Some("map") | Some("linked_map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
-                error!(target: "parse", "Runtime storage parse: get storage type failed");
+                error!("Runtime storage parse: get storage type failed");
                 return Err("Invalid storage type".into());
             }
         };
@@ -369,6 +371,7 @@ impl RuntimeStorage {
             XStakingSessionsPerEpoch(ref mut v) => to_json!(prefix, value => v),
             XStakingValidatorStakeThreshold(ref mut v) => to_json!(prefix, value => v),
             XStakingCurrentEra(ref mut v) => to_json!(prefix, value => v),
+            XStakingDistributionRatio(ref mut v) => to_json!(prefix, value => v),
             XStakingNextSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
             XStakingLastEraLengthChange(ref mut v) => to_json!(prefix, value => v),
             XStakingForcingNewEra(ref mut v) => to_json!(prefix, value => v),

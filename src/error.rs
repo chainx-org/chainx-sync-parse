@@ -1,8 +1,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use failure::{Backtrace, Context};
-use failure_derive::Fail;
+use failure::{Backtrace, Context, Fail};
 
 #[derive(Debug)]
 pub struct Error {

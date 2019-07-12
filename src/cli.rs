@@ -77,3 +77,7 @@ pub struct CliConfig {
     )]
     pub sync_redis_url: String,
 }
+
+pub fn init() -> CliConfig {
+    CliConfig::from_args()
+}

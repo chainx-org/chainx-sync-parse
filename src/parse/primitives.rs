@@ -1,6 +1,5 @@
-use parity_codec::Codec;
-use parity_codec_derive::{Decode, Encode};
-use serde_derive::{Deserialize, Serialize};
+use parity_codec::{Codec, Decode, Encode};
+use serde::{Deserialize, Serialize};
 
 use sr_primitives::traits::Verify;
 

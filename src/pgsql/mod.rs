@@ -37,13 +37,11 @@ pub fn insert_block_into_pgsql(conn: &PgConnection, h: u64, stat: &HashMap<Vec<u
     let actual_size = insert_block(conn, new_blocks);
     if actual_size != expect_size {
         warn!(
-            target: "parse",
             "PostgreSQL: insert size (actual/expect) - ({}/{})",
             actual_size, expect_size
         );
     } else {
         info!(
-            target: "parse",
             "PostgreSQL: insert all blocks with height #{} successfully",
             h
         );

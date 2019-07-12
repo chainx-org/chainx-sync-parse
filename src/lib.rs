@@ -4,8 +4,9 @@ extern crate log;
 #[macro_use]
 extern crate diesel;
 
-mod cli;
+pub mod cli;
 mod error;
+pub mod logger;
 mod parse;
 #[cfg(feature = "pgsql")]
 mod pgsql;
