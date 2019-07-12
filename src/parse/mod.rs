@@ -122,8 +122,10 @@ pub enum RuntimeStorage {
     #[strum(serialize = "XAccounts CouncilAddress", props(r#type = "value"))]
     XAccountsCouncilAddress(AccountId),
     // xfee ---------------------------------------------------------------------------------------
-    #[strum(serialize = "XFeeManager Switch", props(r#type = "value"))]
-    XFeeManagerSwitch(SwitchStore),
+    #[strum(serialize = "XFeeManager Switcher", props(r#type = "value"))]
+    XFeeManagerSwitcher(BTreeMap<CallSwitcher, bool>),
+    #[strum(serialize = "XFeeManager MethodCallWeight", props(r#type = "value"))]
+    XFeeManagerMethodCallWeight(BTreeMap<XString, u64>),
     #[strum(serialize = "XFeeManager ProducerFeeProportion", props(r#type = "value"))]
     XFeeManagerProducerFeeProportion((u32, u32)),
     #[strum(serialize = "XFeeManager TransactionBaseFee", props(r#type = "value"))]
@@ -346,7 +348,8 @@ impl RuntimeStorage {
             XAccountsTeamAddress(ref mut v) => to_json!(prefix, value => v),
             XAccountsCouncilAddress(ref mut v) => to_json!(prefix, value => v),
             // xfee/manager
-            XFeeManagerSwitch(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerSwitcher(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerMethodCallWeight(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerProducerFeeProportion(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerTransactionBaseFee(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerTransactionByteFee(ref mut v) => to_json!(prefix, value => v),

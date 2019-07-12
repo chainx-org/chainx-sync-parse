@@ -77,13 +77,20 @@ where
 // xfee/manager types.
 // ============================================================================
 
-#[derive(PartialEq, Eq, Clone, Copy, Default, Encode, Decode)]
+#[derive(PartialEq, PartialOrd, Ord, Eq, Clone, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct SwitchStore {
-    pub global: bool,
-    pub spot: bool,
-    pub xbtc: bool,
-    pub sdot: bool,
+pub enum CallSwitcher {
+    Global,
+    Spot,
+    XBTC,
+    XBTCLockup,
+    SDOT,
+}
+
+impl Default for CallSwitcher {
+    fn default() -> Self {
+        CallSwitcher::Global
+    }
 }
 
 // ============================================================================
