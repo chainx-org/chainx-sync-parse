@@ -10,6 +10,7 @@ use crate::types::{btc, Bytes, NodeT};
 // ================================================================================================
 
 pub use substrate_primitives::H256;
+pub use substrate_primitives::H512;
 
 // ================================================================================================
 // ChainX primitives.
@@ -63,14 +64,17 @@ pub type URL = XString;
 /// Intention mutable properties
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct IntentionProps<SessionKey>
+pub struct IntentionProps<SessionKey, BlockNumber>
 where
     SessionKey: Clone + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
 {
     pub url: URL,
     pub is_active: bool,
     pub about: XString,
     pub session_key: Option<SessionKey>,
+    pub registered_at: BlockNumber,
+    pub last_inactive_since: BlockNumber,
 }
 
 // ============================================================================
@@ -107,7 +111,6 @@ pub enum Chain {
     ChainX,
     Bitcoin,
     Ethereum,
-    Polkadot,
 }
 
 impl Default for Chain {
@@ -142,6 +145,17 @@ impl Default for AssetType {
     fn default() -> Self {
         AssetType::Free
     }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum AssetLimit {
+    CanMove,
+    CanTransfer,
+    CanDeposit,
+    CanWithdraw,
+    CanDestroyWithdrawal,
+    CanDestroyFree,
 }
 
 // ============================================================================
@@ -278,6 +292,13 @@ impl Default for AddrType {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub enum MultiSigPermission {
+    ConfirmOnly,
+    ConfirmAndPropose,
+}
+
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct AddrInfo<AccountId>
@@ -286,7 +307,7 @@ where
 {
     pub addr_type: AddrType,
     pub required_num: u32,
-    pub owner_list: Vec<(AccountId, bool)>,
+    pub owner_list: Vec<(AccountId, MultiSigPermission)>,
 }
 
 // ============================================================================
@@ -311,8 +332,8 @@ pub struct CurrencyPair(pub Token, pub Token);
 pub struct TradingPair {
     pub id: TradingPairIndex,
     pub currency_pair: CurrencyPair,
-    pub precision: u32,
-    pub unit_precision: u32,
+    pub pip_precision: u32,
+    pub tick_precision: u32,
     pub online: bool,
 }
 
@@ -426,6 +447,8 @@ pub enum TxType {
     Deposit,
     HotAndCold,
     TrusteeTransition,
+    Lock,
+    Unlock,
     Irrelevance,
 }
 
