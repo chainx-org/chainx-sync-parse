@@ -43,13 +43,12 @@ impl Context {
             self.prefixes.clear();
             self.prefixes.extend(prefixes);
             info!(
-                target: "parse",
                 "New version: [{}], Updated prefixes: [{:?}]",
                 &self.version, &self.prefixes
             );
         } else {
             self.prefixes.extend(prefixes);
-            info!(target: "parse", "Updated prefixes: [{:?}]", &self.prefixes);
+            info!("Updated prefixes: [{:?}]", &self.prefixes);
         }
     }
 }
@@ -96,13 +95,16 @@ impl RegisterService {
     fn spawn_new_push(&self, url: String, ctxt: RegisterContext, tx: PushSender) {
         let queue = self.block_queue.clone();
         let client = PushClient::new(url);
-        info!(target: "parse", "Register: start push thread of url: [{}]", &client.url);
+        info!("Register: start push thread of url: [{}]", &client.url);
 
         thread::spawn(move || 'outer: loop {
             if ctxt.lock().deregister {
                 tx.send(NotifyData::Deregister(client.url.clone()))
                     .expect("Unable to send context");
-                info!(target: "parse", "Deregister: [{}] 's push thread will terminate", &client.url);
+                info!(
+                    "Deregister: [{}] 's push thread will terminate",
+                    &client.url
+                );
                 break 'outer;
             }
             // Ensure that there is at least one block in the queue.
@@ -121,7 +123,6 @@ impl RegisterService {
                     tx.send(NotifyData::Abnormal(client.url.clone()))
                         .expect("Unable to send context");
                     warn!(
-                        target: "parse",
                         "Post abnormal: [{}] 's push thread will terminate",
                         &client.url
                     );
@@ -140,14 +141,14 @@ impl RegisterService {
         let queue = self.block_queue.clone();
         let map = self.map.clone();
         thread::spawn(move || {
-            info!(target: "parse", "Register service starts thread for removing block from queue");
+            info!("Register service starts thread for removing block from queue");
             let mut stat = HashMap::new();
             loop {
                 match rx.try_recv() {
                     Ok(data) => remove_block_from_queue(&queue, &mut stat, &map, data),
                     Err(TryRecvError::Empty) => thread::sleep(Duration::from_millis(50)),
                     Err(TryRecvError::Disconnected) => {
-                        error!(target: "parse", "Register: remove block thread terminated");
+                        error!("Register: remove block thread terminated");
                         break;
                     }
                 }
@@ -169,13 +170,13 @@ fn remove_block_from_queue(
                 .or_insert(push_height);
         }
         NotifyData::Abnormal(url) => {
-            info!(target: "parse", "Abnormal, remove register [{}]", &url);
+            info!("Abnormal, remove register [{}]", &url);
             stat.remove(&url);
             map.write().remove(&url);
             return;
         }
         NotifyData::Deregister(url) => {
-            info!(target: "parse", "Deregister, remove register [{}]", &url);
+            info!("Deregister, remove register [{}]", &url);
             stat.remove(&url);
             map.write().remove(&url);
             return;
@@ -194,7 +195,7 @@ fn remove_block_from_queue(
 
     for h in min_block_height..=min_push_height {
         info!(
-            target: "parse",
+
             "Block queue status: queue_len [{}], min_height [{}], push_height [{}], max_height [{}]",
             queue_len, min_block_height, min_push_height, max_block_height,
         );

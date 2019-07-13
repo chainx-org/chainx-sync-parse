@@ -39,7 +39,7 @@ impl Tail {
         let mut tail_impl = TailImpl::new(tx, config)?;
         let handle = thread::spawn(move || {
             tail_impl.run();
-            error!(target: "parse", "Tail thread exists abnormally");
+            error!("Tail thread exists abnormally");
         });
         Ok(handle)
     }
@@ -64,7 +64,7 @@ pub struct TailImpl {
 
 impl TailImpl {
     pub fn new(tx: mpsc::Sender<StorageData>, config: &CliConfig) -> Result<Self> {
-        info!(target: "parse", "Start reading sync log [path: {:?}]", &config.sync_log_path);
+        info!("Start reading sync log [path: {:?}]", &config.sync_log_path);
         let sync_log_file = read_sync_log_file(&config.sync_log_path)?;
         let reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
         let line = Vec::with_capacity(BUFFER_SIZE);
@@ -88,7 +88,7 @@ impl TailImpl {
                 Ok(0) => {
                     if self.should_rotate() {
                         if let Err(e) = self.rotate() {
-                            error!(target: "parse", "Failed to rotate sync log: {:?}", e);
+                            error!("Failed to rotate sync log: {:?}", e);
                         }
                     }
                     thread::sleep(Duration::from_secs(1));
@@ -98,9 +98,7 @@ impl TailImpl {
                     self.counter = 0;
                     self.filter_send();
                 }
-                Err(err) => {
-                    error!(target: "parse", "Failed to read the sync logs in buffer: {:?}", err)
-                }
+                Err(err) => error!("Failed to read the sync logs in buffer: {:?}", err),
             }
         }
     }
@@ -141,10 +139,10 @@ impl TailImpl {
 
     /// Rotate the current file.
     fn rotate(&mut self) -> Result<()> {
-        info!(target: "parse", "Start rotating sync log");
+        info!("Start rotating sync log");
         let sync_log_file = read_sync_log_file(&self.sync_log_path)?;
         self.reader = BufReader::with_capacity(10 * BUFFER_SIZE, sync_log_file);
-        info!(target: "parse", "Finish rotating sync log");
+        info!("Finish rotating sync log");
         Ok(())
     }
 
@@ -152,7 +150,7 @@ impl TailImpl {
         if let Some(data) = self.filter_line() {
             let height = data.0;
             if height > self.stop_height {
-                warn!(target: "parse", "Finish scanning, the process will EXIT in 10s...");
+                warn!("Finish scanning, the process will EXIT in 10s...");
                 thread::sleep(Duration::from_secs(5));
                 std::process::exit(0);
             }
@@ -197,7 +195,6 @@ fn decode_hex(name: &str, height: u64, cap: &[u8]) -> Vec<u8> {
 
 fn record_sync_log(height: u64, key: &[u8], value: &[u8]) {
     debug!(
-        target: "msgbus",
         "msgbus|height:[{}]|key:[{}]|value:[{}]",
         height,
         hex::encode(key),

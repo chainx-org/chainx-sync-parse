@@ -29,12 +29,12 @@ impl RegisterApi for RegisterService {
         let version = Version::parse(&version)?;
         match self.map.write().entry(url.clone()) {
             Entry::Occupied(mut entry) => {
-                info!(target: "parse", "Existing Register [{}]", register_info);
+                info!("Existing Register [{}]", register_info);
                 let ctxt = entry.get_mut();
                 ctxt.lock().update_prefixes(prefixes, version);
             }
             Entry::Vacant(entry) => {
-                info!(target: "parse", "New Register [{}]", register_info);
+                info!("New Register [{}]", register_info);
                 let tx = self.tx.lock().clone();
                 let ctxt = Arc::new(Mutex::new(Context::new(prefixes, version)));
                 self.spawn_new_push(url, ctxt.clone(), tx);
@@ -47,7 +47,7 @@ impl RegisterApi for RegisterService {
     fn deregister(&self, url: String) -> Result<String> {
         match self.map.write().entry(url.clone()) {
             Entry::Occupied(mut entry) => {
-                info!(target: "parse", "Deregister [{}]", url);
+                info!("Deregister [{}]", url);
                 let ctxt = entry.get_mut();
                 ctxt.lock().deregister = true;
                 Ok("OK".to_string())
@@ -73,6 +73,6 @@ pub fn start_http_rpc_server(
             jsonrpc_http_server::AccessControlAllowOrigin::Any,
         ]))
         .start_http(&url.parse()?)?;
-    info!(target: "parse", "Start http rpc server on: {:?}", url);
+    info!("Start http rpc server on: {:?}", url);
     Ok(server)
 }

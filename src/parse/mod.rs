@@ -24,7 +24,7 @@ mod macros {
                     Some(key) => key,
                     None => {
                         let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                        error!(target: "parse", "Runtime storage parse error: {:?}", err);
+                        error!("Runtime storage parse error: {:?}", err);
                         return Err(err.into());
                     }
                 };
@@ -36,14 +36,14 @@ mod macros {
     macro_rules! to_json_impl {
         ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
             if $value.is_empty() {
-                debug!(target: "parse", "Empty Value: [{:?}] may have been removed", $prefix);
+                debug!("Empty Value: [{:?}] may have been removed", $prefix);
                 return Ok(build_json!($type, $prefix, $k, null));
             }
             *$v = match Decode::decode(&mut $value.as_slice()) {
                 Some(value) => value,
                 None => {
                     let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    error!(target: "parse", "Runtime storage parse error: {:?}", err);
+                    error!("Runtime storage parse error: {:?}", err);
                     return Err(err.into());
                 }
             };
@@ -98,10 +98,10 @@ pub enum RuntimeStorage {
     SessionCurrentIndex(BlockNumber),
     #[strum(serialize = "Session CurrentStart", props(r#type = "value"))]
     SessionCurrentStart(Timestamp),
+    #[strum(serialize = "Session SessionTotalMissedBlocksCount", props(r#type = "value"))]
+    SessionSessionTotalMissedBlocksCount(u32),
     #[strum(serialize = "Session ForcingNewSession", props(r#type = "value"))]
     SessionForcingNewSession(bool),
-    #[strum(serialize = "Session NextKeyFor", props(r#type = "map"))]
-    SessionNextKeyFor(AccountId, SessionKey),
     // ============================================================================================
     // ChainX
     // ============================================================================================
@@ -116,14 +116,16 @@ pub enum RuntimeStorage {
     #[strum(serialize = "XAccounts IntentionNameOf", props(r#type = "map"))]
     XAccountsIntentionNameOf(AccountId, Name),
     #[strum(serialize = "XAccounts IntentionPropertiesOf", props(r#type = "map"))]
-    XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey>),
+    XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey, BlockNumber>),
     #[strum(serialize = "XAccounts TeamAddress", props(r#type = "value"))]
     XAccountsTeamAddress(AccountId),
     #[strum(serialize = "XAccounts CouncilAddress", props(r#type = "value"))]
     XAccountsCouncilAddress(AccountId),
     // xfee ---------------------------------------------------------------------------------------
-    #[strum(serialize = "XFeeManager Switch", props(r#type = "value"))]
-    XFeeManagerSwitch(SwitchStore),
+    #[strum(serialize = "XFeeManager Switcher", props(r#type = "value"))]
+    XFeeManagerSwitcher(BTreeMap<CallSwitcher, bool>),
+    #[strum(serialize = "XFeeManager MethodCallWeight", props(r#type = "value"))]
+    XFeeManagerMethodCallWeight(BTreeMap<XString, u64>),
     #[strum(serialize = "XFeeManager ProducerFeeProportion", props(r#type = "value"))]
     XFeeManagerProducerFeeProportion((u32, u32)),
     #[strum(serialize = "XFeeManager TransactionBaseFee", props(r#type = "value"))]
@@ -136,6 +138,8 @@ pub enum RuntimeStorage {
     XAssetsAssetList(Chain, Vec<Token>),
     #[strum(serialize = "XAssets AssetInfo", props(r#type = "map"))]
     XAssetsAssetInfo(Token, (Asset, bool, BlockNumber)),
+    #[strum(serialize = "XAssets AssetLimitProps", props(r#type = "map"))]
+    XAssetsAssetLimitProps(Token, BTreeMap<AssetLimit, bool>),
     #[strum(serialize = "XAssets AssetBalance", props(r#type = "map"))]
     XAssetsAssetBalance((AccountId, Token), BTreeMap<AssetType, Balance>),
     #[strum(serialize = "XAssets TotalAssetBalance", props(r#type = "map"))]
@@ -151,6 +155,11 @@ pub enum RuntimeStorage {
     XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance, Timestamp>>),
     #[strum(serialize = "XAssetsRecords SerialNumber", props(r#type = "value"))]
     XAssetsRecordsSerialNumber(u32),
+    // xfisher ------------------------------------------------------------------------------------
+    #[strum(serialize = "XFisher Reported", props(r#type = "map"))]
+    XFisherReported(H512, ()),
+    #[strum(serialize = "XFisher Fishermen", props(r#type = "value"))]
+    XFisherFishermen(Vec<AccountId>),
     // xmining ------------------------------------------------------------------------------------
     // XStaking
     #[strum(serialize = "XStaking InitialReward", props(r#type = "value"))]
@@ -165,12 +174,14 @@ pub enum RuntimeStorage {
     XStakingBondingDuration(BlockNumber),
     #[strum(serialize = "XStaking IntentionBondingDuration", props(r#type = "value"))]
     XStakingIntentionBondingDuration(BlockNumber),
+    #[strum(serialize = "XStaking MaximumIntentionCount", props(r#type = "value"))]
+    XStakingMaximumIntentionCount(u32),
     #[strum(serialize = "XStaking SessionsPerEpoch", props(r#type = "value"))]
     XStakingSessionsPerEpoch(BlockNumber),
-    #[strum(serialize = "XStaking ValidatorStakeThreshold", props(r#type = "value"))]
-    XStakingValidatorStakeThreshold(Balance),
     #[strum(serialize = "XStaking CurrentEra", props(r#type = "value"))]
     XStakingCurrentEra(BlockNumber),
+    #[strum(serialize = "XStaking DistributionRatio", props(r#type = "value"))]
+    XStakingDistributionRatio((u32, u32)),
     #[strum(serialize = "XStaking NextSessionsPerEra", props(r#type = "value"))]
     XStakingNextSessionsPerEra(BlockNumber),
     #[strum(serialize = "XStaking LastEraLengthChange", props(r#type = "value"))]
@@ -183,12 +194,16 @@ pub enum RuntimeStorage {
     XStakingIntentions(AccountId, IntentionProfs<Balance, BlockNumber>),
     #[strum(serialize = "XStaking NominationRecords", props(r#type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
+    #[strum(serialize = "XStaking EvilValidatorsPerSession", props(r#type = "value"))]
+    XStakingEvilValidatorsPerSession(Vec<AccountId>),
     #[strum(serialize = "XStaking MinimumPenalty", props(r#type = "value"))]
     XStakingMinimumPenalty(Balance),
     #[strum(serialize = "XStaking OfflineValidatorsPerSession", props(r#type = "value"))]
     XStakingOfflineValidatorsPerSession(Vec<AccountId>),
     #[strum(serialize = "XStaking MissedOfPerSession", props(r#type = "map"))]
     XStakingMissedOfPerSession(AccountId, u32),
+    #[strum(serialize = "XStaking MissedBlockSeverity", props(r#type = "value"))]
+    XStakingMissedBlockSeverity(u32),
     // XTokens
     #[strum(serialize = "XTokens TokenDiscount", props(r#type = "map"))]
     XTokensTokenDiscount(Token, u32),
@@ -198,6 +213,8 @@ pub enum RuntimeStorage {
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<BlockNumber>),
     #[strum(serialize = "XTokens DepositRecords", props(r#type = "map"))]
     XTokensDepositRecords((AccountId, Token), DepositVoteWeight<BlockNumber>),
+    #[strum(serialize = "XTokens DepositReward", props(r#type = "value"))]
+    XTokensDepositReward(Balance),
     // xmultisig ----------------------------------------------------------------------------------
     #[strum(serialize = "XMultiSig RootAddrList", props(r#type = "value"))]
     XMultiSigRootAddrList(Vec<AccountId>),
@@ -230,6 +247,9 @@ pub enum RuntimeStorage {
     #[strum(serialize = "XSpot PriceVolatility", props(r#type = "value"))]
     XSpotPriceVolatility(u32),
     // xbridge ------------------------------------------------------------------------------------
+    // common
+    #[strum(serialize = "XBridgeCommon CrossChainBinding", props(r#type = "map"))]
+    XBridgeCommonCrossChainBinding((Token, AccountId), AccountId),
     // BTC
     #[strum(serialize = "XBridgeOfBTC BestIndex", props(r#type = "value"))]
     XBridgeOfBTCBestIndex(H256),
@@ -239,6 +259,8 @@ pub enum RuntimeStorage {
     XBridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
     #[strum(serialize = "XBridgeOfBTC TxFor", props(r#type = "map"))]
     XBridgeOfBTCTxFor(H256, TxInfo),
+    #[strum(serialize = "XBridgeOfBTC TxMarkFor", props(r#type = "map"))]
+    XBridgeOfBTCTxMarkFor(H256, ()),
     #[strum(serialize = "XBridgeOfBTC InputAddrFor", props(r#type = "map"))]
     XBridgeOfBTCInputAddrFor(H256, btc::Address),
     #[strum(serialize = "XBridgeOfBTC PendingDepositMap", props(r#type = "map"))]
@@ -257,8 +279,17 @@ pub enum RuntimeStorage {
     XBridgeOfBTCConfirmationNumber(u32),
     #[strum(serialize = "XBridgeOfBTC BtcWithdrawalFee", props(r#type = "value"))]
     XBridgeOfBTCBtcWithdrawalFee(u64),
+    #[strum(serialize = "XBridgeOfBTC BtcMinDeposit", props(r#type = "value"))]
+    XBridgeOfBTCBtcMinDeposit(u64),
     #[strum(serialize = "XBridgeOfBTC MaxWithdrawalCount", props(r#type = "value"))]
     XBridgeOfBTCMaxWithdrawalCount(u32),
+    // BTC lockup
+    #[strum(serialize = "XBridgeOfBTCLockup LockedUpBTC", props(r#type = "map"))]
+    XBridgeOfBTCLockupLockedUpBTC((H256, u32), (AccountId, u64, btc::Address)),
+    #[strum(serialize = "XBridgeOfBTCLockup AddressLockedCoin", props(r#type = "map"))]
+    XBridgeOfBTCLockupAddressLockedCoin(btc::Address, u64),
+    #[strum(serialize = "XBridgeOfBTCLockup LockedCoinLimit", props(r#type = "value"))]
+    XBridgeOfBTCLockupLockedCoinLimit((u64, u64)),
     // SDOT
     #[strum(serialize = "XBridgeOfSDOT Claims", props(r#type = "map"))]
     XBridgeOfSDOTClaims(EthereumAddress, Balance),
@@ -294,7 +325,7 @@ impl RuntimeStorage {
                 return Ok((prefix, json));
             }
         }
-        debug!(target: "parse", "Runtime storage parse: No matching key found");
+        debug!("Runtime storage parse: No matching key found");
         Err("No matching key found".into())
     }
 
@@ -303,7 +334,7 @@ impl RuntimeStorage {
             Some("map") | Some("linked_map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
-                error!(target: "parse", "Runtime storage parse: get storage type failed");
+                error!("Runtime storage parse: get storage type failed");
                 return Err("Invalid storage type".into());
             }
         };
@@ -331,8 +362,8 @@ impl RuntimeStorage {
             SessionSessionLength(ref mut v) => to_json!(prefix, value => v),
             SessionCurrentIndex(ref mut v) => to_json!(prefix, value => v),
             SessionCurrentStart(ref mut v) => to_json!(prefix, value => v),
+            SessionSessionTotalMissedBlocksCount(ref mut v) => to_json!(prefix, value => v),
             SessionForcingNewSession(ref mut v) => to_json!(prefix, value => v),
-            SessionNextKeyFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             // ChainX =============================================================================
             // xsystem
             XSystemBlockProducer(ref mut v) => to_json!(prefix, value => v),
@@ -344,13 +375,15 @@ impl RuntimeStorage {
             XAccountsTeamAddress(ref mut v) => to_json!(prefix, value => v),
             XAccountsCouncilAddress(ref mut v) => to_json!(prefix, value => v),
             // xfee/manager
-            XFeeManagerSwitch(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerSwitcher(ref mut v) => to_json!(prefix, value => v),
+            XFeeManagerMethodCallWeight(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerProducerFeeProportion(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerTransactionBaseFee(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerTransactionByteFee(ref mut v) => to_json!(prefix, value => v),
             // xassets/assets
             XAssetsAssetList(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAssetsAssetInfo(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XAssetsAssetLimitProps(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAssetsAssetBalance(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAssetsTotalAssetBalance(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAssetsMemoLen(ref mut v) => to_json!(prefix, value => v),
@@ -359,6 +392,9 @@ impl RuntimeStorage {
             XAssetsRecordsApplicationMTail(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAssetsRecordsApplicationMap(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAssetsRecordsSerialNumber(ref mut v) => to_json!(prefix, value => v),
+            // xfisher
+            XFisherReported(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XFisherFishermen(ref mut v) => to_json!(prefix, value => v),
             // xmining/staking
             XStakingInitialReward(ref mut v) => to_json!(prefix, value => v),
             XStakingValidatorCount(ref mut v) => to_json!(prefix, value => v),
@@ -366,23 +402,27 @@ impl RuntimeStorage {
             XStakingSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
             XStakingBondingDuration(ref mut v) => to_json!(prefix, value => v),
             XStakingIntentionBondingDuration(ref mut v) => to_json!(prefix, value => v),
+            XStakingMaximumIntentionCount(ref mut v) => to_json!(prefix, value => v),
             XStakingSessionsPerEpoch(ref mut v) => to_json!(prefix, value => v),
-            XStakingValidatorStakeThreshold(ref mut v) => to_json!(prefix, value => v),
             XStakingCurrentEra(ref mut v) => to_json!(prefix, value => v),
+            XStakingDistributionRatio(ref mut v) => to_json!(prefix, value => v),
             XStakingNextSessionsPerEra(ref mut v) => to_json!(prefix, value => v),
             XStakingLastEraLengthChange(ref mut v) => to_json!(prefix, value => v),
             XStakingForcingNewEra(ref mut v) => to_json!(prefix, value => v),
             XStakingStakeWeight(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingIntentions(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingNominationRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingEvilValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
             XStakingMinimumPenalty(ref mut v) => to_json!(prefix, value => v),
             XStakingOfflineValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
             XStakingMissedOfPerSession(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
-            // // xmining/tokens
+            XStakingMissedBlockSeverity(ref mut v) => to_json!(prefix, value => v),
+            // xmining/tokens
             XTokensTokenDiscount(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensPseduIntentions(ref mut v) => to_json!(prefix, value => v),
             XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensDepositRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XTokensDepositReward(ref mut v) => to_json!(prefix, value => v),
             // xmultisig
             XMultiSigRootAddrList(ref mut v) => to_json!(prefix, value => v),
             XMultiSigMultiSigAddrInfo(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
@@ -399,11 +439,14 @@ impl RuntimeStorage {
             XSpotQuotationsOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XSpotHandicapOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XSpotPriceVolatility(ref mut v) => to_json!(prefix, value => v),
-            // xbridge/bitcoin
+            // xbridge/common
+            XBridgeCommonCrossChainBinding(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            // xbridge/btc
             XBridgeOfBTCBestIndex(ref mut v) => to_json!(prefix, value => v),
             XBridgeOfBTCBlockHashFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XBridgeOfBTCBlockHeaderFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XBridgeOfBTCTxFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCTxMarkFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XBridgeOfBTCInputAddrFor(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XBridgeOfBTCPendingDepositMap(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XBridgeOfBTCCurrentWithdrawalProposal(ref mut v) => to_json!(prefix, value => v),
@@ -413,7 +456,12 @@ impl RuntimeStorage {
             XBridgeOfBTCReservedBlock(ref mut v) => to_json!(prefix, value => v),
             XBridgeOfBTCConfirmationNumber(ref mut v) => to_json!(prefix, value => v),
             XBridgeOfBTCBtcWithdrawalFee(ref mut v) => to_json!(prefix, value => v),
+            XBridgeOfBTCBtcMinDeposit(ref mut v) => to_json!(prefix, value => v),
             XBridgeOfBTCMaxWithdrawalCount(ref mut v) => to_json!(prefix, value => v),
+            // xbridge/btc lockup
+            XBridgeOfBTCLockupLockedUpBTC(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCLockupAddressLockedCoin(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XBridgeOfBTCLockupLockedCoinLimit(ref mut v) => to_json!(prefix, value => v),
             // xbridge/sdot
             XBridgeOfSDOTClaims(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XBridgeOfSDOTTotal(ref mut v) => to_json!(prefix, value => v),
