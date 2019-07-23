@@ -30,7 +30,7 @@ fn init_log4rs_with_config(conf: &CliConfig) -> Result<()> {
         .build();
 
     let trigger = policy::compound::trigger::size::SizeTrigger::new(conf.parse_roll_size * MB_SIZE);
-    let roll_pattern = format!("{:?}.{{}}.gz", conf.parse_log_path);
+    let roll_pattern = format!("{}.{{}}.gz", conf.parse_log_path.display());
     let roll = policy::compound::roll::fixed_window::FixedWindowRoller::builder()
         .build(roll_pattern.as_str(), conf.parse_roll_count)
         .expect("Building fixed window roller should't be fail");
