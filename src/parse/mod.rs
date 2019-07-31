@@ -194,8 +194,14 @@ pub enum RuntimeStorage {
     XStakingIntentions(AccountId, IntentionProfs<Balance, BlockNumber>),
     #[strum(serialize = "XStaking NominationRecords", props(r#type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
+    #[strum(serialize = "XStaking UpperBoundFactor", props(r#type = "value"))]
+    XStakingUpperBoundFactor(u32),
     #[strum(serialize = "XStaking EvilValidatorsPerSession", props(r#type = "value"))]
     XStakingEvilValidatorsPerSession(Vec<AccountId>),
+    #[strum(serialize = "XStaking LastRenominationOf", props(r#type = "map"))]
+    XStakingLastRenominationOf(AccountId, BlockNumber),
+    #[strum(serialize = "XStaking MaxUnbondEntriesPerIntention", props(r#type = "value"))]
+    XStakingMaxUnbondEntriesPerIntention(u32),
     #[strum(serialize = "XStaking MinimumPenalty", props(r#type = "value"))]
     XStakingMinimumPenalty(Balance),
     #[strum(serialize = "XStaking OfflineValidatorsPerSession", props(r#type = "value"))]
@@ -209,6 +215,10 @@ pub enum RuntimeStorage {
     XTokensTokenDiscount(Token, u32),
     #[strum(serialize = "XTokens PseduIntentions", props(r#type = "value"))]
     XTokensPseduIntentions(Vec<Token>),
+    #[strum(serialize = "XTokens ClaimRestrictionOf", props(r#type = "map"))]
+    XTokensClaimRestrictionOf(Token, (u32, BlockNumber)),
+    #[strum(serialize = "XTokens LastClaimOf", props(r#type = "map"))]
+    XTokensLastClaimOf((AccountId, Token), BlockNumber),
     #[strum(serialize = "XTokens PseduIntentionProfiles", props(r#type = "map"))]
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<BlockNumber>),
     #[strum(serialize = "XTokens DepositRecords", props(r#type = "map"))]
@@ -412,7 +422,10 @@ impl RuntimeStorage {
             XStakingStakeWeight(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingIntentions(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingNominationRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingUpperBoundFactor(ref mut v) => to_json!(prefix, value => v),
             XStakingEvilValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
+            XStakingLastRenominationOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingMaxUnbondEntriesPerIntention(ref mut v) => to_json!(prefix, value => v),
             XStakingMinimumPenalty(ref mut v) => to_json!(prefix, value => v),
             XStakingOfflineValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
             XStakingMissedOfPerSession(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
@@ -420,6 +433,8 @@ impl RuntimeStorage {
             // xmining/tokens
             XTokensTokenDiscount(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensPseduIntentions(ref mut v) => to_json!(prefix, value => v),
+            XTokensClaimRestrictionOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XTokensLastClaimOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensDepositRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensDepositReward(ref mut v) => to_json!(prefix, value => v),
