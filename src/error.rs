@@ -3,6 +3,8 @@ use std::fmt;
 
 use failure::{Backtrace, Context, Fail};
 
+pub type Result<T> = ::std::result::Result<T, Error>;
+
 #[derive(Debug)]
 pub struct Error {
     inner: Context<ErrorKind>,
@@ -138,8 +140,6 @@ impl From<semver::SemVerError> for Error {
         Error::from(ErrorKind::SemVer(err))
     }
 }
-
-pub type Result<T> = ::std::result::Result<T, Error>;
 
 const ERROR: i64 = 10000;
 

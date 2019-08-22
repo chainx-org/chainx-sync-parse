@@ -1,6 +1,6 @@
 [package]
 name = "chainx-sync-parse"
-version = "1.0.5"
+version = "1.0.6"
 authors = ["ChainX <https://chainx.org>"]
 edition = "2018"
 build = "build.rs"
