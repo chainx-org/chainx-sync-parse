@@ -234,6 +234,19 @@ where
     pub last_total_vote_weight_update: BlockNumber,
 }
 
+/// Intention mutable properties v1
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct IntentionProfsV1<Balance, BlockNumber>
+where
+    Balance: Copy + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
+{
+    pub total_nomination: Balance,
+    pub last_total_vote_weight: u128,
+    pub last_total_vote_weight_update: BlockNumber,
+}
+
 /// Nomination record of one of the nominator's nominations.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -244,6 +257,20 @@ where
 {
     pub nomination: Balance,
     pub last_vote_weight: u64,
+    pub last_vote_weight_update: BlockNumber,
+    pub revocations: Vec<(BlockNumber, Balance)>,
+}
+
+/// Nomination record v1 of one of the nominator's nominations.
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct NominationRecordV1<Balance, BlockNumber>
+where
+    Balance: Copy + Default + Codec,
+    BlockNumber: Copy + Default + Codec,
+{
+    pub nomination: Balance,
+    pub last_vote_weight: u128,
     pub last_vote_weight_update: BlockNumber,
     pub revocations: Vec<(BlockNumber, Balance)>,
 }
@@ -266,11 +293,31 @@ where
 
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct PseduIntentionVoteWeightV1<BlockNumber>
+    where
+        BlockNumber: Copy + Default + Codec,
+{
+    pub last_total_deposit_weight: u128,
+    pub last_total_deposit_weight_update: BlockNumber,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositVoteWeight<BlockNumber>
 where
     BlockNumber: Copy + Default + Codec,
 {
     pub last_deposit_weight: u64,
+    pub last_deposit_weight_update: BlockNumber,
+}
+
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct DepositVoteWeightV1<BlockNumber>
+    where
+        BlockNumber: Copy + Default + Codec,
+{
+    pub last_deposit_weight: u128,
     pub last_deposit_weight_update: BlockNumber,
 }
 

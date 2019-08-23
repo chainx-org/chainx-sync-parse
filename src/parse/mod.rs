@@ -121,6 +121,8 @@ pub enum RuntimeStorage {
     XAccountsTeamAddress(AccountId),
     #[strum(serialize = "XAccounts CouncilAddress", props(r#type = "value"))]
     XAccountsCouncilAddress(AccountId),
+    #[strum(serialize = "XAccounts BlockedAccounts", props(r#type = "value"))]
+    XAccountsBlockedAccounts(Vec<AccountId>),
     // xfee ---------------------------------------------------------------------------------------
     #[strum(serialize = "XFeeManager Switcher", props(r#type = "value"))]
     XFeeManagerSwitcher(BTreeMap<CallSwitcher, bool>),
@@ -192,8 +194,12 @@ pub enum RuntimeStorage {
     XStakingStakeWeight(AccountId, Balance),
     #[strum(serialize = "XStaking Intentions", props(r#type = "linked_map"))]
     XStakingIntentions(AccountId, IntentionProfs<Balance, BlockNumber>),
+    #[strum(serialize = "XStaking IntentionsV1", props(r#type = "linked_map"))]
+    XStakingIntentionsV1(AccountId, IntentionProfsV1<Balance, BlockNumber>),
     #[strum(serialize = "XStaking NominationRecords", props(r#type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
+    #[strum(serialize = "XStaking NominationRecordsV1", props(r#type = "map"))]
+    XStakingNominationRecordsV1((AccountId, AccountId), NominationRecordV1<Balance, BlockNumber>),
     #[strum(serialize = "XStaking UpperBoundFactor", props(r#type = "value"))]
     XStakingUpperBoundFactor(u32),
     #[strum(serialize = "XStaking EvilValidatorsPerSession", props(r#type = "value"))]
@@ -221,8 +227,12 @@ pub enum RuntimeStorage {
     XTokensLastClaimOf((AccountId, Token), BlockNumber),
     #[strum(serialize = "XTokens PseduIntentionProfiles", props(r#type = "map"))]
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<BlockNumber>),
+    #[strum(serialize = "XTokens PseduIntentionProfilesV1", props(r#type = "map"))]
+    XTokensPseduIntentionProfilesV1(Token, PseduIntentionVoteWeightV1<BlockNumber>),
     #[strum(serialize = "XTokens DepositRecords", props(r#type = "map"))]
     XTokensDepositRecords((AccountId, Token), DepositVoteWeight<BlockNumber>),
+    #[strum(serialize = "XTokens DepositRecordsV1", props(r#type = "map"))]
+    XTokensDepositRecordsV1((AccountId, Token), DepositVoteWeightV1<BlockNumber>),
     #[strum(serialize = "XTokens DepositReward", props(r#type = "value"))]
     XTokensDepositReward(Balance),
     // xmultisig ----------------------------------------------------------------------------------
@@ -384,6 +394,7 @@ impl RuntimeStorage {
             XAccountsIntentionPropertiesOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XAccountsTeamAddress(ref mut v) => to_json!(prefix, value => v),
             XAccountsCouncilAddress(ref mut v) => to_json!(prefix, value => v),
+            XAccountsBlockedAccounts(ref mut v) => to_json!(prefix, value => v),
             // xfee/manager
             XFeeManagerSwitcher(ref mut v) => to_json!(prefix, value => v),
             XFeeManagerMethodCallWeight(ref mut v) => to_json!(prefix, value => v),
@@ -421,7 +432,9 @@ impl RuntimeStorage {
             XStakingForcingNewEra(ref mut v) => to_json!(prefix, value => v),
             XStakingStakeWeight(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingIntentions(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingIntentionsV1(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingNominationRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XStakingNominationRecordsV1(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XStakingUpperBoundFactor(ref mut v) => to_json!(prefix, value => v),
             XStakingEvilValidatorsPerSession(ref mut v) => to_json!(prefix, value => v),
             XStakingLastRenominationOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
@@ -436,7 +449,9 @@ impl RuntimeStorage {
             XTokensClaimRestrictionOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensLastClaimOf(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensPseduIntentionProfiles(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XTokensPseduIntentionProfilesV1(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensDepositRecords(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
+            XTokensDepositRecordsV1(ref mut k, ref mut v) => to_json!(prefix, key => k, value => v),
             XTokensDepositReward(ref mut v) => to_json!(prefix, value => v),
             // xmultisig
             XMultiSigRootAddrList(ref mut v) => to_json!(prefix, value => v),
