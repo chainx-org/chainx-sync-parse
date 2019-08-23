@@ -18,6 +18,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "sync-log")]
     let sync_service = sync_log(&config, &block_queue)?;
 
+    #[cfg(feature = "sync-log")]
     sync_service
         .join()
         .expect("Couldn't join on the sync_service thread");
