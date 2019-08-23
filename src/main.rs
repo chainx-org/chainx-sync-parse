@@ -38,9 +38,6 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
         config.start_height, config.stop_height
     );
 
-    #[cfg(feature = "pgsql")]
-    let pg_conn = establish_connection();
-
     let tail = Tail::new();
     let sync_service = tail.run(config)?;
 
@@ -53,8 +50,6 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
         // handling sync block fallback
         if height < next_block_height {
             insert_block_into_queue(queue, next_block_height, &stat);
-            #[cfg(feature = "pgsql")]
-            insert_block_into_pgsql(&pg_conn, next_block_height, &stat);
             next_block_height = height;
             stat.clear();
         }
@@ -77,8 +72,6 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
             assert!(height >= 1);
             let insert_height = height - 1;
             insert_block_into_queue(queue, insert_height, &stat);
-            #[cfg(feature = "pgsql")]
-            insert_block_into_pgsql(&pg_conn, insert_height, &stat);
             next_block_height = height;
             stat.clear();
         }
