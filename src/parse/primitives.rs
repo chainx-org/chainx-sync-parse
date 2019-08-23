@@ -294,8 +294,8 @@ where
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct PseduIntentionVoteWeightV1<BlockNumber>
-    where
-        BlockNumber: Copy + Default + Codec,
+where
+    BlockNumber: Copy + Default + Codec,
 {
     pub last_total_deposit_weight: u128,
     pub last_total_deposit_weight_update: BlockNumber,
@@ -314,8 +314,8 @@ where
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct DepositVoteWeightV1<BlockNumber>
-    where
-        BlockNumber: Copy + Default + Codec,
+where
+    BlockNumber: Copy + Default + Codec,
 {
     pub last_deposit_weight: u128,
     pub last_deposit_weight_update: BlockNumber,
