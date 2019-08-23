@@ -32,12 +32,8 @@ substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "
 btc-chain = { package = "chain", git = "https://github.com/chainx-org/light-bitcoin" }
 btc-keys = { package = "keys", git = "https://github.com/chainx-org/light-bitcoin" }
 
-# For 'sync-log/sync-redis' feature
+# For 'sync-log' feature
 regex = { version = "1.1", optional = true }
-redis = { version = "0.10", optional = true }
-# For 'pgsql' feature
-diesel = { version = "1.4", optional = true }
-dotenv = { version = "0.14", optional = true }
 
 [dev-dependencies]
 hyper = "0.12"
@@ -46,9 +42,3 @@ hyper = "0.12"
 default = ["std", "sync-log"]
 std = []
 sync-log = ["regex"]
-sync-redis = ["redis"]
-pgsql = [
-    "diesel/postgres",
-    "diesel/serde_json",
-    "dotenv",
-]

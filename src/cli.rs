@@ -67,15 +67,6 @@ pub struct CliConfig {
         default_value = "30"
     )]
     pub log_rotate_interval: u32,
-
-    /// Specify the url of redis server
-    #[cfg(feature = "sync-redis")]
-    #[structopt(
-        long = "sync-redis",
-        value_name = "URL",
-        default_value = "redis://127.0.0.1"
-    )]
-    pub sync_redis_url: String,
 }
 
 pub fn init() -> CliConfig {

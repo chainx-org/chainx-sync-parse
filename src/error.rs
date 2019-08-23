@@ -16,9 +16,6 @@ pub enum Error {
     Send(#[cause] ::std::sync::mpsc::SendError<Vec<u8>>),
     #[fail(display = "{}", _0)]
     Recv(#[cause] ::std::sync::mpsc::RecvError),
-    #[cfg(feature = "sync-redis")]
-    #[fail(display = "Redis error: {}", _0)]
-    Redis(#[cause] redis::RedisError),
     #[fail(display = "Reqwest error: {}", _0)]
     Reqwest(#[cause] reqwest::Error),
     #[fail(display = "Json error: {}", _0)]
@@ -68,13 +65,6 @@ impl From<::std::sync::mpsc::RecvError> for Error {
     }
 }
 
-#[cfg(feature = "sync-redis")]
-impl From<redis::RedisError> for Error {
-    fn from(err: redis::RedisError) -> Self {
-        Error::Redis(err)
-    }
-}
-
 impl From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Self {
         Error::Reqwest(err)
@@ -113,11 +103,9 @@ impl From<Error> for jsonrpc_core::Error {
             Error::NetAddrParse(e) => rpc_error(ERROR + 4, e.description()),
             Error::Send(e) => rpc_error(ERROR + 5, e.description()),
             Error::Recv(e) => rpc_error(ERROR + 6, e.description()),
-            #[cfg(feature = "sync-redis")]
-            Error::Redis(e) => rpc_error(ERROR + 7, e.description()),
-            Error::Reqwest(e) => rpc_error(ERROR + 8, e.description()),
-            Error::Json(e) => rpc_error(ERROR + 9, e.description()),
-            Error::SemVer(e) => rpc_error(ERROR + 10, e.description()),
+            Error::Reqwest(e) => rpc_error(ERROR + 7, e.description()),
+            Error::Json(e) => rpc_error(ERROR + 8, e.description()),
+            Error::SemVer(e) => rpc_error(ERROR + 9, e.description()),
         }
     }
 }

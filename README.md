@@ -139,9 +139,9 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
             --sync-log <PATH>                 Specify the sync log path [default: log/sync.log]
     ```
 
-### sync-redis (Alternative)
+### ~~sync-redis~~ (Deprecated)
 
-0. **Requirement**: Redis (which supports the **keyspace notification** feature)
+~~0. **Requirement**: Redis (which supports the **keyspace notification** feature)~~
 
     ```
     redis-server's conf:
@@ -150,7 +150,7 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
     notify-keyspace-events "Ez"
     ```
 
-1. **Usage**:
+~~1. **Usage**:~~
 
     ```bash
     # compile
@@ -163,19 +163,19 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
     ./target/release/chainx-sync-parse --sync-redis <URL>
     ```
 
-## Feature/pgsql (Optional)
+## ~~Feature/pgsql~~ (Deprecated)
 
-Add the feature for inserting syncing block information into PostgreSQL.
+~~Add the feature for inserting syncing block information into PostgreSQL.~~
  
-See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for details of the database table `blocks`.
+~~See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for details of the database table `blocks`.~~
 
-0. **Requirement**: PostgreSQL, use your own PostgreSQL configuration in the [.env](./.env) file, like:
+~~0. **Requirement**: PostgreSQL, use your own PostgreSQL configuration in the [.env](./.env) file, like:~~
 
     ```bash
     DATABASE_URL=postgres://username:password@localhost/database_name
     ```
 
-1. **Usage**:
+~~1. **Usage**:~~
 
     ```bash
     # compile
