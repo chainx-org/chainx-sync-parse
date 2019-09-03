@@ -17,9 +17,8 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "sync-log")]
     let sync_service = sync_log(&config, &block_queue)?;
-    #[cfg(feature = "sync-redis")]
-    let sync_service = sync_redis(&config, &block_queue)?;
 
+    #[cfg(feature = "sync-log")]
     sync_service
         .join()
         .expect("Couldn't join on the sync_service thread");
@@ -40,9 +39,6 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
         config.start_height, config.stop_height
     );
 
-    #[cfg(feature = "pgsql")]
-    let pg_conn = establish_connection();
-
     let tail = Tail::new();
     let sync_service = tail.run(config)?;
 
@@ -55,8 +51,6 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
         // handling sync block fallback
         if height < next_block_height {
             insert_block_into_queue(queue, next_block_height, &stat);
-            #[cfg(feature = "pgsql")]
-            insert_block_into_pgsql(&pg_conn, next_block_height, &stat);
             next_block_height = height;
             stat.clear();
         }
@@ -79,66 +73,8 @@ fn sync_log(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
             assert!(height >= 1);
             let insert_height = height - 1;
             insert_block_into_queue(queue, insert_height, &stat);
-            #[cfg(feature = "pgsql")]
-            insert_block_into_pgsql(&pg_conn, insert_height, &stat);
             next_block_height = height;
             stat.clear();
-        }
-    }
-
-    Ok(sync_service)
-}
-
-#[cfg(feature = "sync-redis")]
-fn sync_redis(config: &CliConfig, queue: &BlockQueue) -> Result<JoinHandle<()>> {
-    let mut cur_block_height: u64 = 0;
-    let mut next_block_height: u64 = 0;
-    let mut stat = HashMap::new();
-
-    #[cfg(feature = "pgsql")]
-    let pg_conn = establish_connection();
-
-    let client = Redis::connect(config.sync_redis_url.as_str())?;
-    info!("Connect redis [{}] successfully", &config.sync_redis_url);
-    let sync_service = client.start_subscription()?;
-
-    while let Ok(key) = client.recv_key() {
-        if let Ok((height, value)) = client.query(&key) {
-            debug_sync_block_info(height, &key, &value);
-
-            if height < cur_block_height {
-                next_block_height = height;
-                stat.clear();
-            }
-
-            if height == next_block_height {
-                match RuntimeStorage::parse(&key, value) {
-                    Ok((prefix, value)) => {
-                        let mut prefix = prefix.as_bytes().to_vec();
-                        prefix.extend_from_slice(&key);
-                        stat.insert(prefix, value);
-                    }
-                    Err(_) => continue,
-                }
-                continue;
-            }
-
-            // when height > nex_block_height
-            assert!(height >= 1);
-            next_block_height = height;
-            cur_block_height = height - 1;
-
-            // Insert a complete block.
-            // Example: Once a block1 (height = 1) is received,
-            // it means that the block0 (height = 0) has been synchronized and parsed.
-            insert_block_into_queue(queue, cur_block_height, &stat);
-            #[cfg(feature = "pgsql")]
-            insert_block_into_pgsql(&pg_conn, cur_block_height, &stat);
-
-            stat.clear();
-        } else {
-            error!("Redis query error");
-            break;
         }
     }
 
