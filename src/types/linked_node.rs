@@ -1,4 +1,4 @@
-// Copyright 2019 Chainpool.
+#![allow(clippy::type_repetition_in_bounds)]
 
 use parity_codec::{Codec, Decode, Encode};
 use serde::{Deserialize, Serialize};
