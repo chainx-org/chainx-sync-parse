@@ -1,62 +1,15 @@
+#[macro_use]
+mod macros;
 mod primitives;
 
 use std::collections::BTreeMap;
 
 use parity_codec::Decode;
-use serde_json::json;
-use strum::{EnumProperty, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumProperty, IntoStaticStr};
+use strum::{EnumIter, EnumProperty, IntoEnumIterator, IntoStaticStr};
 
 use self::primitives::*;
 use crate::types::{btc, MultiNodeIndex, Node};
 use crate::Result;
-
-#[macro_use]
-mod macros {
-    macro_rules! to_json {
-        ($prefix:ident, $value:ident => $v:ident) => {
-            to_json_impl!("value", $prefix, null, $value => $v)
-        };
-
-        ($prefix:ident, $key:ident => $k:ident, $value:ident => $v:ident) => {
-            {
-                *$k = match Decode::decode(&mut $key) {
-                    Some(key) => key,
-                    None => {
-                        let err = format!("Decode failed, prefix: {:?}, key: {:?}", $prefix, $k);
-                        error!("Runtime storage parse error: {:?}", err);
-                        return Err(err.into());
-                    }
-                };
-                to_json_impl!("map", $prefix, $k, $value => $v)
-            }
-        };
-    }
-
-    macro_rules! to_json_impl {
-        ($type:expr, $prefix:ident, $k:ident, $value:ident => $v:ident) => {{
-            if $value.is_empty() {
-                debug!("Empty Value: [{:?}] may have been removed", $prefix);
-                return Ok(build_json!($type, $prefix, $k, null));
-            }
-            *$v = match Decode::decode(&mut $value.as_slice()) {
-                Some(value) => value,
-                None => {
-                    let err = format!("Decode failed, prefix: {:?}, value: {:?}", $prefix, $v);
-                    error!("Runtime storage parse error: {:?}", err);
-                    return Err(err.into());
-                }
-            };
-            Ok(build_json!($type, $prefix, $k, $v))
-        }};
-    }
-
-    macro_rules! build_json {
-        ($type:expr, $prefix:ident, $key:ident, $value:ident) => {
-            json!({"type":$type, "prefix":$prefix, "key":$key, "value":$value})
-        };
-    }
-}
 
 #[rustfmt::skip]
 #[allow(clippy::large_enum_variant)]
@@ -66,273 +19,273 @@ pub enum RuntimeStorage {
     // Substrate
     // ============================================================================================
     // system -------------------------------------------------------------------------------------
-//    #[strum(serialize = "System Number", props(r#type = "value"))]
+//    #[strum(serialize = "System Number", props(Type = "value"))]
 //    SystemNumber(BlockNumber),
-    #[strum(serialize = "System AccountNonce", props(r#type = "map"))]
+    #[strum(serialize = "System AccountNonce", props(Type = "map"))]
     SystemAccountNonce(AccountId, Index),
-    #[strum(serialize = "System BlockHash", props(r#type = "map"))]
+    #[strum(serialize = "System BlockHash", props(Type = "map"))]
     SystemBlockHash(BlockNumber, Hash),
     // indices ------------------------------------------------------------------------------------
-    #[strum(serialize = "Indices NextEnumSet", props(r#type = "value"))]
+    #[strum(serialize = "Indices NextEnumSet", props(Type = "value"))]
     IndicesNextEnumSet(AccountIndex),
-    #[strum(serialize = "Indices EnumSet", props(r#type = "map"))]
+    #[strum(serialize = "Indices EnumSet", props(Type = "map"))]
     IndicesEnumSet(AccountIndex, Vec<AccountId>),
     // timestamp ----------------------------------------------------------------------------------
-    #[strum(serialize = "Timestamp Now", props(r#type = "value"))]
+    #[strum(serialize = "Timestamp Now", props(Type = "value"))]
     TimestampNow(Timestamp),
-    #[strum(serialize = "Timestamp BlockPeriod", props(r#type = "value"))]
+    #[strum(serialize = "Timestamp BlockPeriod", props(Type = "value"))]
     TimestampBlockPeriod(Timestamp),
-    #[strum(serialize = "Timestamp MinimumPeriod", props(r#type = "value"))]
+    #[strum(serialize = "Timestamp MinimumPeriod", props(Type = "value"))]
     TimestampMinimumPeriod(Timestamp),
     // finality_tracker ---------------------------------------------------------------------------
-    #[strum(serialize = "Timestamp WindowSize", props(r#type = "value"))]
+    #[strum(serialize = "Timestamp WindowSize", props(Type = "value"))]
     TimestampWindowSize(BlockNumber),
-    #[strum(serialize = "Timestamp ReportLatency", props(r#type = "value"))]
+    #[strum(serialize = "Timestamp ReportLatency", props(Type = "value"))]
     TimestampReportLatency(BlockNumber),
     // session ------------------------------------------------------------------------------------
-    #[strum(serialize = "Session Validators", props(r#type = "value"))]
+    #[strum(serialize = "Session Validators", props(Type = "value"))]
     SessionValidators(Vec<(AccountId, u64)>),
-    #[strum(serialize = "Session SessionLength", props(r#type = "value"))]
+    #[strum(serialize = "Session SessionLength", props(Type = "value"))]
     SessionSessionLength(BlockNumber),
-    #[strum(serialize = "Session CurrentIndex", props(r#type = "value"))]
+    #[strum(serialize = "Session CurrentIndex", props(Type = "value"))]
     SessionCurrentIndex(BlockNumber),
-    #[strum(serialize = "Session CurrentStart", props(r#type = "value"))]
+    #[strum(serialize = "Session CurrentStart", props(Type = "value"))]
     SessionCurrentStart(Timestamp),
-    #[strum(serialize = "Session SessionTotalMissedBlocksCount", props(r#type = "value"))]
+    #[strum(serialize = "Session SessionTotalMissedBlocksCount", props(Type = "value"))]
     SessionSessionTotalMissedBlocksCount(u32),
-    #[strum(serialize = "Session ForcingNewSession", props(r#type = "value"))]
+    #[strum(serialize = "Session ForcingNewSession", props(Type = "value"))]
     SessionForcingNewSession(bool),
     // ============================================================================================
     // ChainX
     // ============================================================================================
     // xsystem ------------------------------------------------------------------------------------
-    #[strum(serialize = "XSystem BlockProducer", props(r#type = "value"))]
+    #[strum(serialize = "XSystem BlockProducer", props(Type = "value"))]
     XSystemBlockProducer(AccountId),
-    #[strum(serialize = "XSystem NetworkProps", props(r#type = "value"))]
+    #[strum(serialize = "XSystem NetworkProps", props(Type = "value"))]
     XSystemNetworkProps((NetworkType, AddressType)),
     // xaccounts ----------------------------------------------------------------------------------
-    #[strum(serialize = "XAccounts IntentionOf", props(r#type = "map"))]
+    #[strum(serialize = "XAccounts IntentionOf", props(Type = "map"))]
     XAccountsIntentionOf(Name, AccountId),
-    #[strum(serialize = "XAccounts IntentionNameOf", props(r#type = "map"))]
+    #[strum(serialize = "XAccounts IntentionNameOf", props(Type = "map"))]
     XAccountsIntentionNameOf(AccountId, Name),
-    #[strum(serialize = "XAccounts IntentionPropertiesOf", props(r#type = "map"))]
+    #[strum(serialize = "XAccounts IntentionPropertiesOf", props(Type = "map"))]
     XAccountsIntentionPropertiesOf(AccountId, IntentionProps<SessionKey, BlockNumber>),
-    #[strum(serialize = "XAccounts TeamAddress", props(r#type = "value"))]
+    #[strum(serialize = "XAccounts TeamAddress", props(Type = "value"))]
     XAccountsTeamAddress(AccountId),
-    #[strum(serialize = "XAccounts CouncilAddress", props(r#type = "value"))]
+    #[strum(serialize = "XAccounts CouncilAddress", props(Type = "value"))]
     XAccountsCouncilAddress(AccountId),
-    #[strum(serialize = "XAccounts BlockedAccounts", props(r#type = "value"))]
+    #[strum(serialize = "XAccounts BlockedAccounts", props(Type = "value"))]
     XAccountsBlockedAccounts(Vec<AccountId>),
     // xfee ---------------------------------------------------------------------------------------
-    #[strum(serialize = "XFeeManager Switcher", props(r#type = "value"))]
+    #[strum(serialize = "XFeeManager Switcher", props(Type = "value"))]
     XFeeManagerSwitcher(BTreeMap<CallSwitcher, bool>),
-    #[strum(serialize = "XFeeManager MethodCallWeight", props(r#type = "value"))]
+    #[strum(serialize = "XFeeManager MethodCallWeight", props(Type = "value"))]
     XFeeManagerMethodCallWeight(BTreeMap<XString, u64>),
-    #[strum(serialize = "XFeeManager ProducerFeeProportion", props(r#type = "value"))]
+    #[strum(serialize = "XFeeManager ProducerFeeProportion", props(Type = "value"))]
     XFeeManagerProducerFeeProportion((u32, u32)),
-    #[strum(serialize = "XFeeManager TransactionBaseFee", props(r#type = "value"))]
+    #[strum(serialize = "XFeeManager TransactionBaseFee", props(Type = "value"))]
     XFeeManagerTransactionBaseFee(Balance),
-    #[strum(serialize = "XFeeManager TransactionByteFee", props(r#type = "value"))]
+    #[strum(serialize = "XFeeManager TransactionByteFee", props(Type = "value"))]
     XFeeManagerTransactionByteFee(Balance),
     // xassets ------------------------------------------------------------------------------------
     // XAssets
-    #[strum(serialize = "XAssets AssetList", props(r#type = "map"))]
+    #[strum(serialize = "XAssets AssetList", props(Type = "map"))]
     XAssetsAssetList(Chain, Vec<Token>),
-    #[strum(serialize = "XAssets AssetInfo", props(r#type = "map"))]
+    #[strum(serialize = "XAssets AssetInfo", props(Type = "map"))]
     XAssetsAssetInfo(Token, (Asset, bool, BlockNumber)),
-    #[strum(serialize = "XAssets AssetLimitProps", props(r#type = "map"))]
+    #[strum(serialize = "XAssets AssetLimitProps", props(Type = "map"))]
     XAssetsAssetLimitProps(Token, BTreeMap<AssetLimit, bool>),
-    #[strum(serialize = "XAssets AssetBalance", props(r#type = "map"))]
+    #[strum(serialize = "XAssets AssetBalance", props(Type = "map"))]
     XAssetsAssetBalance((AccountId, Token), BTreeMap<AssetType, Balance>),
-    #[strum(serialize = "XAssets TotalAssetBalance", props(r#type = "map"))]
+    #[strum(serialize = "XAssets TotalAssetBalance", props(Type = "map"))]
     XAssetsTotalAssetBalance(Token, BTreeMap<AssetType, Balance>),
-    #[strum(serialize = "XAssets MemoLen", props(r#type = "value"))]
+    #[strum(serialize = "XAssets MemoLen", props(Type = "value"))]
     XAssetsMemoLen(u32),
     // XAssetsRecords
-    #[strum(serialize = "XAssetsRecords ApplicationMHeader", props(r#type = "map"))]
+    #[strum(serialize = "XAssetsRecords ApplicationMHeader", props(Type = "map"))]
     XAssetsRecordsApplicationMHeader(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Timestamp>>),
-    #[strum(serialize = "XAssetsRecords ApplicationMTail", props(r#type = "map"))]
+    #[strum(serialize = "XAssetsRecords ApplicationMTail", props(Type = "map"))]
     XAssetsRecordsApplicationMTail(Chain, MultiNodeIndex<Chain, Application<AccountId, Balance, Timestamp>>),
-    #[strum(serialize = "XAssetsRecords ApplicationMap", props(r#type = "map"))]
+    #[strum(serialize = "XAssetsRecords ApplicationMap", props(Type = "map"))]
     XAssetsRecordsApplicationMap(u32, Node<Application<AccountId, Balance, Timestamp>>),
-    #[strum(serialize = "XAssetsRecords SerialNumber", props(r#type = "value"))]
+    #[strum(serialize = "XAssetsRecords SerialNumber", props(Type = "value"))]
     XAssetsRecordsSerialNumber(u32),
     // xfisher ------------------------------------------------------------------------------------
-    #[strum(serialize = "XFisher Reported", props(r#type = "map"))]
+    #[strum(serialize = "XFisher Reported", props(Type = "map"))]
     XFisherReported(H512, ()),
-    #[strum(serialize = "XFisher Fishermen", props(r#type = "value"))]
+    #[strum(serialize = "XFisher Fishermen", props(Type = "value"))]
     XFisherFishermen(Vec<AccountId>),
     // xmining ------------------------------------------------------------------------------------
     // XStaking
-    #[strum(serialize = "XStaking InitialReward", props(r#type = "value"))]
+    #[strum(serialize = "XStaking InitialReward", props(Type = "value"))]
     XStakingInitialReward(Balance),
-    #[strum(serialize = "XStaking ValidatorCount", props(r#type = "value"))]
+    #[strum(serialize = "XStaking ValidatorCount", props(Type = "value"))]
     XStakingValidatorCount(u32),
-    #[strum(serialize = "XStaking MinimumValidatorCount", props(r#type = "value"))]
+    #[strum(serialize = "XStaking MinimumValidatorCount", props(Type = "value"))]
     XStakingMinimumValidatorCount(u32),
-    #[strum(serialize = "XStaking SessionsPerEra", props(r#type = "value"))]
+    #[strum(serialize = "XStaking SessionsPerEra", props(Type = "value"))]
     XStakingSessionsPerEra(BlockNumber),
-    #[strum(serialize = "XStaking BondingDuration", props(r#type = "value"))]
+    #[strum(serialize = "XStaking BondingDuration", props(Type = "value"))]
     XStakingBondingDuration(BlockNumber),
-    #[strum(serialize = "XStaking IntentionBondingDuration", props(r#type = "value"))]
+    #[strum(serialize = "XStaking IntentionBondingDuration", props(Type = "value"))]
     XStakingIntentionBondingDuration(BlockNumber),
-    #[strum(serialize = "XStaking MaximumIntentionCount", props(r#type = "value"))]
+    #[strum(serialize = "XStaking MaximumIntentionCount", props(Type = "value"))]
     XStakingMaximumIntentionCount(u32),
-    #[strum(serialize = "XStaking SessionsPerEpoch", props(r#type = "value"))]
+    #[strum(serialize = "XStaking SessionsPerEpoch", props(Type = "value"))]
     XStakingSessionsPerEpoch(BlockNumber),
-    #[strum(serialize = "XStaking CurrentEra", props(r#type = "value"))]
+    #[strum(serialize = "XStaking CurrentEra", props(Type = "value"))]
     XStakingCurrentEra(BlockNumber),
-    #[strum(serialize = "XStaking DistributionRatio", props(r#type = "value"))]
+    #[strum(serialize = "XStaking DistributionRatio", props(Type = "value"))]
     XStakingDistributionRatio((u32, u32)),
-    #[strum(serialize = "XStaking NextSessionsPerEra", props(r#type = "value"))]
+    #[strum(serialize = "XStaking NextSessionsPerEra", props(Type = "value"))]
     XStakingNextSessionsPerEra(BlockNumber),
-    #[strum(serialize = "XStaking LastEraLengthChange", props(r#type = "value"))]
+    #[strum(serialize = "XStaking LastEraLengthChange", props(Type = "value"))]
     XStakingLastEraLengthChange(BlockNumber),
-    #[strum(serialize = "XStaking ForcingNewEra", props(r#type = "value"))]
+    #[strum(serialize = "XStaking ForcingNewEra", props(Type = "value"))]
     XStakingForcingNewEra(()),
-    #[strum(serialize = "XStaking StakeWeight", props(r#type = "map"))]
+    #[strum(serialize = "XStaking StakeWeight", props(Type = "map"))]
     XStakingStakeWeight(AccountId, Balance),
-    #[strum(serialize = "XStaking Intentions", props(r#type = "linked_map"))]
+    #[strum(serialize = "XStaking Intentions", props(Type = "linked_map"))]
     XStakingIntentions(AccountId, IntentionProfs<Balance, BlockNumber>),
-    #[strum(serialize = "XStaking IntentionsV1", props(r#type = "linked_map"))]
+    #[strum(serialize = "XStaking IntentionsV1", props(Type = "linked_map"))]
     XStakingIntentionsV1(AccountId, IntentionProfsV1<Balance, BlockNumber>),
-    #[strum(serialize = "XStaking NominationRecords", props(r#type = "map"))]
+    #[strum(serialize = "XStaking NominationRecords", props(Type = "map"))]
     XStakingNominationRecords((AccountId, AccountId), NominationRecord<Balance, BlockNumber>),
-    #[strum(serialize = "XStaking NominationRecordsV1", props(r#type = "map"))]
+    #[strum(serialize = "XStaking NominationRecordsV1", props(Type = "map"))]
     XStakingNominationRecordsV1((AccountId, AccountId), NominationRecordV1<Balance, BlockNumber>),
-    #[strum(serialize = "XStaking UpperBoundFactor", props(r#type = "value"))]
+    #[strum(serialize = "XStaking UpperBoundFactor", props(Type = "value"))]
     XStakingUpperBoundFactor(u32),
-    #[strum(serialize = "XStaking EvilValidatorsPerSession", props(r#type = "value"))]
+    #[strum(serialize = "XStaking EvilValidatorsPerSession", props(Type = "value"))]
     XStakingEvilValidatorsPerSession(Vec<AccountId>),
-    #[strum(serialize = "XStaking LastRenominationOf", props(r#type = "map"))]
+    #[strum(serialize = "XStaking LastRenominationOf", props(Type = "map"))]
     XStakingLastRenominationOf(AccountId, BlockNumber),
-    #[strum(serialize = "XStaking MaxUnbondEntriesPerIntention", props(r#type = "value"))]
+    #[strum(serialize = "XStaking MaxUnbondEntriesPerIntention", props(Type = "value"))]
     XStakingMaxUnbondEntriesPerIntention(u32),
-    #[strum(serialize = "XStaking MinimumPenalty", props(r#type = "value"))]
+    #[strum(serialize = "XStaking MinimumPenalty", props(Type = "value"))]
     XStakingMinimumPenalty(Balance),
-    #[strum(serialize = "XStaking OfflineValidatorsPerSession", props(r#type = "value"))]
+    #[strum(serialize = "XStaking OfflineValidatorsPerSession", props(Type = "value"))]
     XStakingOfflineValidatorsPerSession(Vec<AccountId>),
-    #[strum(serialize = "XStaking MissedOfPerSession", props(r#type = "map"))]
+    #[strum(serialize = "XStaking MissedOfPerSession", props(Type = "map"))]
     XStakingMissedOfPerSession(AccountId, u32),
-    #[strum(serialize = "XStaking MissedBlockSeverity", props(r#type = "value"))]
+    #[strum(serialize = "XStaking MissedBlockSeverity", props(Type = "value"))]
     XStakingMissedBlockSeverity(u32),
     // XTokens
-    #[strum(serialize = "XTokens TokenDiscount", props(r#type = "map"))]
+    #[strum(serialize = "XTokens TokenDiscount", props(Type = "map"))]
     XTokensTokenDiscount(Token, u32),
-    #[strum(serialize = "XTokens PseduIntentions", props(r#type = "value"))]
+    #[strum(serialize = "XTokens PseduIntentions", props(Type = "value"))]
     XTokensPseduIntentions(Vec<Token>),
-    #[strum(serialize = "XTokens ClaimRestrictionOf", props(r#type = "map"))]
+    #[strum(serialize = "XTokens ClaimRestrictionOf", props(Type = "map"))]
     XTokensClaimRestrictionOf(Token, (u32, BlockNumber)),
-    #[strum(serialize = "XTokens LastClaimOf", props(r#type = "map"))]
+    #[strum(serialize = "XTokens LastClaimOf", props(Type = "map"))]
     XTokensLastClaimOf((AccountId, Token), BlockNumber),
-    #[strum(serialize = "XTokens PseduIntentionProfiles", props(r#type = "map"))]
+    #[strum(serialize = "XTokens PseduIntentionProfiles", props(Type = "map"))]
     XTokensPseduIntentionProfiles(Token, PseduIntentionVoteWeight<BlockNumber>),
-    #[strum(serialize = "XTokens PseduIntentionProfilesV1", props(r#type = "map"))]
+    #[strum(serialize = "XTokens PseduIntentionProfilesV1", props(Type = "map"))]
     XTokensPseduIntentionProfilesV1(Token, PseduIntentionVoteWeightV1<BlockNumber>),
-    #[strum(serialize = "XTokens DepositRecords", props(r#type = "map"))]
+    #[strum(serialize = "XTokens DepositRecords", props(Type = "map"))]
     XTokensDepositRecords((AccountId, Token), DepositVoteWeight<BlockNumber>),
-    #[strum(serialize = "XTokens DepositRecordsV1", props(r#type = "map"))]
+    #[strum(serialize = "XTokens DepositRecordsV1", props(Type = "map"))]
     XTokensDepositRecordsV1((AccountId, Token), DepositVoteWeightV1<BlockNumber>),
-    #[strum(serialize = "XTokens DepositReward", props(r#type = "value"))]
+    #[strum(serialize = "XTokens DepositReward", props(Type = "value"))]
     XTokensDepositReward(Balance),
     // xmultisig ----------------------------------------------------------------------------------
-    #[strum(serialize = "XMultiSig RootAddrList", props(r#type = "value"))]
+    #[strum(serialize = "XMultiSig RootAddrList", props(Type = "value"))]
     XMultiSigRootAddrList(Vec<AccountId>),
-    #[strum(serialize = "XMultiSig MultiSigAddrInfo", props(r#type = "map"))]
+    #[strum(serialize = "XMultiSig MultiSigAddrInfo", props(Type = "map"))]
     XMultiSigMultiSigAddrInfo(AccountId, AddrInfo<AccountId>),
-    #[strum(serialize = "XMultiSig PendingListFor", props(r#type = "map"))]
+    #[strum(serialize = "XMultiSig PendingListFor", props(Type = "map"))]
     XMultiSigPendingListFor(AccountId, Vec<Hash>),
-    #[strum(serialize = "XMultiSig MultiSigListItemFor", props(r#type = "map"))]
+    #[strum(serialize = "XMultiSig MultiSigListItemFor", props(Type = "map"))]
     XMultiSigMultiSigListItemFor((AccountId, u32), AccountId),
-    #[strum(serialize = "XMultiSig MultiSigListLenFor", props(r#type = "map"))]
+    #[strum(serialize = "XMultiSig MultiSigListLenFor", props(Type = "map"))]
     XMultiSigMultiSigListLenFor(AccountId, u32),
     // xdex ---------------------------------------------------------------------------------------
     // XSpot
-    #[strum(serialize = "XSpot TradingPairCount", props(r#type = "value"))]
+    #[strum(serialize = "XSpot TradingPairCount", props(Type = "value"))]
     XSpotTradingPairCount(TradingPairIndex),
-    #[strum(serialize = "XSpot TradingPairOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot TradingPairOf", props(Type = "map"))]
     XSpotTradingPairOf(TradingPairIndex, TradingPair),
-    #[strum(serialize = "XSpot TradingPairInfoOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot TradingPairInfoOf", props(Type = "map"))]
     XSpotTradingPairInfoOf(TradingPairIndex, (Price, Price, BlockNumber)),
-    #[strum(serialize = "XSpot TradeHistoryIndexOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot TradeHistoryIndexOf", props(Type = "map"))]
     XSpotTradeHistoryIndexOf(TradingPairIndex, TradeHistoryIndex),
-    #[strum(serialize = "XSpot OrderCountOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot OrderCountOf", props(Type = "map"))]
     XSpotOrderCountOf(AccountId, OrderIndex),
-    #[strum(serialize = "XSpot OrderInfoOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot OrderInfoOf", props(Type = "map"))]
     XSpotOrderInfoOf((AccountId, OrderIndex), Order<TradingPairIndex, AccountId, Balance, Price, BlockNumber>),
-    #[strum(serialize = "XSpot QuotationsOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot QuotationsOf", props(Type = "map"))]
     XSpotQuotationsOf((TradingPairIndex, Price), Vec<(AccountId, OrderIndex)>),
-    #[strum(serialize = "XSpot HandicapOf", props(r#type = "map"))]
+    #[strum(serialize = "XSpot HandicapOf", props(Type = "map"))]
     XSpotHandicapOf(TradingPairIndex, Handicap<Price>),
-    #[strum(serialize = "XSpot PriceVolatility", props(r#type = "value"))]
+    #[strum(serialize = "XSpot PriceVolatility", props(Type = "value"))]
     XSpotPriceVolatility(u32),
     // xbridge ------------------------------------------------------------------------------------
     // common
-    #[strum(serialize = "XBridgeCommon CrossChainBinding", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeCommon CrossChainBinding", props(Type = "map"))]
     XBridgeCommonCrossChainBinding((Token, AccountId), AccountId),
     // BTC
-    #[strum(serialize = "XBridgeOfBTC BestIndex", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC BestIndex", props(Type = "value"))]
     XBridgeOfBTCBestIndex(H256),
-    #[strum(serialize = "XBridgeOfBTC BlockHashFor", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTC BlockHashFor", props(Type = "map"))]
     XBridgeOfBTCBlockHashFor(u32, Vec<H256>),
-    #[strum(serialize = "XBridgeOfBTC BlockHeaderFor", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTC BlockHeaderFor", props(Type = "map"))]
     XBridgeOfBTCBlockHeaderFor(H256, BlockHeaderInfo),
-    #[strum(serialize = "XBridgeOfBTC TxFor", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTC TxFor", props(Type = "map"))]
     XBridgeOfBTCTxFor(H256, TxInfo),
-    #[strum(serialize = "XBridgeOfBTC TxMarkFor", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTC TxMarkFor", props(Type = "map"))]
     XBridgeOfBTCTxMarkFor(H256, ()),
-    #[strum(serialize = "XBridgeOfBTC InputAddrFor", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTC InputAddrFor", props(Type = "map"))]
     XBridgeOfBTCInputAddrFor(H256, btc::Address),
-    #[strum(serialize = "XBridgeOfBTC PendingDepositMap", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTC PendingDepositMap", props(Type = "map"))]
     XBridgeOfBTCPendingDepositMap(btc::Address, Vec<DepositCache>),
-    #[strum(serialize = "XBridgeOfBTC CurrentWithdrawalProposal", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC CurrentWithdrawalProposal", props(Type = "value"))]
     XBridgeOfBTCCurrentWithdrawalProposal(WithdrawalProposal<AccountId>),
-    #[strum(serialize = "XBridgeOfBTC GenesisInfo", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC GenesisInfo", props(Type = "value"))]
     XBridgeOfBTCGenesisInfo((btc::BlockHeader, u32)),
-    #[strum(serialize = "XBridgeOfBTC ParamsInfo", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC ParamsInfo", props(Type = "value"))]
     XBridgeOfBTCParamsInfo(Params),
-    #[strum(serialize = "XBridgeOfBTC NetworkId", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC NetworkId", props(Type = "value"))]
     XBridgeOfBTCNetworkId(u32),
-    #[strum(serialize = "XBridgeOfBTC ReservedBlock", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC ReservedBlock", props(Type = "value"))]
     XBridgeOfBTCReservedBlock(u32),
-    #[strum(serialize = "XBridgeOfBTC ConfirmationNumber", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC ConfirmationNumber", props(Type = "value"))]
     XBridgeOfBTCConfirmationNumber(u32),
-    #[strum(serialize = "XBridgeOfBTC BtcWithdrawalFee", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC BtcWithdrawalFee", props(Type = "value"))]
     XBridgeOfBTCBtcWithdrawalFee(u64),
-    #[strum(serialize = "XBridgeOfBTC BtcMinDeposit", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC BtcMinDeposit", props(Type = "value"))]
     XBridgeOfBTCBtcMinDeposit(u64),
-    #[strum(serialize = "XBridgeOfBTC MaxWithdrawalCount", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTC MaxWithdrawalCount", props(Type = "value"))]
     XBridgeOfBTCMaxWithdrawalCount(u32),
     // BTC lockup
-    #[strum(serialize = "XBridgeOfBTCLockup LockedUpBTC", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTCLockup LockedUpBTC", props(Type = "map"))]
     XBridgeOfBTCLockupLockedUpBTC((H256, u32), (AccountId, u64, btc::Address)),
-    #[strum(serialize = "XBridgeOfBTCLockup AddressLockedCoin", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfBTCLockup AddressLockedCoin", props(Type = "map"))]
     XBridgeOfBTCLockupAddressLockedCoin(btc::Address, u64),
-    #[strum(serialize = "XBridgeOfBTCLockup LockedCoinLimit", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfBTCLockup LockedCoinLimit", props(Type = "value"))]
     XBridgeOfBTCLockupLockedCoinLimit((u64, u64)),
     // SDOT
-    #[strum(serialize = "XBridgeOfSDOT Claims", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeOfSDOT Claims", props(Type = "map"))]
     XBridgeOfSDOTClaims(EthereumAddress, Balance),
-    #[strum(serialize = "XBridgeOfSDOT Total", props(r#type = "value"))]
+    #[strum(serialize = "XBridgeOfSDOT Total", props(Type = "value"))]
     XBridgeOfSDOTTotal(Balance),
     // Features
-    #[strum(serialize = "XBridgeFeatures TrusteeMultiSigAddr", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures TrusteeMultiSigAddr", props(Type = "map"))]
     XBridgeFeaturesTrusteeMultiSigAddr(Chain, AccountId),
-    #[strum(serialize = "XBridgeFeatures TrusteeInfoConfigOf", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures TrusteeInfoConfigOf", props(Type = "map"))]
     XBridgeFeaturesTrusteeInfoConfigOf(Chain, TrusteeInfoConfig),
-    #[strum(serialize = "XBridgeFeatures TrusteeSessionInfoLen", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures TrusteeSessionInfoLen", props(Type = "map"))]
     XBridgeFeaturesTrusteeSessionInfoLen(Chain, u32),
-    #[strum(serialize = "XBridgeFeatures BitcoinTrusteeSessionInfoOf", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures BitcoinTrusteeSessionInfoOf", props(Type = "map"))]
     XBridgeFeaturesBitcoinTrusteeSessionInfoOf(u32, BitcoinTrusteeSessionInfo<AccountId>),
-    #[strum(serialize = "XBridgeFeatures BitcoinTrusteeIntentionPropertiesOf", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures BitcoinTrusteeIntentionPropertiesOf", props(Type = "map"))]
     XBridgeFeaturesBitcoinTrusteeIntentionPropertiesOf(AccountId, BitcoinTrusteeIntentionProps),
-    #[strum(serialize = "XBridgeFeatures BitcoinCrossChainBinding", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures BitcoinCrossChainBinding", props(Type = "map"))]
     XBridgeFeaturesBitcoinCrossChainBinding(AccountId, Vec<btc::Address>),
-    #[strum(serialize = "XBridgeFeatures BitcoinCrossChainOf", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures BitcoinCrossChainOf", props(Type = "map"))]
     XBridgeFeaturesBitcoinCrossChainOf(btc::Address, (AccountId, Option<AccountId>)),
-    #[strum(serialize = "XBridgeFeatures EthereumCrossChainBinding", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures EthereumCrossChainBinding", props(Type = "map"))]
     XBridgeFeaturesEthereumCrossChainBinding(AccountId, Vec<EthereumAddress>),
-    #[strum(serialize = "XBridgeFeatures EthereumCrossChainOf", props(r#type = "map"))]
+    #[strum(serialize = "XBridgeFeatures EthereumCrossChainOf", props(Type = "map"))]
     XBridgeFeaturesEthereumCrossChainOf(EthereumAddress, (AccountId, Option<AccountId>)),
 }
 
@@ -350,7 +303,7 @@ impl RuntimeStorage {
     }
 
     fn match_key<'a>(&self, prefix: &str, key: &'a [u8]) -> Result<&'a [u8]> {
-        let key = match self.get_str("type") {
+        let key = match self.get_str("Type") {
             Some("map") | Some("linked_map") => &key[prefix.len()..],
             Some("value") => key,
             _ => {
