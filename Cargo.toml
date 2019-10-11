@@ -4,6 +4,7 @@ version = "1.0.6"
 authors = ["ChainX <https://chainx.org>"]
 edition = "2018"
 build = "build.rs"
+description = "Synchronize and parse ChainX sync data"
 
 [dependencies]
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_info"] }

@@ -3,11 +3,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "chainx-sync-parse",
-    author = "ChainX <https://chainx.org>",
-    about = "Synchronize and parse ChainX sync data"
-)]
+#[structopt(author, about)]
 pub struct CliConfig {
     /// Specify the port of register service
     #[structopt(
