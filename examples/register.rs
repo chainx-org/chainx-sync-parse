@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 use hyper::{rt::Future, service::service_fn_ok, Body, Method, Request, Response, Server};
 use serde_json::json;
 use structopt::StructOpt;
@@ -30,26 +32,11 @@ fn echo(req: Request<Body>) -> Response<Body> {
 )]
 struct Opt {
     /// Specify the ip address
-    #[structopt(
-        short = "i",
-        long = "ip",
-        default_value = "127.0.0.1",
-        parse(from_str = "parse_ip_addr")
-    )]
-    ip: [u8; 4],
+    #[structopt(short = "i", long = "ip", default_value = "127.0.0.1")]
+    ip: Ipv4Addr,
     /// Specify the port of register service
     #[structopt(short = "p", long = "port", default_value = "12345")]
     port: u16,
-}
-
-fn parse_ip_addr(ip_addr: &str) -> [u8; 4] {
-    let ip_addr: Vec<u8> = ip_addr
-        .split(".")
-        .map(|x| x.parse::<u8>().unwrap())
-        .collect();
-    let mut ip = [0u8; 4];
-    ip.copy_from_slice(ip_addr.as_slice());
-    ip
 }
 
 fn main() {
