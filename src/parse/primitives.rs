@@ -3,7 +3,7 @@
 use parity_codec::{Codec, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use sr_primitives::traits::Verify;
+//use sr_primitives::traits::Verify;
 
 use crate::types::{btc, Bytes, NodeT};
 
@@ -18,11 +18,13 @@ pub use substrate_primitives::H512;
 // ChainX primitives.
 // ================================================================================================
 
-type AuthoritySignature = substrate_primitives::ed25519::Signature;
-type AuthorityId = <AuthoritySignature as Verify>::Signer;
+//type AuthoritySignature = substrate_primitives::ed25519::Signature;
+//type AuthorityId = <AuthoritySignature as Verify>::Signer;
+type AuthorityId = substrate_primitives::ed25519::Public;
 
-type Signature = substrate_primitives::ed25519::Signature;
-pub type AccountId = <Signature as Verify>::Signer;
+//type Signature = substrate_primitives::ed25519::Signature;
+//pub type AccountId = <Signature as Verify>::Signer;
+pub type AccountId = substrate_primitives::ed25519::Public;
 
 pub type Hash = substrate_primitives::H256;
 

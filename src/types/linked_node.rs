@@ -1,9 +1,21 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
-use parity_codec::{Codec, Decode, Encode};
-use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
-use sr_primitives::traits::MaybeSerializeDebug;
+use parity_codec::{Codec, Decode, Encode};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+/// A type that implements Serialize, DeserializeOwned and Debug when in std environment.
+#[cfg(feature = "std")]
+pub trait MaybeSerializeDebug: Serialize + DeserializeOwned + Debug {}
+#[cfg(feature = "std")]
+impl<T: Serialize + DeserializeOwned + Debug> MaybeSerializeDebug for T {}
+
+/// A type that implements Serialize when in std environment.
+#[cfg(not(feature = "std"))]
+pub trait MaybeSerialize {}
+#[cfg(not(feature = "std"))]
+impl<T> MaybeSerialize for T {}
 
 pub trait NodeT {
     type Index: Codec + Clone + Eq + PartialEq + Default + MaybeSerializeDebug;
