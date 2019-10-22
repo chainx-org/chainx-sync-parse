@@ -4,7 +4,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug, Default)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Default, Debug)]
 #[derive(Encode, Decode)]
 pub struct Bytes(pub Vec<u8>);
 
