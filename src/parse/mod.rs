@@ -24,7 +24,7 @@ pub enum RuntimeStorage {
     #[strum(serialize = "System AccountNonce", props(Type = "map"))]
     SystemAccountNonce(AccountId, Index),
     #[strum(serialize = "System BlockHash", props(Type = "map"))]
-    SystemBlockHash(BlockNumber, Hash),
+    SystemBlockHash(BlockNumber, H256),
     // indices ------------------------------------------------------------------------------------
     #[strum(serialize = "Indices NextEnumSet", props(Type = "value"))]
     IndicesNextEnumSet(AccountIndex),
@@ -194,7 +194,7 @@ pub enum RuntimeStorage {
     #[strum(serialize = "XMultiSig MultiSigAddrInfo", props(Type = "map"))]
     XMultiSigMultiSigAddrInfo(AccountId, AddrInfo<AccountId>),
     #[strum(serialize = "XMultiSig PendingListFor", props(Type = "map"))]
-    XMultiSigPendingListFor(AccountId, Vec<Hash>),
+    XMultiSigPendingListFor(AccountId, Vec<H256>),
     #[strum(serialize = "XMultiSig MultiSigListItemFor", props(Type = "map"))]
     XMultiSigMultiSigListItemFor((AccountId, u32), AccountId),
     #[strum(serialize = "XMultiSig MultiSigListLenFor", props(Type = "map"))]
