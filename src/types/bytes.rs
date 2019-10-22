@@ -1,14 +1,11 @@
-use std::fmt;
-
 use parity_codec::{Decode, Encode};
-#[cfg(feature = "std")]
 use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Default, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Default, Debug)]
+#[derive(Encode, Decode)]
 pub struct Bytes(pub Vec<u8>);
 
 impl Bytes {
@@ -49,7 +46,6 @@ impl Serialize for Bytes {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de> Deserialize<'de> for Bytes {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -59,14 +55,12 @@ impl<'de> Deserialize<'de> for Bytes {
     }
 }
 
-#[cfg(feature = "std")]
 struct BytesVisitor;
 
-#[cfg(feature = "std")]
 impl<'de> Visitor<'de> for BytesVisitor {
     type Value = Bytes;
 
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(formatter, "a 0x-prefixed hex-encoded vector of bytes")
     }
 
@@ -93,7 +87,6 @@ impl<'de> Visitor<'de> for BytesVisitor {
 
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
     use serde_json::json;
 
     use super::*;
