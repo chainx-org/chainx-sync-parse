@@ -84,7 +84,7 @@ struct JsonResponse<T> {
 #[derive(Clone)]
 pub struct PushClient {
     pub url: String,
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
     config: Config,
 }
 
@@ -96,7 +96,7 @@ impl PushClient {
     pub fn with_config(url: String, config: Config) -> Self {
         Self {
             url,
-            client: reqwest::Client::new(),
+            client: reqwest::blocking::Client::new(),
             config,
         }
     }

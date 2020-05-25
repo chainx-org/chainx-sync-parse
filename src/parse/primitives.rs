@@ -177,6 +177,7 @@ pub enum CallSwitcher {
     XBTC,
     XBTCLockup,
     SDOT,
+    Contracts,
 }
 
 impl Default for CallSwitcher {
@@ -230,6 +231,7 @@ pub enum AssetType {
     ReservedDexSpot,
     ReservedDexFuture,
     ReservedCurrency,
+    GasPayment,
 }
 
 impl Default for AssetType {
