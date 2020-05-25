@@ -1,10 +1,10 @@
 use std::net::Ipv4Addr;
 
-use hyper::{rt::Future, service::service_fn_ok, Body, Method, Request, Response, Server};
+use hyper::{service::{service_fn, make_service_fn}, Body, Method, Request, Response, Server};
 use serde_json::json;
 use structopt::StructOpt;
 
-fn echo(req: Request<Body>) -> Response<Body> {
+async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     let (parts, _body) = req.into_parts();
 
     match (parts.method, parts.uri.path()) {
@@ -13,13 +13,13 @@ fn echo(req: Request<Body>) -> Response<Body> {
             let body = json!({"result":"OK"});
             let body = serde_json::to_string(&body).unwrap();
             println!("Response body: {}", &body);
-            Response::new(Body::from(body))
+            Ok(Response::new(Body::from(body)))
         }
 
         // The 404 Not Found route...
         _ => {
             println!("StatusCode::NOT_FOUND");
-            Response::new(Body::empty())
+            Ok(Response::new(Body::empty()))
         }
     }
 }
@@ -39,14 +39,18 @@ struct Opt {
     port: u16,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let opt = Opt::from_args();
     let addr = (opt.ip, opt.port).into();
 
-    let server = Server::bind(&addr)
-        .serve(|| service_fn_ok(echo))
-        .map_err(|e| eprintln!("server error: {}", e));
-
+    let serve_fut = Server::bind(&addr)
+        .serve(make_service_fn(|_| async {
+            Ok::<_, hyper::Error>(service_fn(echo))
+        }));
     println!("Listening on http://{}", addr);
-    hyper::rt::run(server);
+
+    if let Err(err) = serve_fut.await {
+        eprintln!("server error: {}", err);
+    }
 }
