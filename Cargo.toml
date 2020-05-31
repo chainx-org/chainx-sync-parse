@@ -26,8 +26,7 @@ strum = { version = "0.18", features = ["derive"] }
 thiserror = "1.0"
 
 # Substrate primitive types (the versoin used by ChainX)
-#substrate-primitives = { git = "https://github.com/chainpool/substrate", rev = "2e3bb962" }
-primitive-types = { version = "0.3", features = ["serde"] }
+primitive-types = { version = "0.3", features = ["serde"] } # use parity-codec v3.x
 blake2-rfc = "0.2.18"
 bs58 = "0.3"
 # bitcoin (the latest version of master branch of light-bitcoin)
