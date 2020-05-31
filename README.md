@@ -15,7 +15,7 @@ Follow the mainnet branch of ChainX.
 
 ```bash
 # compile
-git clone https://github.com/chainpool/chainx-sync-parse.git
+git clone https://github.com/chainx-org/chainx-sync-parse.git
 cd chainx-sync-parse
 cargo build --release
 
@@ -28,11 +28,12 @@ cargo build --release
 
 Subscribe to the prefixes of needed runtime storage by register api.
 
-The structure of Runtime storage is consistent with the [ChainX - mainnet](https://github.com/chainpool/ChainX/tree/mainnet) and [substrate](https://github.com/chainpool/substrate).
+The structure of Runtime storage is consistent with the [ChainX](https://github.com/chainx-org/ChainX) 
+and [Substrate](https://github.com/chainpool/substrate).
 
 **Register**:
 
-Postman: `POST 0.0.0.0:3030`
+Request: `POST 0.0.0.0:3030`
 
 ```
 Headers:
@@ -56,8 +57,7 @@ Parameter description:
     - example: "1.2.3"
 
 You can run the example (a simple http server) to simulate the situation 
-that registrant receives the block data successfully, 
-before sending a register request through Postman.
+that registrant receives the block data successfully, before sending a register request.
 
 ```bash
 cd chainx-sync-parse
@@ -67,7 +67,7 @@ cargo run --example register
 
 **Deregister**:
 
-Postman: `POST 0.0.0.0:3030`
+Request: `POST 0.0.0.0:3030`
 
 ```
 Headers:
@@ -89,15 +89,12 @@ Parameter description:
 # compile
 cd ChainX
 git checkout mainnet
-cargo build --release --features msgbus-log # or cargo build --release --features msgbus-redis (not recommanded)
+cargo build --release --features msgbus-log
 
 # run
 cp target/release/chainx .
 # features msgbus-log, `sync.log` is the param specified by `chainx-sync-parse --sync-log=<PATH>`
 nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa &>> sync.log &
-# features msgbus-redis
-echo flushall | redis-cli
-nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive --rpc-port <PORT> --ws-port <PORT> --rpc-external --ws-external --no-grandpa &
 ```
 
 ## Feature - Sync strategy
@@ -110,14 +107,14 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
 
     ```bash
     # compile
-    git clone https://github.com/chainpool/chainx-sync-parse.git
+    git clone https://github.com/chainx-org/chainx-sync-parse.git
     cd chainx-sync-parse
     cargo build --release
     
     # run
     ./target/release/chainx-sync-parse -h
     # -h or --help for usage details
-    chainx-sync-parse 0.0.0
+    chainx-sync-parse 1.1.0
     ChainX <https://chainx.org>
     Synchronize and parse ChainX sync data
     
@@ -137,53 +134,4 @@ nohup ./chainx --base-path <PATH> --name <NAME> --port <PORT> --pruning archive 
             --start-height <HEIGHT>           Specify the starting block height to scan, range: [start,stop) [default: 0]
             --stop-height <HEIGHT>            Specify the stopping block height to scan [default: 18446744073709551615]
             --sync-log <PATH>                 Specify the sync log path [default: log/sync.log]
-    ```
-
-### ~~sync-redis~~ (Deprecated)
-
-~~0. **Requirement**: Redis (which supports the **keyspace notification** feature)~~
-
-    ```
-    redis-server's conf:
-    
-    ####### EVENT NOTIFICATION ######
-    notify-keyspace-events "Ez"
-    ```
-
-~~1. **Usage**:~~
-
-    ```bash
-    # compile
-    git clone https://github.com/chainpool/chainx-sync-parse.git
-    cd chainx-sync-parse
-    cargo build --release --no-default-features --features='std,msgbus-redis'
-    
-    # run
-    # -h or --help for usage details
-    ./target/release/chainx-sync-parse --sync-redis <URL>
-    ```
-
-## ~~Feature/pgsql~~ (Deprecated)
-
-~~Add the feature for inserting syncing block information into PostgreSQL.~~
- 
-~~See the [up.sql](migrations/2019-02-12-082211_create_blocks/up.sql) file for details of the database table `blocks`.~~
-
-~~0. **Requirement**: PostgreSQL, use your own PostgreSQL configuration in the [.env](./.env) file, like:~~
-
-    ```bash
-    DATABASE_URL=postgres://username:password@localhost/database_name
-    ```
-
-~~1. **Usage**:~~
-
-    ```bash
-    # compile
-    git clone https://github.com/chainpool/chainx-sync-parse.git
-    cd chainx-sync-parse
-    cargo build --release --features pgsql
-    
-    # run
-    # -h or --help for usage details
-    ./target/release/chainx-sync-parse -h
     ```
